@@ -1,0 +1,6 @@
+#!/bin/sh
+
+#DEBHELPER#
+
+test -x /usr/bin/mafw.sh && /usr/bin/mafw.sh stop mafw-gst-renderer \
+|| true;

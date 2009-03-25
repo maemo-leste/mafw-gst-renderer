@@ -1,0 +1,444 @@
+mafw-gst-renderer (0.1.2009.13-5) unstable; urgency=low
+
+  * MAFW gst renderer, pre-release 0.2009.13-5
+
+ -- Juha Kellokoski <ext-juha.kellokoski@nokia.com>  Wed, 25 Mar 2009 09:16:48 +0200
+
+mafw-gst-renderer (0.1.2009.13-4) unstable; urgency=low
+
+  * MAFW gst renderer, pre-release 0.2009.13-4
+  * Fixes: NB#102972 - Pause AAC clip from UPnP server timer shows as 00:00
+  * Changed _notify_buffer_status in state-transitioning in renderer
+    to use the do_notify_buffer status as code was the same after removing timer
+  * Removed timer support from renderer utils
+  * Removed timer handling in renderer.
+  * Removed timer use from renderer get_position
+  * Changed API to return gint instead if guint in the get_position
+    callback
+  * Set Visa as integrator.
+  * Upgrade copyright year.
+  * Add headers for Makefile.am and configure.ac files.
+  * Set Visa Smolander as the contact person in headers.
+
+ -- Juha Kellokoski <ext-juha.kellokoski@nokia.com>  Wed, 25 Mar 2009 09:16:48 +0200
+
+mafw-gst-renderer (0.1.2009.13-3) unstable; urgency=low
+
+  * MAFW gst renderer, pre-release 0.2009.13-3
+
+ -- Juha Kellokoski <ext-juha.kellokoski@nokia.com>  Tue, 24 Mar 2009 09:23:08 +0200
+
+mafw-gst-renderer (0.1.2009.12-4) unstable; urgency=low
+
+  * MAFW gst renderer, pre-release 0.2009.12-4
+
+ -- Juha Kellokoski <ext-juha.kellokoski@nokia.com>  Wed, 18 Mar 2009 09:17:01 +0200
+
+mafw-gst-renderer (0.1.2009.12-3) unstable; urgency=low
+
+  * MAFW gst renderer, pre-release 0.2009.12-3
+  * Fixed CID 610
+  * Fixed CID 2592
+
+ -- Juha Kellokoski <ext-juha.kellokoski@nokia.com>  Wed, 18 Mar 2009 09:17:01 +0200
+
+mafw-gst-renderer (0.1.2009.12-2) unstable; urgency=low
+
+  * MAFW gst renderer, pre-release 0.2009.12-2
+  * Fixes: NB#102172 - Total clip duration shown wrongly for vbr clips.
+  * Fixes: NB#105468 - Mafw-dbus-wrapper freezes when commands are given consecutively
+  * Corrected the double tag emission when pausing in transitioning
+    and going to GST_STATE_READY in renderer worker
+  * Moved _free_taglist functions above in renderer worker
+  * Removed tag_list as global variable to be inside the renderer
+    worker
+  * Modified other functions according this point
+  * Moved _add_ready_timeout from _construct_pipeline to _do_play
+    in renderer to allow us going to ready just after building the pipeline
+    because in the other case we hadn't received the seekability yet.
+  * Solved a memory leak when freeing the tag list in renderer worker
+  * Changed going to GST_STATE_READY only for seekable streams in renderer
+    worker
+  * Code to go to GST_STATE_READY after sometime in PAUSED in renderer
+    worker reactivated
+  * Added checks for NULL buffers when emitting the current frame on
+    paused.
+
+ -- Juha Kellokoski <ext-juha.kellokoski@nokia.com>  Tue, 17 Mar 2009 09:21:54 +0200
+
+mafw-gst-renderer (0.1.2009.11-6) unstable; urgency=low
+
+  * MAFW gst renderer, pre-release 0.2009.11-6
+
+ -- Juha Kellokoski <ext-juha.kellokoski@nokia.com>  Thu, 12 Mar 2009 09:13:36 +0200
+
+mafw-gst-renderer (0.1.2009.11-5) unstable; urgency=low
+
+  * MAFW gst renderer, pre-release 0.2009.11-5
+
+ -- Juha Kellokoski <ext-juha.kellokoski@nokia.com>  Thu, 12 Mar 2009 09:13:36 +0200
+
+mafw-gst-renderer (0.1.2009.11-4) unstable; urgency=low
+
+  * MAFW gst renderer, pre-release 0.2009.11-4
+
+ -- Juha Kellokoski <ext-juha.kellokoski@nokia.com>  Wed, 11 Mar 2009 09:09:57 +0200
+
+mafw-gst-renderer (0.1.2009.11-3) unstable; urgency=low
+
+  * MAFW gst renderer, pre-release 0.2009.11-3
+
+ -- Juha Kellokoski <ext-juha.kellokoski@nokia.com>  Tue, 10 Mar 2009 09:12:41 +0200
+
+mafw-gst-renderer (0.1.2009.11-2) unstable; urgency=low
+
+  * MAFW gst renderer, pre-release 0.2009.11-2
+  * Fixes: NB#104680 - System UI freezed while playing high resolution albumart clips
+  * Added buffering info test in renderer
+  * Added support to get buffering information in renderer tests
+  * Added tests for properties management in renderer tests
+  * Solved a problem that could cause some race conditions in volume handling
+    in renderer worker
+  * Moved _set_volume and _set_mute functions in the worker file in
+    renderer.
+  * Added support to manage properties values in renderer tests
+  * Added test for duration emission in renderer tests
+  * Added test for get_position in renderer
+  * Added tests for media art emission in renderer
+  * Added GStreamer tag management in renderer tests
+  * Added testframe.png to renderer tests
+  * Activated and fixed video tests compilation in renderer
+  * Added functions to metadata checks in renderer tests.
+  * Added error policy tests in renderer
+  * Added support in renderer tests to receive expected error callbacks
+  * Fixed problem with update lastplayed in renderer tests.
+  * Solved problem in playcount renderer tests.
+
+ -- Juha Kellokoski <ext-juha.kellokoski@nokia.com>  Mon, 09 Mar 2009 09:24:38 +0200
+
+mafw-gst-renderer (0.1.2009.11-1) unstable; urgency=low
+
+  * MAFW gst renderer, pre-release 0.2009.11-1
+  * Notify when third-party applications modify gstreamer volume.
+  * Enabling unit tests to mafw-gst-renderer.
+  * Update playcount and last-played when reaching EOS, or after 10 seconds.
+
+ -- Juha Kellokoski <ext-juha.kellokoski@nokia.com>  Thu, 05 Mar 2009 14:43:54 +0200
+
+mafw-gst-renderer (0.1.2009.10-1) unstable; urgency=low
+
+  * MAFW gst renderer, pre-release 0.2009.10-1
+  * Fixed segfault
+  * Removed gstreamer0.10-selector from the mafw-gst-renderer dependencies.
+  * Allow blanking when TV Out cable is plugged.
+
+ -- Juha Kellokoski <ext-juha.kellokoski@nokia.com>  Thu, 26 Feb 2009 14:06:24 +0200
+
+mafw-gst-renderer (0.1.2009.9-1) unstable; urgency=low
+
+  * MAFW gst renderer, pre-release 0.2009.09-1
+  * Disabling optimization flags
+  * Removing helixbin usage
+  * Delaying metadatas received from gstreamer
+  * Preload some gst plugins at startup
+  * Adding some optimization flags to the pipeline
+
+ -- Juha Kellokoski <ext-juha.kellokoski@nokia.com>  Thu, 19 Feb 2009 17:26:04 +0200
+
+mafw-gst-renderer (0.1.2009.8-1) unstable; urgency=low
+
+  * MAFW gst renderer, pre-release 0.2009.08-1
+  * Fixes: NB#98725
+  * Fixes: NB#100158
+  * Added Nokia copyright to gstcreenshot.[ch] files in renderer.
+  * Made bvw_frame_conv_convert asynchronous
+  * Adapted renderer worker to that conversion.
+  * Reusing pipeline for color space conversion in renderer.
+  * Changed raw video art saving to use bacon video widget conversion in
+    mafw-gst-renderer
+  * Added gstsnapshot.[ch] files to renderer to convert raw frames into
+    understandable format for gdk_pixbuf
+  * Changed tmp file name for gstreamer renderer emitted art
+  * Changed function _save_graphic_file_from_gst_buffer to
+    save an unconverted video/x-raw-rgb.
+  * Revert "Fake function that copies a fake frame to test"
+
+ -- Juha Kellokoski <ext-juha.kellokoski@nokia.com>  Thu, 12 Feb 2009 14:22:39 +0200
+
+mafw-gst-renderer (0.1.2009.07-1) unstable; urgency=low
+
+  * MAFW gst renderer, pre-release 0.2009.07-1
+  * Changed highest resolution for fremantle
+
+ -- Mika Tapojärvi <ext-mika.tapojarvi@nokia.com>  Fri, 06 Feb 2009 08:38:37 +0200
+
+mafw-gst-renderer (0.1.2009.06-1) unstable; urgency=low
+
+  * MAFW gst renderer, pre-release 0.2009.06-1
+  * Changed highest resolution for fremantle
+  * Added GTK_DISABLE_DEPRECATED parameters for mafw-tracker-source 
+    configure.ac. Added extended descriptions for 
+  * mafw-gst-renderer.
+  * Build fix
+
+ -- Mika Tapojärvi <ext-mika.tapojarvi@nokia.com>  Fri, 30 Jan 2009 14:03:15 +0200
+
+mafw-gst-renderer (0.1.2009.05-1) unstable; urgency=low
+
+  * MAFW gst renderer, pre-release 0.2009.05-1
+  * Changing the base class of the extension objects to GInitiallyUnowned
+  * Changed testframe.jpeg
+
+ -- Mika Tapojärvi <ext-mika.tapojarvi@nokia.com>  Thu, 22 Jan 2009 14:33:27 +0200
+
+mafw-gst-renderer (0.1.2009.04-1) unstable; urgency=low
+
+  * MAFW, pre-release 0.2009.04-1
+  * Changed testframe.jpeg
+  * Reducing lintian warnings.
+  * Fixes: NB#97304
+  * Fixes: NB#94990
+  * Fixes: NB#85894
+
+ -- Mika Tapojärvi <ext-mika.tapojarvi@nokia.com>  Fri, 16 Jan 2009 14:59:38 +0200
+
+mafw-gst-renderer (0.1.2009.03-1) unstable; urgency=low
+
+  * MAFW, pre-release 0.1.2009.03-1
+  * Testing the error reporting when resuming in transitioning state
+    without having paused.
+  * Sent a GError if trying to resume in transitioning state without
+    having paused before.
+  * Reset timer when stopping.
+  * Remated stream_timer_* functions into media_timer_* because
+    name was confusing.
+  * Renamed _is_playlist into uri_is_playlist and moved to -utils in
+    renderer.
+  * Changed its calls to use the new name.
+  * Changed condition about reporting the error when performing _do_seek.
+  * Added comment about the playlist mode error handling in renderer
+    worker.
+  * Changed tagmap array for a GHashTable in renderer worker.
+  * Removed playback mode and pl struct from global variables and added
+    to worker structure.
+  * Added worker as parameter to _reset_pl_info and _on_pl_entry_parsed
+    in renderer because it is needed to use the parameters inside worker structure.
+  * Removed old_error handler because it was not being used.
+  * In renderer worker renamed:
+     * NORMAL_MODE -> WORKER_MODE_SINGLE_PLAY
+     * PLAYLIST_MODE -> WORKER_MODE_PLAYLIST
+  * Changed _metadata_set_cb to g_debug if operation was correct or if
+    it failed.
+  * Reindented _update_playcount_metadata_cb parameters in renderer.
+  * Logged error in _update_playcount_metadata_cb in renderer because
+    it was just being ignored. This causes the tests to log the warning.
+  * Added a meaningful error to a test in renderer.
+  * Fixed _update_playcount_metadata_cb documentation in renderer.
+  * Renamed _playcount_metadata into _update_playcount_metadata_cb in
+    renderer.
+  * mafw_gstreamer_renderer_get_position changed not to test for
+    callback != NULL because it is already being checked in preconditions.
+  * Changed mafw_gstreamer_renderer_get_status not to test callback != NULL
+    because it is already checked in preconditions.
+  * In mafw_gstreamer_renderer_get_status added check for callback != NULL
+    in preconditions.
+  * Renamed unable_play_count into play_failed_count in renderer.
+  * Added G_LOG_DOMAIN for check-mafw-gstreamer-renderer.
+  * Removed the CHECK-MLS traces from renderer tests.
+  * Changed the G_LOG_DOMAIN for given files to have more suitable ones
+    in renderer.
+
+ -- Mika Tapojärvi <ext-mika.tapojarvi@nokia.com>  Thu, 08 Jan 2009 16:13:10 +0200
+
+mafw-gst-renderer (0.1.2008.52-1) unstable; urgency=low
+
+  * Renamed midas to mafw
+
+ -- Zeeshan Ali <zeeshan.ali@nokia.com>  Mon, 22 Dec 2008 12:55:59 +0200
+
+midas-gstreamer-renderer (0.1.2008.52) unstable; urgency=low
+
+  * Removing libtotem-pl-parser
+  * Deactivated code of the timeout to go to ready until bug with gstreamer is clarified.
+  * Added functions to add, remove and timeout function itself to switch from PAUSED to READY in renderer worker.
+    Used this functions to implement the behavior when pausing.
+  * Fixes NB#85894	incorrect duration reported
+  * Fixes NB#93484      Playlist format other than wpl and ram shows its icon incorrectly in Playlists container
+  * Fixes NB#94990      Gstreamer renderer gives seekable metadata TRUE for radio stream
+
+
+ -- Zeeshan Ali <zeeshan.ali@nokia.com>  Fri, 19 Dec 2008 15:28:58 +0200
+
+midas-gstreamer-renderer (0.1.2008.51-1) unstable; urgency=low
+
+  * (ha)xmas: hardwire ximagesink is removed
+
+ -- Zeeshan Ali <zeeshan.ali@nokia.com>  Mon, 15 Dec 2008 12:55:59 +0200
+
+midas-gstreamer-renderer (0.1.2008.51) unstable; urgency=low
+
+  * (ha)xmas: hardwire ximagesink temporarily
+
+ -- Zeeshan Ali <zeeshan.ali@nokia.com>  Fri, 12 Dec 2008 14:57:37 +0200
+
+midas-gstreamer-renderer (0.1.2008.50) unstable; urgency=low
+
+  * Added get_last_index method the the mock playlist in renderer
+  tests.
+  * Added new test cases for various use cases.
+
+ -- Zeeshan Ali <zeeshan.ali@nokia.com>  Fri, 05 Dec 2008 13:29:06 +0200
+
+midas-gstreamer-renderer (0.1.2008.49) unstable; urgency=low
+
+  * In development.
+
+ -- Zeeshan Ali <zeeshan.ali@nokia.com>  Fri, 28 Nov 2008 14:35:35 +0200
+
+midas-gstreamer-renderer (0.1.2008.48) unstable; urgency=low
+
+  * In renderer:
+   --Renamed _get_graphic_file_path into _get_tmp_file_from_pool and
+    changed to use the tmp files pool.
+   --Replaced the calls to use _get_tmp_file_from_pool with the
+     proper changes to parameters and return values.
+  * Added resume operation to transitioning state in renderer that
+    allows to resume in transitioning.
+  * Added stop after pausing while transitioning to finish process in a better
+    way in renderer tests.
+  * Implemented HAL listener which stops renderer when usb cable is plugged
+    in, and we are playing something from memory card
+  * Changed do_next and do_prev to begin playback if pressing next
+    or prev when going beyond the playlist limits in renderer.
+  * Added mechanism to start/stop wrappers on package install/removal
+    (ignoring scratchbox support for now).  Uses DSME.
+    Added an Xsession.post script.
+    Updated affected components
+  * Fixes: NB#92843	MidasRenderer ""playlist-changed"" and ""media-changed"" signals occur in random order when changing playlist
+  * Fixes: NB#92238	Play state not preserved when next pressed in the end of the playlist.
+
+ -- Zeeshan Ali <zeeshan.ali@nokia.com>  Fri, 21 Nov 2008 16:59:53 +0200
+
+midas-gstreamer-renderer (0.1.2008.47) unstable; urgency=low
+
+  * Send error signal when handling playback errors.
+  * Added conic network detection in renderer
+  * Added error handing in renderer for CODEC_NOT_FOUND , seek error, network errors, DRM errors.
+  * Fixes: NB#87297	Property of shuffle operation not reflected to the last item of playlist
+  * Fixes: NB#87354	shuffle not applied to dynamically added clips
+  * Fixes: NB#87667	Midas-playlist-daemon crashes with repeat mode 'on' & playing unsupported clip
+  * Fixes: NB#91530	Media-changed signal comes everytime item is added to playlist
+  * Fixes: NB#91566	glib criticals observed when audio playback is stopped
+  * Fixes: NB#87841	Next and previous gives ""Index out of bounds error"" on last and first items
+  * Fixes: NB#91893	local sink crashes when invalid playlist items are played
+
+ -- Zeeshan Ali <zeeshan.ali@nokia.com>  Fri, 14 Nov 2008 12:30:41 +0200
+
+midas-gstreamer-renderer (0.1.2008.46) unstable; urgency=low
+
+  * Fixes: NB#91061	 gstreamer-gnomevfs pkgs missing.
+
+ -- Zeeshan Ali <zeeshan.ali@nokia.com>  Fri, 07 Nov 2008 11:58:32 +0200
+
+midas-gstreamer-renderer (0.1.2008.45) unstable; urgency=low
+
+  *  Implemented move_to_last based on playlist get_last_index function
+  *  Implemented tag emission of renderer art in MidasGstreamerRenderer.
+
+ -- Zeeshan Ali <zeeshan.ali@nokia.com>  Fri, 31 Oct 2008 14:14:16 +0200
+
+midas-gstreamer-renderer (0.1.2008.44) unstable; urgency=low
+
+  * Added support to request the current frame
+  * Added support for the property in the renderer and its storage on the worker.
+  * added gdkpixbuf dependency.
+
+ -- Zeeshan Ali <zeeshan.ali@nokia.com>  Fri, 24 Oct 2008 10:11:52 +0300
+
+midas-gstreamer-renderer (0.1.2008.43) unstable; urgency=low
+
+  * Renaming local-sink->midas-gstreamer-renderer
+  * support of playback on diablo
+
+ -- Zeeshan Ali <zeeshan.ali@nokia.com>  Fri, 17 Oct 2008 15:03:14 +0300
+
+midas-gstreamer-renderer (0.1.2008.42) unstable; urgency=low
+
+  * Fixes: NB#89265	unable to parse wpl playlist format files in local sink
+
+ -- Zeeshan Ali <zeeshan.ali@nokia.com>  Fri, 10 Oct 2008 16:10:02 +0300
+
+midas-gstreamer-renderer (0.1.2008.40) unstable; urgency=low
+
+  * Using playbin2.
+
+ -- Zeeshan Ali <zeeshan.ali@nokia.com>  Mon, 29 Sep 2008 07:02:28 +0000
+
+midas-gstreamer-renderer (0.1.2008.39) unstable; urgency=low
+
+  * Fixes: NB#87723	Play item pointer switches back to first item of playlist while repeat mode of playlist is not enabled
+
+ -- Zeeshan Ali <zeeshan.ali@nokia.com>  Sun, 21 Sep 2008 18:35:06 +0300
+
+midas-gstreamer-renderer (0.1.2008.38) unstable; urgency=low
+
+  * Unit tests fixed after the use_count API addition.
+
+ -- Zeeshan Ali <zeeshan.ali@nokia.com>  Mon, 15 Sep 2008 08:11:12 +0300
+
+midas-gstreamer-renderer (0.1.2008.37) unstable; urgency=low
+
+  * small face-lift (configure.ac, Makefile.am:s and build fixes)
+  * Fixes: NB#86160	Media continues to play after deleting the playlist
+
+ -- Zeeshan Ali <zeeshan.ali@nokia.com>  Mon, 08 Sep 2008 08:37:04 +0300
+
+midas-gstreamer-renderer (0.1.2008.36) unstable; urgency=low
+
+  * Fixes: NB#87757	Seeking gives unknown seek mode as error in callback function
+  * Fixes: NB#87414	Seek option is not enabled for mp3 format files
+  * Fixes: NB#87463	playback is switched back to 20 seconds time stamp when the forward button is pressed
+  * Fixes: NB#87524	Video full screen turns blank during pause playback state
+
+ -- Zeeshan Ali <zeeshan.ali@nokia.com>  Mon, 01 Sep 2008 08:21:43 +0300
+
+midas-gstreamer-renderer (0.1.2008.35) unstable; urgency=low
+
+  * In development.
+
+ -- Zeeshan Ali <zeeshan.ali@nokia.com>  Sun, 24 Aug 2008 19:42:40 +0300
+
+midas-gstreamer-renderer (0.1.2008.34) unstable; urgency=low
+
+  * More strict parameter checking by set_position().
+
+ -- Zeeshan Ali <zeeshan.ali@nokia.com>  Fri, 15 Aug 2008 09:48:16 +0300
+
+midas-gstreamer-renderer (0.1.2008.33) unstable; urgency=low
+
+  * Initial release.
+  * Fixes: NB#85491	stop() in transitioning state
+  * Fixes: NB#85894	incorrect duration reported
+  * Fixes: NB#85481	Unable to seek attached mp3 file using MAFW api
+  * Fixes: NB#85675	sink::metadata-changed signal reports the is-seekable key in integer
+  * Fixes: NB#86692	local-sink doesn't emit buffering-info signals
+  * Fixes: NB#85161	attempts to play media having unsupported format results in error message
+  * Fixes: NB#85160	GLIB CRITICAL message trying to get the iradio-name metadata from gstreamer
+  * Fixes: NB#85892	Pausing resets playback
+  * Fixes: NB#85897	media always reported to be unseekable
+  * Fixes: NB#86160	Media continues to play after deleting the playlist
+  * Fixes: NB#86654	crash while playing from a playlist
+  * Fixes: NB#85149	play(callback) is not invoked
+  * Fixes: NB#85150	only the first item of the playlist is played
+  * Fixes: NB#85498	sink should advance to next item if current is unplayable
+  * Fixes: NB#86893	UPnP media content not playing
+  * Fixes: NB#85472	play() starts last play_object()ed item again
+  * Fixes: NB#85475	assign_playlist() starts playing
+  * Fixes: NB#85479	misleading index in media-changed for play_object()
+  * Fixes: NB#85628	crash if invoked without callback
+  * Fixes: NB#87082	gstreamer criticals during playback
+  * Fixes: NB#85489	critical warnings via assign_playlist(NULL)
+  * Fixes: NB#87084	assign_playlist() critical warnings
+  * Fixes: NB#86956	midas-dbus-wrapper dies when playback is attempted in mentioned scenario
+
+ -- Zeeshan Ali <zeeshan.ali@nokia.com>  Sun, 10 Aug 2008 19:52:39 +0300

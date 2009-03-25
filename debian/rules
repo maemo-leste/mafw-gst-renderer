@@ -1,0 +1,96 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+
+# Uncomment this to turn on verbose mode.
+#export DH_VERBOSE=1
+
+# These are used for cross-compiling and for saving the configure script
+# from having to guess our platform (since we know it already)
+DEB_HOST_GNU_TYPE   ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
+DEB_BUILD_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
+
+CFLAGS = -Wall -g
+
+ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
+	CFLAGS += -O0
+else
+	CFLAGS += -O2
+endif
+
+ifneq (,$(findstring thumb,$(DEB_BUILD_OPTIONS)))
+        CFLAGS += -mthumb
+endif
+
+ifneq (,$(findstring debug,$(DEB_BUILD_OPTIONS)))
+	CFLAGS += -O0 -ggdb3 -finstrument-functions
+endif
+
+ifeq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
+	INSTALL_PROGRAM += -s
+endif
+maybe_coverage := $(if $(filter lcov,$(DEB_BUILD_OPTIONS)),--enable-coverage,)
+
+configure-stamp:
+	dh_testdir
+	CFLAGS="$(CFLAGS)" ./autogen.sh \
+		--host=$(DEB_HOST_GNU_TYPE) \
+		--build=$(DEB_BUILD_GNU_TYPE) \
+		--disable-dependency-tracking \
+		--prefix=/usr \
+		$(maybe_coverage)
+	touch configure-stamp
+
+build: build-stamp
+build-stamp:  configure-stamp
+	dh_testdir
+	$(MAKE)
+ifeq ($(findstring nocheck,$(DEB_BUILD_OPTIONS)),)
+	$(MAKE) check
+endif
+	touch build-stamp
+
+clean:
+	dh_testdir
+	dh_testroot
+	rm -f build-stamp configure-stamp
+	[ ! -f Makefile ] || $(MAKE) distclean
+	dh_clean 
+
+install: build
+	dh_testdir
+	dh_testroot
+	dh_clean -k 
+	dh_installdirs
+	$(MAKE) install DESTDIR=$(CURDIR)/debian/tmp
+
+binary-indep: build install
+
+binary-arch: build install
+	dh_testdir
+	dh_testroot
+	dh_installchangelogs ChangeLog
+	dh_installdocs
+	dh_install --sourcedir=debian/tmp -v
+	dh_link
+	dh_strip --dbg-package=mafw-gst-renderer
+	dh_compress
+	dh_fixperms
+	dh_installdeb
+	dh_shlibdeps
+	dh_gencontrol
+	dh_md5sums
+	dh_builddeb
+
+binary: binary-indep binary-arch
+
+distcheck: build
+	dh_testdir 
+	$(MAKE) distcheck
+
+vg:
+	dh_testdir
+	$(MAKE) -C "$(CURDIR)/tests" vg
+		
+
+.PHONY: build clean binary-indep binary-arch binary install distcheck vg
+

@@ -1,0 +1,2 @@
+# MafwPlaylistIterator::playlist-changed(clip_changed, domain, code, message)
+VOID: BOOLEAN, UINT, INT, STRING

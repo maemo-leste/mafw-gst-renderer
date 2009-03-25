@@ -1,0 +1,27 @@
+Source: mafw-gst-renderer
+Section: misc
+Priority: optional
+Maintainer: Mika Tapojärvi <ext-mika.tapojarvi@nokia.com>
+Build-Depends: debhelper (>= 4.0.0), libglib2.0-dev,
+               libgstreamer0.10-dev (>= 0.10.20-0maemo3),
+               libgstreamer-plugins-base0.10-dev (>= 0.10.20-0maemo5),
+               libx11-dev, libosso-dev (>= 2.0), libmafw0-dev (>= 0.1),
+               checkmore, gstreamer0.10-plugins-base,
+               gstreamer0.10-plugins-good,
+               libhal-dev, libtotem-plparser-dev
+Standards-Version: 3.7.2
+
+Package: mafw-gst-renderer
+Section: libs
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: MAFW gst renderer plugin
+ Renderer plugin for MAFW-gst
+
+Package: mafw-gst-renderer-dbg
+Section: devel
+Architecture: any
+Priority: extra
+Depends: mafw-gst-renderer (= ${binary:Version})
+Description: debug symbols for mafw-gst-renderer
+ MAFW-gst renderer debug symbols

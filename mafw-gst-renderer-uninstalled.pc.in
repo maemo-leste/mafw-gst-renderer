@@ -1,0 +1,11 @@
+prefix=
+exec_prefix=
+libdir=${pcfiledir}/libmafw-gst-renderer
+includedir=${pcfiledir}/
+
+Name: mafw-gst-renderer
+Description: MAFW local renderer
+Version: @VERSION@
+Libs: ${libdir}/mafw-gst-renderer.la
+Cflags: -I${includedir}
+Requires: gobject-2.0 gstreamer-0.10 mafw
