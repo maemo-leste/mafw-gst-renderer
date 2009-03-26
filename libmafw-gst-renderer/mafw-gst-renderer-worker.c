@@ -619,20 +619,6 @@ static void _finalize_startup(MafwGstRendererWorker *worker)
 					MAFW_METADATA_KEY_IS_SEEKABLE,
 					worker->media.seekable);
 	g_debug("media seekable: %d", worker->media.seekable);
-
-	if (g_object_class_find_property(G_OBJECT_GET_CLASS(worker->pipeline),
-					 "source"))
-	{
-		GstElement *src = NULL;
-
-		g_object_get(worker->pipeline, "source", &src, NULL);
-		if (src) {
-			/* SMB-specific hack:  use bigger blocksize to gain
-			 * better throughput & transfer rate. */
-			if (g_str_has_prefix(worker->media.location, "smb://"))
-				g_object_set(src, "blocksize", 32768, NULL);
-		}
-	}
 }
 
 static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker)
@@ -703,11 +689,8 @@ static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker
 	{
 		/* if seek was called, at this point it is really ended */
 		worker->seek_position = -1;
-		_remove_ready_timeout(worker);
 		if (worker->report_statechanges)
 		{
-			if (worker->media.has_visual_content)
-				blanking_prohibit();
 			worker->state = GST_STATE_PLAYING;
 			worker->eos = FALSE;
 
@@ -733,7 +716,10 @@ static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker
 				break;
 			default: break;
 			}
+			if (worker->media.has_visual_content)
+				blanking_prohibit();
 		}
+		_remove_ready_timeout(worker);
 		_emit_metadatas(worker);
 	} else if (newstate == GST_STATE_READY && worker->in_ready) {
 		g_debug("changed to GST_STATE_READY");
@@ -1269,33 +1255,57 @@ static void _set_mute(MafwGstRendererWorker *worker)
 }
 
 /*
- * Constructs gst pipeline based on mime type and start playing.  The location
- * of the media needs to be placed into worker->media.location.
+ * Start to play the media
+ */
+static void _start_play(MafwGstRendererWorker *worker)
+{
+	MafwGstRenderer *renderer = (MafwGstRenderer*) worker->owner;
+
+	g_assert(worker->pipeline);
+	g_object_set(G_OBJECT(worker->pipeline),
+		     "uri", worker->media.location, NULL);
+	g_debug("setting pipeline to PAUSED");
+	worker->prerolling = TRUE;
+	worker->report_statechanges = TRUE;
+	gst_element_set_state(worker->pipeline, GST_STATE_PAUSED);
+	worker->is_stream = uri_is_stream(worker->media.location);
+	if (renderer->media->object_id)
+		renderer->update_playcount_needed = TRUE;
+
+        if (renderer->update_playcount_id > 0) {
+                g_source_remove(renderer->update_playcount_id);
+                renderer->update_playcount_id = 0;
+        }
+}
+
+/*
+ * Constructs gst pipeline
  *
  * FIXME: Could the same pipeline be used for playing all media instead of
  *  constantly deleting and reconstructing it again?
  */
 static void _construct_pipeline(MafwGstRendererWorker *worker)
 {
-	MafwGstRenderer *renderer = (MafwGstRenderer*) worker->owner;
-	gboolean use_nw;
-
 	g_debug("constructing pipeline");
 	g_assert(worker != NULL);
-	g_assert(!worker->pipeline);
+
+	/* Return if we have already one */
+	if (worker->pipeline)
+		return;
 
 	_free_taglist(worker);
-	worker->is_stream = uri_is_stream(worker->media.location);
-
-	/* Use nwqueue only for non-rtsp and non-mms(h) streams. */
-	use_nw = !g_str_has_prefix(worker->media.location, "rtsp://") &&
-		!g_str_has_prefix(worker->media.location, "mms://") &&
-		!g_str_has_prefix(worker->media.location, "mmsh://");
 
 	worker->pipeline = gst_element_factory_make("playbin2",
 						    "playbin");
 	if (worker->pipeline == NULL)
 	{
+		gboolean use_nw;
+
+		/* Use nwqueue only for non-rtsp and non-mms(h) streams. */
+		use_nw = !g_str_has_prefix(worker->media.location, "rtsp://") &&
+		!g_str_has_prefix(worker->media.location, "mms://") &&
+		!g_str_has_prefix(worker->media.location, "mmsh://");
+
 		worker->pipeline = gst_element_factory_make("playbin",
 							    "playbin");
 		/* playbin2 doesn't have these properties. */
@@ -1307,13 +1317,6 @@ static void _construct_pipeline(MafwGstRendererWorker *worker)
 			     "no-video-transform", TRUE, NULL);
 	}
 
-	if (!worker->pipeline)
-		goto check_error;
-	/* This could improve the performance a little bit, but it makes bugs.
-	 * You can not control the volume, and the playback is noisy
-	 */
-	/*g_object_set(worker->pipeline,"flags",99,NULL);*/
-check_error:
 	if (!worker->pipeline) {
 		g_debug("failed to create playback pipeline");
 		_send_error(worker,
@@ -1322,22 +1325,17 @@ check_error:
 					worker->media.location));
 		return;
 	}
-	g_object_set(G_OBJECT(worker->pipeline),
-		     "uri", worker->media.location, NULL);
-	if (renderer->media->object_id)
-		renderer->update_playcount_needed = TRUE;
-
-        if (renderer->update_playcount_id > 0) {
-                g_source_remove(renderer->update_playcount_id);
-                renderer->update_playcount_id = 0;
-        }
+	/* This could improve the performance a little bit, but it makes bugs.
+	 * You can not control the volume, and the playback is noisy
+	 */
+	//g_object_set(worker->pipeline,"flags",99,NULL);
 
 	worker->bus = gst_pipeline_get_bus(GST_PIPELINE(worker->pipeline));
 	gst_bus_set_sync_handler(worker->bus,
 				 (GstBusSyncHandler)_sync_bus_handler, worker);
-	worker->async_bus_id = gst_bus_add_watch(worker->bus,
+	worker->async_bus_id = gst_bus_add_watch_full(worker->bus,G_PRIORITY_HIGH,
 						 (GstBusFunc)_async_bus_handler,
-						 worker);
+						 worker, NULL);
 
 	/* Listen for changes in stream-info object to find out whether the
 	 * media contains video and throw error if application has not provided
@@ -1349,10 +1347,6 @@ check_error:
 	_set_volume(worker, worker->current_volume);
         g_signal_connect(worker->pipeline, "notify::volume",
                          G_CALLBACK(_volume_cb), worker);
-	worker->prerolling = TRUE;
-	worker->report_statechanges = TRUE;
-	g_debug("setting pipeline to PAUSED");
-	gst_element_set_state(worker->pipeline, GST_STATE_PAUSED);
 }
 
 /*
@@ -1540,6 +1534,7 @@ static void _play_pl_next(MafwGstRendererWorker *worker) {
 
 	worker->media.location = g_strdup(next);
 	_construct_pipeline(worker);
+	_start_play(worker);
 }
 
 static void _on_pl_entry_parsed(TotemPlParser *parser, gchar *uri,
@@ -1590,7 +1585,6 @@ void mafw_gst_renderer_worker_play(MafwGstRendererWorker *worker,
 	mafw_gst_renderer_worker_stop(worker);
 	_reset_media_info(worker);
 	_reset_pl_info(worker);
-
 	/* Check if the item to play is a single item or a playlist. */
 	if (uri_is_playlist(uri)){
 		/* In case of a playlist we parse it and start playing the first
@@ -1645,8 +1639,8 @@ void mafw_gst_renderer_worker_play(MafwGstRendererWorker *worker,
 		/* Set the item to be played */
 		worker->media.location = g_strdup(uri);
 	}
-
 	_construct_pipeline(worker);
+	_start_play(worker);
 }
 
 /*
@@ -1655,9 +1649,13 @@ void mafw_gst_renderer_worker_play(MafwGstRendererWorker *worker,
  */
 void mafw_gst_renderer_worker_stop(MafwGstRendererWorker *worker)
 {
+	g_debug("worker STOP");
 	g_assert(worker != NULL);
 
-	g_debug("worker STOP");
+	/* If location is NULL, this is a pre-created pipeline */
+	if (worker->async_bus_id && worker->pipeline && !worker->media.location)
+		return;
+
 	if (worker->pipeline) {
 		g_debug("destroying pipeline");
 		if (worker->async_bus_id) {
@@ -1683,6 +1681,7 @@ void mafw_gst_renderer_worker_stop(MafwGstRendererWorker *worker)
 		gst_object_unref(GST_OBJECT(worker->pipeline));
 		worker->pipeline = NULL;
 	}
+
 	worker->report_statechanges = TRUE;
 	worker->state = GST_STATE_NULL;
 	worker->prerolling = FALSE;
@@ -1697,6 +1696,7 @@ void mafw_gst_renderer_worker_stop(MafwGstRendererWorker *worker)
 	worker->media.location = NULL;
 	blanking_allow();
 	_free_taglist(worker);
+	_construct_pipeline(worker);
 }
 
 void mafw_gst_renderer_worker_pause(MafwGstRendererWorker *worker)
@@ -1755,6 +1755,7 @@ MafwGstRendererWorker *mafw_gst_renderer_worker_new(gpointer owner)
 	worker->notify_error_handler = NULL;
 	Global_worker = worker;
 	blanking_init();
+	_construct_pipeline(worker);
 	return worker;
 }
 
