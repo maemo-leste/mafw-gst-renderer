@@ -1,12 +1,12 @@
+mafw-gst-renderer (0.1.2009.13-6) unstable; urgency=low
+
+  * MAFW gst renderer, pre-release 0.2009.13-6
+
+ -- Juha Kellokoski <veitikka6@gmail.com>  Thu, 26 Mar 2009 09:53:00 +0200
+
 mafw-gst-renderer (0.1.2009.13-5) unstable; urgency=low
 
   * MAFW gst renderer, pre-release 0.2009.13-5
-
- -- Juha Kellokoski <ext-juha.kellokoski@nokia.com>  Wed, 25 Mar 2009 09:16:48 +0200
-
-mafw-gst-renderer (0.1.2009.13-4) unstable; urgency=low
-
-  * MAFW gst renderer, pre-release 0.2009.13-4
   * Fixes: NB#102972 - Pause AAC clip from UPnP server timer shows as 00:00
   * Changed _notify_buffer_status in state-transitioning in renderer
     to use the do_notify_buffer status as code was the same after removing timer
@@ -19,6 +19,12 @@ mafw-gst-renderer (0.1.2009.13-4) unstable; urgency=low
   * Upgrade copyright year.
   * Add headers for Makefile.am and configure.ac files.
   * Set Visa Smolander as the contact person in headers.
+
+ -- Juha Kellokoski <veitikka6@gmail.com>  Thu, 26 Mar 2009 09:53:00 +0200
+
+mafw-gst-renderer (0.1.2009.13-4) unstable; urgency=low
+
+  * MAFW gst renderer, pre-release 0.2009.13-4
 
  -- Juha Kellokoski <ext-juha.kellokoski@nokia.com>  Wed, 25 Mar 2009 09:16:48 +0200
 
