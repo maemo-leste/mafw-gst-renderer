@@ -291,6 +291,7 @@ static void _notify_eos(MafwGstRendererState *self, GError **error)
 	   otherwise move to the next in the playlist */
 	mode = mafw_gst_renderer_get_playback_mode(renderer);
 	if (mode == MAFW_GST_RENDERER_MODE_STANDALONE) {
+		mafw_gst_renderer_worker_stop(self->renderer->worker);
 		mafw_gst_renderer_set_state(self->renderer, Stopped);
 		mafw_gst_renderer_set_playback_mode(
 			renderer, MAFW_GST_RENDERER_MODE_PLAYLIST);
@@ -313,6 +314,7 @@ static void _notify_eos(MafwGstRendererState *self, GError **error)
 			break;
 		case MAFW_GST_RENDERER_MOVE_RESULT_PLAYLIST_LIMIT:
 		case MAFW_GST_RENDERER_MOVE_RESULT_NO_PLAYLIST:
+			mafw_gst_renderer_worker_stop(self->renderer->worker);
 			mafw_gst_renderer_set_state(self->renderer, Stopped);
 			break;
 		case MAFW_GST_RENDERER_MOVE_RESULT_ERROR:
