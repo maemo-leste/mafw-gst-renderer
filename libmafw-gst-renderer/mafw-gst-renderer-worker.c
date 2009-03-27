@@ -1325,10 +1325,7 @@ static void _construct_pipeline(MafwGstRendererWorker *worker)
 					worker->media.location));
 		return;
 	}
-	/* This could improve the performance a little bit, but it makes bugs.
-	 * You can not control the volume, and the playback is noisy
-	 */
-	//g_object_set(worker->pipeline,"flags",99,NULL);
+	g_object_set(worker->pipeline,"flags",99,NULL);
 
 	worker->bus = gst_pipeline_get_bus(GST_PIPELINE(worker->pipeline));
 	gst_bus_set_sync_handler(worker->bus,
