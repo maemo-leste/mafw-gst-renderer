@@ -1,8 +1,16 @@
-mafw-gst-renderer (0.1.2009.13-6) unstable; urgency=low
+mafw-gst-renderer (0.1.2009.14-2) unstable; urgency=low
 
-  * MAFW gst renderer, pre-release 0.2009.13-6
+  * MAFW gst renderer, pre-release 0.2009.14-2
 
- -- Juha Kellokoski <veitikka6@gmail.com>  Thu, 26 Mar 2009 09:53:00 +0200
+ -- Juha Kellokoski <veitikka6@gmail.com>  Fri, 27 Mar 2009 09:30:00 +0200
+
+mafw-gst-renderer (0.1.2009.14-1) unstable; urgency=low
+
+  * MAFW gst renderer, pre-release 0.2009.14-1
+  * Creating pipeline at startup and, soon after the playback has ended, to 
+    speed up the starting of the playback
+
+ -- Juha Kellokoski <veitikka6@gmail.com>  Fri, 27 Mar 2009 09:30:00 +0200
 
 mafw-gst-renderer (0.1.2009.13-5) unstable; urgency=low
 
