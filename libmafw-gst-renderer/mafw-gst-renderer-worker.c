@@ -1661,15 +1661,7 @@ void mafw_gst_renderer_worker_stop(MafwGstRendererWorker *worker)
 		}
 		gst_bus_set_sync_handler(worker->bus, NULL, NULL);
 		g_debug("set state to NULL");
-		if (gst_element_set_state(worker->pipeline, GST_STATE_NULL) ==
-		    GST_STATE_CHANGE_ASYNC)
-		{
-			g_debug("async");
-			/* XXX this blocks at most 2 seconds. */
-			gst_element_get_state(worker->pipeline, NULL, NULL,
-					      2 * GST_SECOND);
-			g_debug("async done");
-		}
+		gst_element_set_state(worker->pipeline, GST_STATE_NULL);
 		g_debug("state ok");
 		if (worker->bus) {
 			gst_object_unref(GST_OBJECT_CAST(worker->bus));
