@@ -604,13 +604,6 @@ static void _finalize_startup(MafwGstRendererWorker *worker)
 			gst_query_parse_seeking(seek_query, NULL,
 						&worker->media.seekable,
 						NULL, NULL);
-		} else {
-			/* FIXME: Remove this when seeking query works for all
-			 * formats. */
-			/* Old method: if the stream is local, and we know the duration,
-			 * we assume it is seekable. */
-			if (!worker->is_stream && worker->media.length_nanos != -1)
-				worker->media.seekable = TRUE;
 		}
 		gst_query_unref(seek_query);
 	}
