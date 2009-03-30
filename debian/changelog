@@ -1,14 +1,26 @@
+mafw-gst-renderer (0.1.2009.14-3) unstable; urgency=low
+
+  * MAFW gst renderer, pre-release 0.2009.14-3
+
+ -- Juha Kellokoski <veitikka6@gmail.com>  Mon, 30 Mar 2009 09:23:13 +0200
+
 mafw-gst-renderer (0.1.2009.14-2) unstable; urgency=low
 
   * MAFW gst renderer, pre-release 0.2009.14-2
+  * Fixes: NB#107595 - Xid not set error comes when video is played to the end and then played again with media player
+  * Must always stop() on EOS when there are 
+    no more items to play. This frees X resources if playing video,
+    otherwise setting a new Xid afterward leads to a BadWindow X 
+    error.
+  * Enabling gstreamer optimization flags
+  * Creating pipeline at startup and, soon after the playback has ended, to 
+    speed up the starting of the playback
 
- -- Juha Kellokoski <veitikka6@gmail.com>  Fri, 27 Mar 2009 09:30:00 +0200
+ -- Juha Kellokoski <veitikka6@gmail.com>  Mon, 30 Mar 2009 09:23:13 +0200
 
 mafw-gst-renderer (0.1.2009.14-1) unstable; urgency=low
 
   * MAFW gst renderer, pre-release 0.2009.14-1
-  * Creating pipeline at startup and, soon after the playback has ended, to 
-    speed up the starting of the playback
 
  -- Juha Kellokoski <veitikka6@gmail.com>  Fri, 27 Mar 2009 09:30:00 +0200
 
