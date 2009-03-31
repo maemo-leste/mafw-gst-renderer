@@ -154,7 +154,6 @@ struct _MafwGstRenderer{
 	GstSeekType seek_type_pending;
 	gint seeking_to;
 	gboolean is_stream;
-	gboolean update_playcount_needed;
         gint update_playcount_id;
 	guint play_failed_count;
 

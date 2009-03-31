@@ -261,7 +261,6 @@ static void mafw_gst_renderer_init(MafwGstRenderer *self)
 	renderer->iterator = NULL;
 	renderer->seeking_to = -1;
         renderer->update_playcount_id = 0;
-	renderer->update_playcount_needed = FALSE;
 
         self->worker = mafw_gst_renderer_worker_new(self);
 
@@ -1120,7 +1119,6 @@ gboolean mafw_gst_renderer_update_playcount_cb(gpointer data)
                                              renderer->media->object_id);
         mafw_gst_renderer_update_lastplayed(renderer,
                                             renderer->media->object_id);
-        renderer->update_playcount_needed = FALSE;
         renderer->update_playcount_id = 0;
         return FALSE;
 }

@@ -1262,8 +1262,6 @@ static void _start_play(MafwGstRendererWorker *worker)
 	worker->report_statechanges = TRUE;
 	gst_element_set_state(worker->pipeline, GST_STATE_PAUSED);
 	worker->is_stream = uri_is_stream(worker->media.location);
-	if (renderer->media->object_id)
-		renderer->update_playcount_needed = TRUE;
 
         if (renderer->update_playcount_id > 0) {
                 g_source_remove(renderer->update_playcount_id);

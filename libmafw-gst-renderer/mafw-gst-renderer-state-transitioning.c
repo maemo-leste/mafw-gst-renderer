@@ -267,8 +267,7 @@ static void _notify_play(MafwGstRendererState *self, GError **error)
 
 	MafwGstRenderer *renderer = MAFW_GST_RENDERER_STATE(self)->renderer;
 
-	if (renderer->update_playcount_needed &&
-            renderer->update_playcount_id == 0 &&
+	if (renderer->update_playcount_id == 0 &&
             renderer->media->object_id)
 	{
                 renderer->update_playcount_id = g_timeout_add_seconds(
