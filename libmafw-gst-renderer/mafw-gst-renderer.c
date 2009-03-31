@@ -268,6 +268,8 @@ static void mafw_gst_renderer_init(MafwGstRenderer *self)
 	renderer->playlist = NULL;
 	renderer->iterator = NULL;
 	renderer->seeking_to = -1;
+        renderer->update_playcount_id = 0;
+	renderer->update_playcount_needed = FALSE;
 
         self->worker = mafw_gst_renderer_worker_new(self);
 
