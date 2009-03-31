@@ -746,15 +746,6 @@ static void _signal_state_changed(MafwGstRenderer * self)
 
 	g_signal_emit_by_name(MAFW_RENDERER(self),
 			      "state-changed", self->current_state);
-        if (self->current_state == Stopped &&
-            self->update_playcount_needed) {
-                /* Cancel update */
-                if (self->update_playcount_id > 0) {
-                        g_source_remove(self->update_playcount_id);
-                        self->update_playcount_id = 0;
-                }
-                self->update_playcount_needed = FALSE;
-        }
 }
 
 /**

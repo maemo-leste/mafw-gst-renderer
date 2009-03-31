@@ -471,6 +471,15 @@ void mafw_gst_renderer_state_do_stop(MafwGstRendererState *self, GError **error)
 	/* Stop any ongoing playback */
 	mafw_gst_renderer_worker_stop(renderer->worker);
 
+        if (renderer->update_playcount_needed) {
+                /* Cancel update */
+                if (renderer->update_playcount_id > 0) {
+                        g_source_remove(renderer->update_playcount_id);
+                        renderer->update_playcount_id = 0;
+                }
+                renderer->update_playcount_needed = FALSE;
+        }
+
 	/* Set new state */
 	mafw_gst_renderer_set_state(renderer, Stopped);
 
