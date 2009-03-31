@@ -49,8 +49,6 @@
 #undef  G_LOG_DOMAIN
 #define G_LOG_DOMAIN "mafw-gst-renderer"
 
-#define UPDATE_DELAY 10
-
 #define is_current_uri_stream(self) \
 	(((self)->media != NULL) && ((self)->media->uri != NULL) &&	\
 	 uri_is_stream((self)->media->uri))
@@ -103,12 +101,6 @@ static void mafw_gst_renderer_set_property(MafwExtension *self, const gchar *key
 static void mafw_gst_renderer_get_property(MafwExtension *self, const gchar *key,
 					 MafwExtensionPropertyCallback callback,
 					 gpointer user_data);
-
-/*----------------------------------------------------------------------------
-  Update playcount
-  ----------------------------------------------------------------------------*/
-
-static gboolean _update_playcount_cb(gpointer data);
 
 /*----------------------------------------------------------------------------
   Metadata
@@ -754,17 +746,6 @@ static void _signal_state_changed(MafwGstRenderer * self)
 
 	g_signal_emit_by_name(MAFW_RENDERER(self),
 			      "state-changed", self->current_state);
-	if (self->current_state == Playing &&
-            self->update_playcount_needed &&
-            self->update_playcount_id == 0 &&
-            self->media->object_id)
-	{
-                self->update_playcount_id =
-                        g_timeout_add_seconds(UPDATE_DELAY,
-                                              _update_playcount_cb,
-                                              self);
-	}
-
         if (self->current_state == Stopped &&
             self->update_playcount_needed) {
                 /* Cancel update */
@@ -1136,12 +1117,12 @@ static void _run_error_policy(MafwGstRenderer *self, const GError *in_err,
 }
 
 /**
- * _update_playcount_cb:
+ * mafw_gst_renderer_update_playcount_cb:
  * @data: user data
  *
  * Updates both playcount and lastplayed after a while.
  **/
-static gboolean _update_playcount_cb(gpointer data)
+gboolean mafw_gst_renderer_update_playcount_cb(gpointer data)
 {
         MafwGstRenderer *renderer = (MafwGstRenderer *) data;
         mafw_gst_renderer_increase_playcount(renderer,
@@ -1511,13 +1492,6 @@ static void _notify_eos(MafwGstRendererWorker *worker, gpointer owner)
 			 (renderer->current_state != _LastMafwPlayState) &&
 			 (renderer->states[renderer->current_state] != NULL));
 
-        /* Update playcount */
-        if (renderer->update_playcount_needed) {
-                if (renderer->update_playcount_id > 0) {
-                        g_source_remove(renderer->update_playcount_id);
-                }
-                _update_playcount_cb(renderer);
-        }
 	mafw_gst_renderer_state_notify_eos(renderer->states[renderer->current_state],
 					 &error);
 

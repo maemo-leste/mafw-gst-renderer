@@ -220,6 +220,7 @@ void mafw_gst_renderer_increase_playcount(MafwGstRenderer* self,
                                           const gchar *object_id);
 void mafw_gst_renderer_update_lastplayed(MafwGstRenderer* self,
                                          const gchar *object_id);
+gboolean mafw_gst_renderer_update_playcount_cb(gpointer data);
 
 /*----------------------------------------------------------------------------
   Playlist

@@ -28,6 +28,8 @@
 #undef  G_LOG_DOMAIN
 #define G_LOG_DOMAIN "mafw-gst-renderer-state-transitioning"
 
+#define UPDATE_DELAY 10
+
 /*----------------------------------------------------------------------------
   Playback
   ----------------------------------------------------------------------------*/
@@ -264,6 +266,16 @@ static void _notify_play(MafwGstRendererState *self, GError **error)
 	g_return_if_fail(MAFW_IS_GST_RENDERER_STATE_TRANSITIONING(self));
 
 	MafwGstRenderer *renderer = MAFW_GST_RENDERER_STATE(self)->renderer;
+
+	if (renderer->update_playcount_needed &&
+            renderer->update_playcount_id == 0 &&
+            renderer->media->object_id)
+	{
+                renderer->update_playcount_id = g_timeout_add_seconds(
+			UPDATE_DELAY,
+			mafw_gst_renderer_update_playcount_cb,
+			renderer);
+	}
 
 	mafw_gst_renderer_set_state(renderer, Playing);
 }
