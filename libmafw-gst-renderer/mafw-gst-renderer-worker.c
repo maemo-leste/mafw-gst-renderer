@@ -887,9 +887,17 @@ static void _emit_tag(const GstTagList *list, const gchar *tag,
  */
 static void _handle_tag(MafwGstRendererWorker *worker, GstMessage *msg)
 {
+	/* Do not emit metadata until we get to PLAYING state to speed up
+	   playback start */
 	if (worker->tag_list == NULL)
 		worker->tag_list = g_ptr_array_new();
 	g_ptr_array_add(worker->tag_list, gst_message_ref(msg));
+
+	/* Some tags come in playing state, so in this case we have
+	   to emit them right away (example: radio stations) */
+	if (worker->state == GST_STATE_PLAYING) {
+		_emit_metadatas(worker);
+	}
 }
 
 /**
