@@ -79,6 +79,13 @@ static void _playlist_contents_changed(MafwGstRendererState *self,
 				       GError **error);
 
 /*----------------------------------------------------------------------------
+  Property methods
+  ----------------------------------------------------------------------------*/
+
+static GValue* _get_property_value(MafwGstRendererState *self,
+				   const gchar *name);
+
+/*----------------------------------------------------------------------------
   GObject initialization
   ----------------------------------------------------------------------------*/
 
@@ -129,6 +136,10 @@ static void mafw_gst_renderer_state_transitioning_class_init(
 
 	state_klass->playlist_contents_changed =
 		_playlist_contents_changed;
+
+	/* Property methods */
+
+	state_klass->get_property_value = _get_property_value;
 }
 
 GObject *mafw_gst_renderer_state_transitioning_new(MafwGstRenderer *renderer)
@@ -312,4 +323,24 @@ static void _playlist_contents_changed(MafwGstRendererState *self,
 	if (clip_changed && mode == MAFW_GST_RENDERER_MODE_PLAYLIST) {
 		mafw_gst_renderer_state_do_play(self, error);
 	}
+}
+
+/*----------------------------------------------------------------------------
+  Property methods
+  ----------------------------------------------------------------------------*/
+
+GValue* _get_property_value(MafwGstRendererState *self, const gchar *name)
+{
+	GValue *value = NULL;
+
+	g_return_val_if_fail(MAFW_IS_GST_RENDERER_STATE_TRANSITIONING(self),
+		value);
+
+	if (!g_strcmp0(name, MAFW_PROPERTY_RENDERER_TRANSPORT_ACTIONS)) {
+		value = g_new0(GValue, 1);
+		g_value_init(value, G_TYPE_STRING);
+		g_value_set_string(value, "");
+	}
+
+	return value;
 }

@@ -1517,6 +1517,11 @@ gint mafw_gst_renderer_worker_get_colorkey(
 	return worker->colorkey;
 }
 
+gboolean mafw_gst_renderer_worker_get_seekable(MafwGstRendererWorker *worker)
+{
+	return worker->media.seekable;
+}
+
 static void _play_pl_next(MafwGstRendererWorker *worker) {
 	gchar *next;
 

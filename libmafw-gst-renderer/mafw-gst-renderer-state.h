@@ -106,6 +106,10 @@ struct _MafwGstRendererStateClass {
 	void (*playlist_contents_changed)(MafwGstRendererState *self,
 					  gboolean clip_changed,
 					  GError **error);
+	/* Property methods */
+
+	GValue* (*get_property_value)(MafwGstRendererState *self,
+				      const gchar *name);
 };
 
 struct _MafwGstRendererState {
@@ -175,6 +179,13 @@ void mafw_gst_renderer_state_playlist_contents_changed_handler(
 	MafwGstRendererState *self,
 	gboolean clip_changed,
 	GError **error);
+
+/*----------------------------------------------------------------------------
+  Property methods
+  ----------------------------------------------------------------------------*/
+
+GValue* mafw_gst_renderer_state_get_property_value(MafwGstRendererState *self,
+						   const gchar *name);
 
 /*----------------------------------------------------------------------------
   Helpers

@@ -177,6 +177,18 @@ static void _default_playlist_contents_changed(MafwGstRendererState *self,
 }
 
 /*----------------------------------------------------------------------------
+  Default property methods implementation
+  ----------------------------------------------------------------------------*/
+
+static GValue* _default_get_property_value(MafwGstRendererState *self,
+					const gchar *name)
+{
+	g_warning("get_property_value function not implemented in %s state",
+		  MAFW_GST_RENDERER_STATE_GET_CLASS(self)->name);
+	return NULL;
+}
+
+/*----------------------------------------------------------------------------
   GObject initialization
   ----------------------------------------------------------------------------*/
 
@@ -219,8 +231,13 @@ static void mafw_gst_renderer_state_class_init(MafwGstRendererStateClass *klass)
 	klass->notify_eos           = _default_notify_eos;
 
 	/* Playlist editing signals */
+
 	klass->playlist_contents_changed =
 		_default_playlist_contents_changed;
+
+	/* Property methods */
+
+	klass->get_property_value = _default_get_property_value;
 
 }
 
@@ -350,6 +367,18 @@ void mafw_gst_renderer_state_playlist_contents_changed_handler(
 		self,
 		clip_changed,
 		error);
+}
+
+/*----------------------------------------------------------------------------
+  Property methods
+  ----------------------------------------------------------------------------*/
+
+GValue* mafw_gst_renderer_state_get_property_value(MafwGstRendererState *self,
+						   const gchar *name)
+{
+	return MAFW_GST_RENDERER_STATE_GET_CLASS(self)->get_property_value(
+		self,
+		name);
 }
 
 /*----------------------------------------------------------------------------

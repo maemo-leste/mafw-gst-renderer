@@ -88,6 +88,7 @@ static gboolean _tv_out_is_connected(LibHalContext *ctx, const char *udi);
 static void _signal_state_changed(MafwGstRenderer * self);
 static void _signal_media_changed(MafwGstRenderer * self);
 static void _signal_playlist_changed(MafwGstRenderer * self);
+static void _signal_transport_actions_property_changed(MafwGstRenderer * self);
 
 /*----------------------------------------------------------------------------
   Properties
@@ -253,7 +254,7 @@ static void mafw_gst_renderer_init(MafwGstRenderer *self)
 				     "current-frame-on-pause",
 				     G_TYPE_BOOLEAN);
 #endif
-
+ 	MAFW_EXTENSION_SUPPORTS_TRANSPORT_ACTIONS(self);
 	renderer->media = g_new0(MafwGstRendererMedia, 1);
 	renderer->current_state = Stopped;
 
@@ -789,6 +790,30 @@ static void _signal_media_changed(MafwGstRenderer *self)
 			      self->media->object_id);
 }
 
+/**
+ * _signal_transport_actions_property_changed:
+ * @self: A #MafwGstRenderer
+ *
+ * Signals transport_actions property_changed to all UIs
+ **/
+static void _signal_transport_actions_property_changed(MafwGstRenderer * self)
+{
+	GValue *value;
+
+	g_return_if_fail(MAFW_IS_GST_RENDERER(self));
+
+	value = mafw_gst_renderer_state_get_property_value(
+		MAFW_GST_RENDERER_STATE(
+			self->states[self->current_state]),
+		MAFW_PROPERTY_RENDERER_TRANSPORT_ACTIONS);
+
+	mafw_extension_emit_property_changed(
+		MAFW_EXTENSION(self),
+		MAFW_PROPERTY_RENDERER_TRANSPORT_ACTIONS,
+		value);
+
+}
+
 
 /*----------------------------------------------------------------------------
   State pattern support
@@ -800,6 +825,7 @@ void mafw_gst_renderer_set_state(MafwGstRenderer *self, MafwPlayState state)
 
 	self->current_state = state;
 	_signal_state_changed(self);
+	_signal_transport_actions_property_changed(self);
 }
 
 void mafw_gst_renderer_play(MafwRenderer *self, MafwRendererPlaybackCB callback,
@@ -1762,6 +1788,22 @@ static void mafw_gst_renderer_get_property(MafwExtension *self,
 		g_value_set_boolean(value, current_frame_on_pause);
 	}
 #endif
+	else if (!strcmp(key,
+			 MAFW_PROPERTY_RENDERER_TRANSPORT_ACTIONS)){
+		/* Delegate in the state. */
+		value = mafw_gst_renderer_state_get_property_value(
+			MAFW_GST_RENDERER_STATE(
+				renderer->states[renderer->current_state]),
+			MAFW_PROPERTY_RENDERER_TRANSPORT_ACTIONS);
+
+		if (!value) {
+			/* Something goes wrong. */
+			error = g_error_new(
+				MAFW_GST_RENDERER_ERROR,
+				MAFW_EXTENSION_ERROR_GET_PROPERTY,
+				"Error while getting the property value");
+		}
+	}
 	else {
 		/* Unsupported property */
 		error = g_error_new(MAFW_GST_RENDERER_ERROR,

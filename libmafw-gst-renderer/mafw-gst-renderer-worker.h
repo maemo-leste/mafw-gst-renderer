@@ -165,7 +165,7 @@ XID mafw_gst_renderer_worker_get_xid(MafwGstRendererWorker *worker);
 gboolean mafw_gst_renderer_worker_get_autopaint(MafwGstRendererWorker *worker);
 void mafw_gst_renderer_worker_set_autopaint(MafwGstRendererWorker *worker, gboolean autopaint);
 gint mafw_gst_renderer_worker_get_colorkey(MafwGstRendererWorker *worker);
-
+gboolean mafw_gst_renderer_worker_get_seekable(MafwGstRendererWorker *worker);
 void mafw_gst_renderer_worker_play(MafwGstRendererWorker *worker, const gchar *uri);
 void mafw_gst_renderer_worker_stop(MafwGstRendererWorker *worker);
 void mafw_gst_renderer_worker_pause(MafwGstRendererWorker *worker);
