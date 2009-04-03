@@ -1,8 +1,21 @@
-mafw-gst-renderer (0.1.2009.14-5) unstable; urgency=low
+mafw-gst-renderer (0.1.2009.15-2) unstable; urgency=low
 
-  * MAFW gst renderer, pre-release 0.2009.14-5
+  * MAFW gst renderer, pre-release 0.2009.15-2
 
- -- Juha Kellokoski <veitikka6@gmail.com>  Wed, 01 Apr 2009 09:34:16 +0300
+ -- Juha Kellokoski <veitikka6@gmail.com>  Fri, 03 Apr 2009 09:17:14 +0300
+
+mafw-gst-renderer (0.1.2009.15-1) unstable; urgency=low
+
+  * MAFW gst renderer, pre-release 0.2009.15-1
+  * Fixes: NB#106136 - Metadata not shown properly for radio stations.
+  * Added transport-actions property. For the moment contains information
+    about Seek operation.
+  * Unit test disabled by default for system integration purposes.
+  * Some tags are detected when Gstreamer is already
+    in GST_STATE_PLAYING, so in this case, emit them right away, otherwise
+    they are never emitted to the UI.
+
+ -- Juha Kellokoski <veitikka6@gmail.com>  Fri, 03 Apr 2009 09:17:14 +0300
 
 mafw-gst-renderer (0.1.2009.14-4) unstable; urgency=low
 
