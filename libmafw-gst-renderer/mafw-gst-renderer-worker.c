@@ -146,7 +146,7 @@ static const gchar *_get_tmp_file_from_pool(
 
 static void _destroy_pixbuf (guchar *pixbuf, gpointer data)
 {
-  gst_buffer_unref(GST_BUFFER(data));
+	gst_buffer_unref(GST_BUFFER(data));
 }
 
 static void _emit_gst_buffer_as_graphic_file_cb(GstBuffer *new_buffer,
@@ -316,8 +316,6 @@ static void _emit_gst_buffer_as_graphic_file(MafwGstRendererWorker *worker,
 				}
 			}
 		}
-
-		gst_buffer_unref(buffer);
 	}
 }
 #endif
