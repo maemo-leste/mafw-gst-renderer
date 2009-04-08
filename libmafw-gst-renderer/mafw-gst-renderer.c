@@ -256,6 +256,7 @@ static void mafw_gst_renderer_init(MafwGstRenderer *self)
 #endif
  	MAFW_EXTENSION_SUPPORTS_TRANSPORT_ACTIONS(self);
 	renderer->media = g_new0(MafwGstRendererMedia, 1);
+	renderer->media->seekability = SEEKABILITY_UNKNOWN;
 	renderer->current_state = Stopped;
 
 	renderer->playlist = NULL;
