@@ -261,6 +261,20 @@ static void _notify_metadata(MafwGstRendererState *self,
 			g_free(renderer->media->uri);
 			renderer->media->uri = g_strdup(g_value_get_string(mval));
 			uri = renderer->media->uri;
+
+			mval = mafw_metadata_first(
+				metadata,
+				MAFW_METADATA_KEY_IS_SEEKABLE);
+			if (mval != NULL) {
+				renderer->media->seekability =
+					g_value_get_boolean(mval) ?
+					SEEKABILITY_SEEKABLE :
+					SEEKABILITY_NO_SEEKABLE;
+			} else {
+				renderer->media->seekability =
+					SEEKABILITY_UNKNOWN;
+			}
+
 			mafw_gst_renderer_worker_play(renderer->worker, uri);
 		}
 		else

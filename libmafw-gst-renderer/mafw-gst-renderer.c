@@ -518,7 +518,8 @@ void mafw_gst_renderer_get_metadata(MafwGstRenderer* self,
 		/* List of metadata keys that we are interested in when going to
 		   Transitioning state */
 		static const gchar * const keys[] =
-			{ MAFW_METADATA_KEY_URI, NULL };
+			{ MAFW_METADATA_KEY_URI,
+			  MAFW_METADATA_KEY_IS_SEEKABLE, NULL };
 
 		/* Source found, get metadata */
 		mafw_source_get_metadata(source, objectid,
