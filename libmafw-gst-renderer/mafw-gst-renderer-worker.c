@@ -564,6 +564,7 @@ static void _finalize_startup(MafwGstRendererWorker *worker)
 {
 	GstFormat format;
 	gint64 value;
+	MafwGstRenderer *renderer = worker->owner;
 	GstQuery *seek_query;
 
 	/* Something might have gone wrong at this point already. */
@@ -596,15 +597,21 @@ static void _finalize_startup(MafwGstRendererWorker *worker)
 	worker->media.seekable = FALSE;
 	if (worker->media.length_nanos != -1)
 	{
-		/* Query the seekability of the stream */
-		format = GST_FORMAT_TIME;
-		seek_query = gst_query_new_seeking(format);
-		if (gst_element_query(worker->pipeline, seek_query)) {
-			gst_query_parse_seeking(seek_query, NULL,
-						&worker->media.seekable,
-						NULL, NULL);
+		if (renderer->media->seekability == SEEKABILITY_UNKNOWN) {
+			/* Query the seekability of the stream */
+			format = GST_FORMAT_TIME;
+			seek_query = gst_query_new_seeking(format);
+			if (gst_element_query(worker->pipeline, seek_query)) {
+				gst_query_parse_seeking(seek_query, NULL,
+							&worker->media.seekable,
+							NULL, NULL);
+			}
+			gst_query_unref(seek_query);
+		} else {
+			worker->media.seekable =
+				renderer->media->seekability ==
+				SEEKABILITY_SEEKABLE ? TRUE : FALSE;
 		}
-		gst_query_unref(seek_query);
 	}
 
 	mafw_renderer_emit_metadata_boolean(worker->owner,
