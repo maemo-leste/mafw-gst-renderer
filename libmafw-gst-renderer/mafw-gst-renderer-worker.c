@@ -593,6 +593,7 @@ static void _finalize_startup(MafwGstRendererWorker *worker)
 	}
 	g_debug("media duration: %lld", worker->media.length_nanos);
 
+	worker->media.seekable = FALSE;
 	if (worker->media.length_nanos != -1)
 	{
 		/* Query the seekability of the stream */
