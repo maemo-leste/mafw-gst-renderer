@@ -605,12 +605,17 @@ static void _finalize_startup(MafwGstRendererWorker *worker)
 				gst_query_parse_seeking(seek_query, NULL,
 							&worker->media.seekable,
 							NULL, NULL);
+				g_debug("renderer seekability %d",
+					worker->media.seekable);
+
 			}
 			gst_query_unref(seek_query);
 		} else {
 			worker->media.seekable =
 				renderer->media->seekability ==
 				SEEKABILITY_SEEKABLE ? TRUE : FALSE;
+			g_debug("source seekability %d",
+				renderer->media->seekability);
 		}
 	}
 

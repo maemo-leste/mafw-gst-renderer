@@ -270,9 +270,13 @@ static void _notify_metadata(MafwGstRendererState *self,
 					g_value_get_boolean(mval) ?
 					SEEKABILITY_SEEKABLE :
 					SEEKABILITY_NO_SEEKABLE;
+				g_debug("_notify_metadata: source seekability "
+					"%d", renderer->media->seekability);
 			} else {
 				renderer->media->seekability =
 					SEEKABILITY_UNKNOWN;
+				g_debug("_notify_metadata: "
+					"source seekability unknown");
 			}
 
 			mafw_gst_renderer_worker_play(renderer->worker, uri);
