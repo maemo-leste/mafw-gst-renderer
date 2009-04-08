@@ -1,16 +1,12 @@
 mafw-gst-renderer (0.1.2009.16-1) unstable; urgency=low
 
   * MAFW gst renderer, pre-release 0.2009.16-1
-  * Fixes: NB#106136
-    * Some tags are detected when Gstreamer is already
-      in GST_STATE_PLAYING, so in this case, emit them right away, otherwise
-      they are never emitted to the UI.
   * All tags reported by Gst are referenced and freed later on, 
     when they have emitted to clients. However, _emit_renderer_art
     was obtaining a reference to a tag value and freeing that
     reference when done, leading to a double unref later on.
 
- -- Mika Tapojärvi <ext-mika.tapojarvi@nokia.com>  Wed, 08 Apr 2009 12:08:29 +0300
+ -- Mika Tapojärvi <mika.tapojarvi@sse.fi>  Wed, 08 Apr 2009 12:41:14 +0300
 
 mafw-gst-renderer (0.1.2009.15-2) unstable; urgency=low
 
