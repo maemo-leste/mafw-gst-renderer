@@ -110,6 +110,11 @@ struct _MafwGstRendererStateClass {
 
 	GValue* (*get_property_value)(MafwGstRendererState *self,
 				      const gchar *name);
+
+	/* Memory card event handlers */
+
+	void (*handle_pre_unmount)(MafwGstRendererState *self,
+				   const gchar *mount_point);
 };
 
 struct _MafwGstRendererState {
@@ -188,9 +193,15 @@ GValue* mafw_gst_renderer_state_get_property_value(MafwGstRendererState *self,
 						   const gchar *name);
 
 /*----------------------------------------------------------------------------
-  Helpers
+  Memory card event handlers
   ----------------------------------------------------------------------------*/
 
+void mafw_gst_renderer_state_handle_pre_unmount(MafwGstRendererState *self,
+						const gchar *mount_point);
+
+/*----------------------------------------------------------------------------
+  Helpers
+  ----------------------------------------------------------------------------*/
 
 void mafw_gst_renderer_state_do_play(MafwGstRendererState *self, GError **error);
 void mafw_gst_renderer_state_do_play_object(MafwGstRendererState *self,

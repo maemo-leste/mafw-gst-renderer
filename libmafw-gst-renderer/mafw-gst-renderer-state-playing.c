@@ -87,6 +87,13 @@ static GValue* _get_property_value(MafwGstRendererState *self,
 				   const gchar *name);
 
 /*----------------------------------------------------------------------------
+  Memory card event handlers
+  ----------------------------------------------------------------------------*/
+
+static void _handle_pre_unmount(MafwGstRendererState *self,
+				const gchar *mount_point);
+
+/*----------------------------------------------------------------------------
   GObject initialization
   ----------------------------------------------------------------------------*/
 
@@ -142,6 +149,10 @@ static void mafw_gst_renderer_state_playing_class_init(
 	/* Property methods */
 
 	state_class->get_property_value = _get_property_value;
+
+	/* Memory card event handlers */
+
+	state_class->handle_pre_unmount = _handle_pre_unmount;
 }
 
 GObject *mafw_gst_renderer_state_playing_new(MafwGstRenderer *renderer)
@@ -388,4 +399,20 @@ GValue* _get_property_value(MafwGstRendererState *self, const gchar *name)
 	}
 
 	return value;
+}
+
+/*----------------------------------------------------------------------------
+  Memory card event handlers
+  ----------------------------------------------------------------------------*/
+
+static void _handle_pre_unmount(MafwGstRendererState *self,
+				const gchar *mount_point)
+{
+	gchar *mount_uri = g_filename_to_uri(mount_point, NULL, NULL);
+
+	if (g_str_has_prefix(self->renderer->media->uri, mount_uri)) {
+		mafw_gst_renderer_stop(MAFW_RENDERER(self->renderer),
+				       NULL,
+				       NULL);
+	}
 }

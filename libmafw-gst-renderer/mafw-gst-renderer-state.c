@@ -189,6 +189,17 @@ static GValue* _default_get_property_value(MafwGstRendererState *self,
 }
 
 /*----------------------------------------------------------------------------
+  Default memory card event handlers implementation
+  ----------------------------------------------------------------------------*/
+
+static void _default_handle_pre_unmount(MafwGstRendererState *self,
+					const gchar *mount_point)
+{
+	g_debug("pre-unmount signal received: %s in state %s", mount_point,
+		MAFW_GST_RENDERER_STATE_GET_CLASS(self)->name);
+}
+
+/*----------------------------------------------------------------------------
   GObject initialization
   ----------------------------------------------------------------------------*/
 
@@ -239,6 +250,9 @@ static void mafw_gst_renderer_state_class_init(MafwGstRendererStateClass *klass)
 
 	klass->get_property_value = _default_get_property_value;
 
+	/* Memory card event handlers */
+
+	klass->handle_pre_unmount = _default_handle_pre_unmount;
 }
 
 /*----------------------------------------------------------------------------
@@ -379,6 +393,17 @@ GValue* mafw_gst_renderer_state_get_property_value(MafwGstRendererState *self,
 	return MAFW_GST_RENDERER_STATE_GET_CLASS(self)->get_property_value(
 		self,
 		name);
+}
+
+/*----------------------------------------------------------------------------
+  Memory card event handlers
+  ----------------------------------------------------------------------------*/
+
+void mafw_gst_renderer_state_handle_pre_unmount(MafwGstRendererState *self,
+						const gchar *mount_point)
+{
+	MAFW_GST_RENDERER_STATE_GET_CLASS(self)->
+		handle_pre_unmount(self, mount_point);
 }
 
 /*----------------------------------------------------------------------------

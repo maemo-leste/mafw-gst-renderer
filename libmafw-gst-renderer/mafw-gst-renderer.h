@@ -30,6 +30,7 @@
 #include <gst/gst.h>
 #include <gst/pbutils/pbutils.h>
 #include <libhal.h>
+#include <gio/gio.h>
 
 #include "mafw-gst-renderer-utils.h"
 #include "mafw-gst-renderer-worker.h"
@@ -175,6 +176,7 @@ struct _MafwGstRenderer{
 	gboolean connected;
 	ConIcConnection *connection;
 #endif
+	GVolumeMonitor *volume_monitor;
 };
 
 typedef struct {

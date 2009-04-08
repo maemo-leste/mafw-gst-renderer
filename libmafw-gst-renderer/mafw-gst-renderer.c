@@ -135,6 +135,14 @@ static void _connection_init(MafwGstRenderer *renderer);
 #endif
 
 /*----------------------------------------------------------------------------
+  GIO event handlers
+  ----------------------------------------------------------------------------*/
+
+static void _pre_unmount_handler(GVolumeMonitor *volume_monitor,
+				 GMount *mount,
+				 MafwGstRenderer *renderer);
+
+/*----------------------------------------------------------------------------
   Plugin initialization
   ----------------------------------------------------------------------------*/
 
@@ -295,6 +303,12 @@ static void mafw_gst_renderer_init(MafwGstRenderer *self)
 
 	_connection_init(renderer);
 #endif
+
+	renderer->volume_monitor = g_volume_monitor_get();
+	g_signal_connect(G_OBJECT(renderer->volume_monitor),
+			 "mount-pre-unmount",
+			 G_CALLBACK(_pre_unmount_handler),
+			 renderer);
 }
 
 static void mafw_gst_renderer_dispose(GObject *object)
@@ -2005,3 +2019,28 @@ void mafw_gst_renderer_increase_playcount(MafwGstRenderer* self,
 }
 
 /* vi: set noexpandtab ts=8 sw=8 cino=t0,(0: */
+
+
+/*----------------------------------------------------------------------------
+  GIO event handlers
+  ----------------------------------------------------------------------------*/
+
+static void _pre_unmount_handler(GVolumeMonitor *volume_monitor,
+				 GMount *mount,
+				 MafwGstRenderer *renderer)
+{
+	GFile *mount_dir = g_mount_get_root(mount);
+	gchar *mount_dir_path = g_file_get_path(mount_dir);
+	const gchar *emmc_path = g_getenv("MMC_MOUNTPOINT");
+
+	if (!g_strcmp0(mount_dir_path, emmc_path)) {
+		/* External mmc pre-unmount. */
+		mafw_gst_renderer_state_handle_pre_unmount(
+			MAFW_GST_RENDERER_STATE(
+				renderer->states[renderer->current_state]),
+			mount_dir_path);
+	}
+
+	g_free(mount_dir_path);
+	g_object_unref(mount_dir);
+}
