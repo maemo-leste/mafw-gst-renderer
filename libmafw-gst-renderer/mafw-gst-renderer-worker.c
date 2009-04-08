@@ -745,17 +745,6 @@ static void _handle_duration(MafwGstRendererWorker *worker, GstMessage *msg)
 			worker->owner, 
 			MAFW_METADATA_KEY_DURATION, 
 			duration_secs);
-
-		/* We can seek local files which duration is known. */
-		/* FIXME: Remove this when seeking query works for all
-		   formats. */
-		if (!worker->is_stream) {
-			worker->media.seekable = TRUE;
-			mafw_renderer_emit_metadata_boolean(
-				worker->owner,
-				MAFW_METADATA_KEY_IS_SEEKABLE,
-				worker->media.seekable);
-		}
 	}
 }
 
