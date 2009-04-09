@@ -1157,10 +1157,14 @@ static void _run_error_policy(MafwGstRenderer *self, const GError *in_err,
 gboolean mafw_gst_renderer_update_playcount_cb(gpointer data)
 {
         MafwGstRenderer *renderer = (MafwGstRenderer *) data;
-        mafw_gst_renderer_increase_playcount(renderer,
+	
+	if (renderer->media->object_id)
+	{
+		mafw_gst_renderer_increase_playcount(renderer,
                                              renderer->media->object_id);
-        mafw_gst_renderer_update_lastplayed(renderer,
+		mafw_gst_renderer_update_lastplayed(renderer,
                                             renderer->media->object_id);
+	}
         renderer->update_playcount_id = 0;
         return FALSE;
 }
