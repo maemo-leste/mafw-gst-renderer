@@ -1,8 +1,20 @@
 mafw-gst-renderer (0.1.2009.16-2) unstable; urgency=low
 
-  * Version increased.
+  * MAFW gst renderer, pre-release 0.2009.16-2
+  * Fixes: NB#110043
+  * Fixes: NB#108725
+  * Added pre-unmount signal handling in the renderer. 
+  * Added debug for seekability in renderer.
+  * Renderer uses now as first choice seekability coming from source and if not 
+    defined, we query GStreamer as it happened so far.
+  * Added requesting seekability to source in renderer.
+  * Added support for seekability coming from source in renderer.
+  * Removed assumption of positive seekability for local files with known 
+    duration.
+  * If GStreamer cannot answer to a request for seekability, we assume it is 
+    not.
 
- -- Mika Tapojärvi <ext-mika.tapojarvi@nokia.com>  Tue, 14 Apr 2009 10:09:19 +0300
+ -- Mika Tapojärvi <mika.tapojarvi@sse.fi>  Tue, 14 Apr 2009 15:06:34 +0300
 
 mafw-gst-renderer (0.1.2009.16-1) unstable; urgency=low
 
