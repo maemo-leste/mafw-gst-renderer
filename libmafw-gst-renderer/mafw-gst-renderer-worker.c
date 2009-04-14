@@ -30,6 +30,7 @@
 #include <X11/Xlib.h>
 #include <gst/interfaces/xoverlay.h>
 #include <gst/pbutils/missing-plugins.h>
+#include <gst/base/gstbasesink.h>
 #include <libmafw/mafw.h>
 
 #ifdef HAVE_GDKPIXBUF
@@ -1116,14 +1117,26 @@ static gboolean _async_bus_handler(GstBus *bus, GstMessage *msg,
 		if (gst_structure_has_name(gst_message_get_structure(msg),
 					   "ckey"))
 		{
-			GValue v = {0};
+			GstPad *pad;
+			gboolean video_ok = TRUE;
 
-			g_value_init(&v, G_TYPE_INT);
-			g_value_set_int(&v, worker->colorkey);
-			mafw_extension_emit_property_changed(
-				MAFW_EXTENSION(worker->owner),
-				MAFW_PROPERTY_RENDERER_COLORKEY,
-				&v);
+			pad = GST_BASE_SINK_PAD(worker->vsink);
+			if (gst_caps_is_fixed(GST_PAD_CAPS(pad))) {
+				GstStructure *structure;
+				structure = gst_caps_get_structure(
+					GST_PAD_CAPS(pad), 0);
+				video_ok = _handle_video_info(worker,
+							      structure);
+			}
+			if (video_ok) {
+				GValue v = {0};
+				g_value_init(&v, G_TYPE_INT);
+				g_value_set_int(&v, worker->colorkey);
+				mafw_extension_emit_property_changed(
+					MAFW_EXTENSION(worker->owner),
+					MAFW_PROPERTY_RENDERER_COLORKEY,
+					&v);
+			}
 		} else if (gst_structure_has_name(
 				   gst_message_get_structure(msg),
 				   "volume-changed")) {
