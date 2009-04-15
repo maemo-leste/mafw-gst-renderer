@@ -467,10 +467,13 @@ static void _parse_stream_info_item(MafwGstRendererWorker *worker, GObject *obj)
 			g_object_get(obj, "caps", &vcaps, NULL);
 			gst_caps_ref(vcaps);
 		}
-		if (gst_caps_is_fixed(vcaps))
-			_handle_video_info(worker,
-					   gst_caps_get_structure(vcaps, 0));
-		gst_caps_unref(vcaps);
+		if (vcaps) {
+			if (gst_caps_is_fixed(vcaps))
+				_handle_video_info(
+					worker,
+					gst_caps_get_structure(vcaps, 0));
+			gst_caps_unref(vcaps);
+		}
 	}
 }
 
@@ -1118,13 +1121,14 @@ static gboolean _async_bus_handler(GstBus *bus, GstMessage *msg,
 					   "ckey"))
 		{
 			GstPad *pad;
+			GstCaps *caps;
 			gboolean video_ok = TRUE;
 
 			pad = GST_BASE_SINK_PAD(worker->vsink);
-			if (gst_caps_is_fixed(GST_PAD_CAPS(pad))) {
+			caps = GST_PAD_CAPS(pad);
+			if (caps && gst_caps_is_fixed(caps)) {
 				GstStructure *structure;
-				structure = gst_caps_get_structure(
-					GST_PAD_CAPS(pad), 0);
+				structure = gst_caps_get_structure(caps, 0);
 				video_ok = _handle_video_info(worker,
 							      structure);
 			}
