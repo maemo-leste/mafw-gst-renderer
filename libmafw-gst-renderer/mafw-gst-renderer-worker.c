@@ -51,6 +51,9 @@
 
 #define MAFW_GST_RENDERER_WORKER_SECONDS_READY 60
 
+#define MAFW_GST_MISSING_TYPE_DECODER "decoder"
+#define MAFW_GST_MISSING_TYPE_ENCODER "encoder"
+
 /* Private variables. */
 /* Global reference to worker instance, needed for Xerror handler */
 static MafwGstRendererWorker *Global_worker = NULL;
@@ -990,6 +993,62 @@ static void _reset_pl_info(MafwGstRendererWorker *worker)
 	worker->pl.notify_play_pending = TRUE;
 }
 
+static GError * _get_specific_missing_plugin_error(GstMessage *msg)
+{
+	const GstStructure *gst_struct;
+	const gchar *type;
+
+	GError *error;
+	gchar *desc;
+
+	desc = gst_missing_plugin_message_get_description(msg);
+
+	gst_struct = gst_message_get_structure(msg);
+	type = gst_structure_get_string(gst_struct, "type");
+
+	if ((type) && ((strcmp(type, MAFW_GST_MISSING_TYPE_DECODER) == 0) ||
+		       (strcmp(type, MAFW_GST_MISSING_TYPE_ENCODER) == 0))) {
+
+		/* Missing codec error. */
+		const GValue *val;
+		const GstCaps *caps;
+		GstStructure *caps_struct;
+		const gchar *mime;
+
+		val = gst_structure_get_value(gst_struct, "detail");
+		caps = gst_value_get_caps(val);
+		caps_struct = gst_caps_get_structure(caps, 0);
+		mime = gst_structure_get_name(caps_struct);
+
+		if (g_strrstr(mime, "video")) {
+			error = g_error_new(
+				MAFW_RENDERER_ERROR,
+				MAFW_RENDERER_ERROR_VIDEO_CODEC_NOT_FOUND,
+				desc);
+		} else if (g_strrstr(mime, "audio")) {
+			error = g_error_new(
+				MAFW_RENDERER_ERROR,
+				MAFW_RENDERER_ERROR_AUDIO_CODEC_NOT_FOUND,
+				desc);
+		} else {
+			error = g_error_new(
+				MAFW_RENDERER_ERROR,
+				MAFW_RENDERER_ERROR_CODEC_NOT_FOUND,
+				desc);
+		}
+	} else {
+		/* Unsupported type error. */
+		error = g_error_new(
+			MAFW_RENDERER_ERROR,
+			MAFW_RENDERER_ERROR_UNSUPPORTED_TYPE,
+			"missing plugin: %s", desc);
+	}
+
+	g_free(desc);
+
+	return error;
+}
+
 /*
  * Asynchronous message handler.  It gets removed from if it returns FALSE.
  */
@@ -1003,18 +1062,12 @@ static gboolean _async_bus_handler(GstBus *bus, GstMessage *msg,
 	/* Handle missing-plugin (element) messages separately, relaying more
 	 * details. */
 	if (gst_is_missing_plugin_message(msg)) {
-		gchar *desc;
-
-		desc = gst_missing_plugin_message_get_description(msg);
+		GError *err = _get_specific_missing_plugin_error(msg);
 		/* FIXME?: for some reason, calling the error handler directly
 		 * (_send_error) causes problems.  On the other hand, turning
 		 * the error into a new GstMessage and letting the next
 		 * iteration handle it seems to work. */
-		_post_error(worker, g_error_new(
-				    MAFW_RENDERER_ERROR,
-				    MAFW_RENDERER_ERROR_UNSUPPORTED_TYPE,
-				    "missing plugin: %s", desc));
-		g_free(desc);
+		_post_error(worker, err);
 		return TRUE;
 	}
 
