@@ -105,6 +105,10 @@ struct _MafwGstRendererWorker {
 	GstElement *pipeline;
 	GstBus *bus;
 	GstState state;
+	GstElement *volume_pipeline;
+	GstElement *volume_sink;
+	GstBus *volume_bus;
+	guint volume_async_bus_id;
 	gboolean is_stream;
 	gboolean muted;
 	gboolean eos;

@@ -1786,6 +1786,85 @@ void mafw_gst_renderer_worker_resume(MafwGstRendererWorker *worker)
 	_do_play(worker);
 }
 
+static gboolean _volume_async_bus_handler(GstBus *bus, GstMessage *msg,
+					  gpointer data)
+{
+/* 	MafwGstRendererWorker *worker = data; */
+	GError *error = NULL;
+
+	switch (GST_MESSAGE_TYPE(msg)) {
+	case GST_MESSAGE_ERROR:
+		gst_message_parse_error(msg, &error, NULL);
+		g_critical("gst error in volume pipeline: domain = %d, "
+			   "code = %d, message = '%s'",
+			   error->domain, error->code, error->message);
+		g_error_free(error);
+		break;
+	case GST_MESSAGE_EOS:
+		g_critical("eos in volume pipeline");
+		break;
+	default:
+		break;
+	}
+
+	return TRUE;
+}
+
+static void _build_volume_pipeline(MafwGstRendererWorker *worker)
+{
+	GstElement *fakesrc = NULL;
+	GstStateChangeReturn state_change;
+
+	g_assert(worker != NULL && worker->volume_pipeline == NULL);
+
+	fakesrc = gst_element_factory_make("audiotestsrc", NULL);
+	worker->volume_sink = gst_element_factory_make("pulsesink", NULL);
+	g_assert(fakesrc != NULL);
+	g_assert(worker->volume_sink != NULL);
+
+	worker->volume_pipeline = gst_pipeline_new("volume-pipeline");
+
+	worker->volume_bus =
+		gst_pipeline_get_bus(GST_PIPELINE(worker->volume_pipeline));
+	worker->volume_async_bus_id =
+		gst_bus_add_watch(worker->volume_bus, _volume_async_bus_handler,
+				  (gpointer) worker);
+
+	gst_bin_add_many(GST_BIN(worker->volume_pipeline), fakesrc,
+			 worker->volume_sink, NULL);
+	gst_element_link(fakesrc, worker->volume_sink);
+
+	state_change = gst_element_set_state(worker->volume_pipeline,
+					     GST_STATE_PAUSED);
+	if (state_change == GST_STATE_CHANGE_ASYNC) {
+		GstState state;
+
+		state_change = gst_element_get_state(worker->volume_pipeline,
+						     &state, NULL,
+						     5 * GST_SECOND);
+
+		g_assert(state == GST_STATE_PAUSED);
+	}
+
+	g_assert(state_change == GST_STATE_CHANGE_SUCCESS ||
+		 state_change == GST_STATE_CHANGE_NO_PREROLL);
+}
+
+static void _destroy_volume_pipeline(MafwGstRendererWorker *worker)
+{
+	g_assert(worker != NULL && worker->volume_pipeline != NULL);
+
+	g_debug("destroying volume pipeline");
+	g_source_remove(worker->volume_async_bus_id);
+	gst_element_set_state(worker->volume_pipeline, GST_STATE_NULL);
+	gst_object_unref(GST_OBJECT_CAST(worker->volume_bus));
+	gst_object_unref(GST_OBJECT(worker->volume_pipeline));
+	worker->volume_async_bus_id = 0;
+	worker->volume_bus = NULL;
+	worker->volume_sink = NULL;
+	worker->volume_pipeline = NULL;
+}
+
 MafwGstRendererWorker *mafw_gst_renderer_worker_new(gpointer owner)
 {
         MafwGstRendererWorker *worker;
@@ -1807,6 +1886,10 @@ MafwGstRendererWorker *mafw_gst_renderer_worker_new(gpointer owner)
 	worker->colorkey = -1;
 	worker->vsink = NULL;
 	worker->tag_list = NULL;
+	worker->volume_pipeline = NULL;
+	worker->volume_sink = NULL;
+	worker->volume_bus = NULL;
+	worker->volume_async_bus_id = 0;
 #ifdef HAVE_GDKPIXBUF
 	worker->current_frame_on_pause = FALSE;
 	_init_tmp_files_pool(worker);
@@ -1818,6 +1901,7 @@ MafwGstRendererWorker *mafw_gst_renderer_worker_new(gpointer owner)
 	worker->notify_eos_handler = NULL;
 	worker->notify_error_handler = NULL;
 	Global_worker = worker;
+	_build_volume_pipeline(worker);
 	blanking_init();
 	_construct_pipeline(worker);
 	return worker;
@@ -1830,5 +1914,6 @@ void mafw_gst_renderer_worker_exit(MafwGstRendererWorker *worker)
 	_destroy_tmp_files_pool(worker);
 #endif
         mafw_gst_renderer_worker_stop(worker);
+	_destroy_volume_pipeline(worker);
 }
 /* vi: set noexpandtab ts=8 sw=8 cino=t0,(0: */
