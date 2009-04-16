@@ -1401,7 +1401,7 @@ static void _construct_pipeline(MafwGstRendererWorker *worker)
 			 G_CALLBACK(_stream_info_cb), worker);
         /* Listen for volume changes */
 	_set_mute(worker);
-	_set_volume(worker, worker->current_volume);
+	_set_playback_volume(worker, worker->current_volume);
 }
 
 /*
@@ -1624,7 +1624,7 @@ static void _do_play(MafwGstRendererWorker *worker)
 					      GST_STATE_PAUSED);
 			g_debug("setting pipeline to PAUSED");
 		} else {
-			_set_volume(worker, worker->current_volume);
+			_set_playback_volume(worker, worker->current_volume);
 			_set_mute(worker);
 			gst_element_set_state(worker->pipeline,
 					      GST_STATE_PLAYING);
