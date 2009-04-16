@@ -408,6 +408,11 @@ GValue* _get_property_value(MafwGstRendererState *self, const gchar *name)
 static void _handle_pre_unmount(MafwGstRendererState *self,
 				const gchar *mount_point)
 {
+	/* If not playing anything, bail out */
+	if (!self->renderer->media->uri) {
+		return;
+	}
+
 	gchar *mount_uri = g_filename_to_uri(mount_point, NULL, NULL);
 
 	if (g_str_has_prefix(self->renderer->media->uri, mount_uri)) {

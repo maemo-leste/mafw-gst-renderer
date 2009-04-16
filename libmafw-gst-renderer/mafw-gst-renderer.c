@@ -687,19 +687,25 @@ static void _device_condition(LibHalContext *ctx, const char *udi,
                 libhal_ctx_get_user_data(ctx));
 
 	g_assert(NULL != self);
+
+	/* If not playing anything, bail out */
+	if (!self->media->uri) 
+		return;
+
 	g_debug("Codition change event from HAL: name=%s, detail=%s",
                 name, detail);
 	if (!strcmp(name, "ButtonPressed") && !strcmp(detail, "usb.cable")) {
 		g_debug("Usb cable connected! Currently playing %s.",
                         self->media->uri);
 
-		/* TODO: check if we can we always expect this prefix */
+		/* TODO: check if we can always expect this prefix */
 		if (g_str_has_prefix(self->media->uri, "file:///media/mmc")) {
 			g_debug("We are playing from mmc, stopping");
 			mafw_renderer_stop(MAFW_RENDERER(self), NULL, NULL);
 		}
-		else
+		else {
 			g_debug("Not playing from mmc, continuing");
+		}
 	}
 }
 

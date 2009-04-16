@@ -1371,9 +1371,10 @@ static void _construct_pipeline(MafwGstRendererWorker *worker)
 		gboolean use_nw;
 
 		/* Use nwqueue only for non-rtsp and non-mms(h) streams. */
-		use_nw = !g_str_has_prefix(worker->media.location, "rtsp://") &&
-		!g_str_has_prefix(worker->media.location, "mms://") &&
-		!g_str_has_prefix(worker->media.location, "mmsh://");
+		use_nw = worker->media.location && 
+			!g_str_has_prefix(worker->media.location, "rtsp://") &&
+			!g_str_has_prefix(worker->media.location, "mms://") &&
+			!g_str_has_prefix(worker->media.location, "mmsh://");
 
 		worker->pipeline = gst_element_factory_make("playbin",
 							    "playbin");

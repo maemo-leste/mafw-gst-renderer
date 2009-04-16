@@ -95,7 +95,11 @@ gboolean uri_is_playlist(const gchar *uri) {
  */
 gboolean uri_is_stream(const gchar *uri)
 {
-	return !g_str_has_prefix(uri, "file://");
+	if (uri == NULL) {
+		return FALSE;
+	} else {
+		return !g_str_has_prefix(uri, "file://");
+	}
 }
 
 /* vi: set noexpandtab ts=8 sw=8 cino=t0,(0: */
