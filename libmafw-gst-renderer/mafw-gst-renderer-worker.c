@@ -1412,8 +1412,6 @@ static void _construct_pipeline(MafwGstRendererWorker *worker)
         /* Listen for volume changes */
 	_set_mute(worker);
 	_set_volume(worker, worker->current_volume);
-        g_signal_connect(worker->pipeline, "notify::volume",
-                         G_CALLBACK(_volume_cb), worker);
 }
 
 /*
@@ -1848,6 +1846,14 @@ static void _build_volume_pipeline(MafwGstRendererWorker *worker)
 
 	g_assert(state_change == GST_STATE_CHANGE_SUCCESS ||
 		 state_change == GST_STATE_CHANGE_NO_PREROLL);
+
+	g_object_get(worker->volume_sink, "volume", &(worker->current_volume),
+		     NULL);
+
+	g_assert(worker->current_volume != -1);
+
+        g_signal_connect(worker->volume_sink, "notify::volume",
+			 G_CALLBACK(_volume_cb), worker);
 }
 
 static void _destroy_volume_pipeline(MafwGstRendererWorker *worker)
@@ -1880,7 +1886,7 @@ MafwGstRendererWorker *mafw_gst_renderer_worker_new(gpointer owner)
 	worker->seek_position = -1;
 	worker->ready_timeout = 0;
 	worker->in_ready = FALSE;
-	worker->current_volume = 0.6;
+	worker->current_volume = -1;
 	worker->xid = 0;
 	worker->autopaint = TRUE;
 	worker->colorkey = -1;
