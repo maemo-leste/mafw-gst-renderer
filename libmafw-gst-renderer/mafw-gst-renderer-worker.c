@@ -1194,31 +1194,6 @@ static gboolean _async_bus_handler(GstBus *bus, GstMessage *msg,
 					MAFW_PROPERTY_RENDERER_COLORKEY,
 					&v);
 			}
-		} else if (gst_structure_has_name(
-				   gst_message_get_structure(msg),
-				   "volume-changed")) {
-			gdouble volume;
-			GValue value = { 0 };
-
-			g_debug("async bus handler: volume changed");
-
-			g_object_get(worker->pipeline, "volume", &volume, NULL);
-
-			/* Only emit new volume if really it changed. To avoid
-			 * precission problems, consider only the first two
-			 * decimals */
-			if ((guint)(volume*100.0) !=
-			    (guint)(worker->current_volume*100.0)) {
-				worker->current_volume = CLAMP(volume, 0.0,
-							       10.0);
-
-				g_value_init(&value, G_TYPE_UINT);
-				g_value_set_uint(&value, (guint)(volume*100.0));
-				mafw_extension_emit_property_changed(
-					MAFW_EXTENSION(worker->owner),
-					MAFW_PROPERTY_RENDERER_VOLUME,
-					&value);
-			}
 		}
 	default: break;
 	}
@@ -1244,7 +1219,7 @@ static void _volume_cb(GstObject *pipeline, GParamSpec *unused,
 
 	structure = gst_structure_empty_new("volume-changed");
 	message = gst_message_new_application(NULL, structure);
-	gst_bus_post(worker->bus, message);
+	gst_bus_post(worker->volume_bus, message);
 }
 
 /* TODO: I think it's not enought to act on error, we need to handle
@@ -1299,22 +1274,12 @@ static void _reset_media_info(MafwGstRendererWorker *worker)
 
 static void _set_volume(MafwGstRendererWorker *worker, gdouble new_vol)
 {
-	if (worker->pipeline) {
-                g_debug("setting volume %f", new_vol);
-                g_object_set(worker->pipeline,
-                             "volume", new_vol, NULL);
-	} else if ((guint)(new_vol * 100.0) !=
-		   (guint)(worker->current_volume * 100.0)) {
-		GValue value = { 0 };
-                worker->current_volume = CLAMP(new_vol, 0.0, 10.0);
+	g_assert(worker->volume_pipeline != NULL);
 
-                g_value_init(&value, G_TYPE_UINT);
-                g_value_set_uint(&value, (guint)(new_vol*100.0));
-                mafw_extension_emit_property_changed(
-                        MAFW_EXTENSION(worker->owner),
-                        MAFW_PROPERTY_RENDERER_VOLUME,
-                        &value);
-        }
+	if  ((guint) (new_vol * 100.0) !=
+	     (guint) (worker->current_volume * 100.0)) {
+	    g_object_set(worker->volume_sink, "volume", new_vol, NULL);
+	}
 }
 
 static void _set_mute(MafwGstRendererWorker *worker)
@@ -1345,6 +1310,31 @@ static void _start_play(MafwGstRendererWorker *worker)
                 g_source_remove(renderer->update_playcount_id);
                 renderer->update_playcount_id = 0;
         }
+}
+
+static void _set_playback_volume(MafwGstRendererWorker *worker, gdouble volume)
+{
+	GValue value = { 0 };
+
+	if (worker->pipeline != NULL) {
+		g_object_set(worker->pipeline, "volume", volume, NULL);
+	}
+
+	/* Only emit new volume if really it changed. To avoid
+	 * precission problems, consider only the first two
+	 * decimals */
+	if ((guint) (volume * 100.0) !=
+	    (guint) (worker->current_volume * 100.0)) {
+		worker->current_volume = CLAMP(volume, 0.0,
+					       10.0);
+
+		g_value_init(&value, G_TYPE_UINT);
+		g_value_set_uint(&value, (guint)(volume*100.0));
+		mafw_extension_emit_property_changed(
+			MAFW_EXTENSION(worker->owner),
+			MAFW_PROPERTY_RENDERER_VOLUME,
+			&value);
+	}
 }
 
 /*
@@ -1787,7 +1777,7 @@ void mafw_gst_renderer_worker_resume(MafwGstRendererWorker *worker)
 static gboolean _volume_async_bus_handler(GstBus *bus, GstMessage *msg,
 					  gpointer data)
 {
-/* 	MafwGstRendererWorker *worker = data; */
+	MafwGstRendererWorker *worker = data;
 	GError *error = NULL;
 
 	switch (GST_MESSAGE_TYPE(msg)) {
@@ -1801,6 +1791,15 @@ static gboolean _volume_async_bus_handler(GstBus *bus, GstMessage *msg,
 	case GST_MESSAGE_EOS:
 		g_critical("eos in volume pipeline");
 		break;
+	case GST_MESSAGE_APPLICATION:
+		if (gst_structure_has_name(gst_message_get_structure(msg),
+					   "volume-changed")) {
+			gdouble volume;
+			g_debug("volume async bus handler: volume changed");
+			g_object_get(worker->volume_sink, "volume", &volume,
+				     NULL);
+			_set_playback_volume(worker, volume);
+		}
 	default:
 		break;
 	}
@@ -1851,6 +1850,8 @@ static void _build_volume_pipeline(MafwGstRendererWorker *worker)
 		     NULL);
 
 	g_assert(worker->current_volume != -1);
+
+	_set_playback_volume(worker, worker->current_volume);
 
         g_signal_connect(worker->volume_sink, "notify::volume",
 			 G_CALLBACK(_volume_cb), worker);
