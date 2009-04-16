@@ -1,8 +1,25 @@
+mafw-gst-renderer (0.1.2009.17-2) unstable; urgency=low
+
+  * Version increased.
+
+ -- Mika Tapojärvi <ext-mika.tapojarvi@nokia.com>  Thu, 16 Apr 2009 11:05:51 +0300
+
+mafw-gst-renderer (0.1.2009.17-1) unstable; urgency=low
+
+  * MAFW gst renderer, pre-release 0.2009.17-1
+  * Fixes: NB#104494 - Missing renderer error when video clib has high framerate
+  * Added support to distinguish between audio and video codec errors.
+  * Fixed critical warning message.
+  * When we get the ckey coming from the sync bus to the async bus, we check
+    the caps and raise an error if they are not suitable.
+
+ -- Mika Tapojärvi <mika.tapojarvi@sse.fi>  Wed, 15 Apr 2009 15:59:15 +0300
+
 mafw-gst-renderer (0.1.2009.16-2) unstable; urgency=low
 
   * MAFW gst renderer, pre-release 0.2009.16-2
-  * Fixes: NB#110043
-  * Fixes: NB#108725
+  * Fixes: NB#110043 - Mafw-dbus-wrapper crash is observed while switching between proxy playlist in a particular case
+  * Fixes: NB#108725 - DLNA CTT tool gives a failed verdict on "MT HTTP Header: Range - use in HEAD/GET requests"
   * Added pre-unmount signal handling in the renderer. 
   * Added debug for seekability in renderer.
   * Renderer uses now as first choice seekability coming from source and if not 
