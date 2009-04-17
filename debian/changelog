@@ -1,17 +1,32 @@
 mafw-gst-renderer (0.1.2009.17-2) unstable; urgency=low
 
-  * Version increased.
-
- -- Mika Tapojärvi <ext-mika.tapojarvi@nokia.com>  Thu, 16 Apr 2009 11:05:51 +0300
-
-mafw-gst-renderer (0.1.2009.17-1) unstable; urgency=low
-
-  * MAFW gst renderer, pre-release 0.2009.17-1
+  * MAFW gst renderer, pre-release 0.2009.17-2
+  * Fixes: NB#108833 - [Onsite] Audio volume is turned full when song is changed
   * Fixes: NB#104494 - Missing renderer error when video clib has high framerate
+  * Fixes: NB#110654 - mafw-dbus-wrapper prints about a critical error
+  * Disable native flags in playbin2 temporarily since this is causing
+    trouble with some videos. Also, allow videos with resolution 
+    up to 848x576.
+  * Added dirty hack to be aware of the volume changes that don't happen
+    inside mafw code. As soon as GStreamer adds notify::volume signals, we
+    have to remove this immediately.
+  * Setting volume when playing is done only for playback volume.
+  * Moved volume management from playback pipeline to volume pipeline. We
+    don't update the volume pipeline because it should be updated but we do it
+    with the playback one because it has always to be set up.
+  * Moved listening to volume signals from playback pipeline to volume
+    pipeline in renderer
+  * Added customized pipeline to always listen to volume changes in renderer
   * Added support to distinguish between audio and video codec errors.
   * Fixed critical warning message.
   * When we get the ckey coming from the sync bus to the async bus, we check
     the caps and raise an error if they are not suitable.
+
+ -- Juha Kellokoski <veitikka6@gmail.com>  Fri, 17 Apr 2009 09:18:07 +0300
+
+mafw-gst-renderer (0.1.2009.17-1) unstable; urgency=low
+
+  * MAFW gst renderer, pre-release 0.2009.17-1
 
  -- Mika Tapojärvi <mika.tapojarvi@sse.fi>  Wed, 15 Apr 2009 15:59:15 +0300
 
