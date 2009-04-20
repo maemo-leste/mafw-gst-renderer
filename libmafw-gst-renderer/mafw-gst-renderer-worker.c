@@ -640,15 +640,23 @@ static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker
 	gst_message_parse_state_changed(msg, NULL, &newstate, NULL);
 	g_debug("pipeline changed state to %d", newstate);
 
+	/* While buffering, we have to wait in PAUSED 
+	   until we reach 100% before doing anything */
+	if (worker->buffering) {
+		worker->state = newstate;
+		return;
+	}
+
+	/* Woken up from READY, resume stream position and playback */
 	if (newstate == GST_STATE_PAUSED && worker->in_ready &&
 	    worker->state == GST_STATE_READY) {
 		g_debug("State changed to pause after ready");
 		worker->state = GST_STATE_PAUSED;
-
 		_do_seek(worker, GST_SEEK_TYPE_SET, worker->seek_position,
 			 NULL);
 		_do_play(worker);
-	} else if (newstate == GST_STATE_PAUSED &&
+	}
+	else if (newstate == GST_STATE_PAUSED &&
 		   worker->report_statechanges && !worker->in_ready)
 	{
 		/* Perform pending seek, 1st try.  Some formats can seek already
@@ -661,6 +669,7 @@ static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker
 
 		/* PAUSED after pipeline has been constructed */
 		if (worker->prerolling) {
+			g_debug ("Prerolling done, finalizaing startup");
 		        _finalize_startup(worker);
 			_do_play(worker);
 			renderer->play_failed_count = 0;
@@ -696,7 +705,8 @@ static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker
 		}
 		worker->prerolling = FALSE;
 		worker->state = GST_STATE_PAUSED;
-	} else if (newstate == GST_STATE_PLAYING)
+	}
+	else if (newstate == GST_STATE_PLAYING)
 	{
 		/* if seek was called, at this point it is really ended */
 		worker->seek_position = -1;
@@ -732,7 +742,8 @@ static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker
 		}
 		_remove_ready_timeout(worker);
 		_emit_metadatas(worker);
-	} else if (newstate == GST_STATE_READY && worker->in_ready) {
+	}
+	else if (newstate == GST_STATE_READY && worker->in_ready) {
 		g_debug("changed to GST_STATE_READY");
 		worker->state = GST_STATE_READY;
 		worker->ready_timeout = 0;
@@ -940,7 +951,8 @@ static void _handle_buffering(MafwGstRendererWorker *worker, GstMessage *msg)
 	MafwGstRenderer *renderer = (MafwGstRenderer*)worker->owner;
 
 	gst_message_parse_buffering(msg, &percent);
-	g_debug("buffering, from gst: %d", percent);
+	g_debug("buffering: %d", percent);
+
 	if (!worker->buffering) {
 		worker->buffering = TRUE;
 		if (worker->state == GST_STATE_PLAYING) {
@@ -955,16 +967,24 @@ static void _handle_buffering(MafwGstRendererWorker *worker, GstMessage *msg)
 			gst_element_get_state(worker->pipeline, NULL,
 					      NULL, GST_CLOCK_TIME_NONE);
 		}
-	} else if (percent >= 100) {
+	} 
+
+	if (percent >= 100) {
 		worker->buffering = FALSE;
-		if (worker->state == GST_STATE_PLAYING) {
-			/* FIXME this causes a spurious state-changed
-			 * notification up in the _handle_state_changed
-			 * function, resulting in a critical warning. */
-			renderer->play_failed_count = 0;
+		/* On buffering we go to PAUSED, so here we move
+		   back to PLAYING */
+		if (worker->state == GST_STATE_PAUSED) {
+			/* If buffering more than once, do this only the
+			   first time we are done with buffering */
+			if (worker->prerolling) {
+				_finalize_startup(worker);
+				worker->prerolling = FALSE;
+			}
 			_do_play(worker);
+			renderer->play_failed_count = 0;
 		}
 	}
+
 	/* Send buffer percentage */
         if (worker->notify_buffer_status_handler)
                 worker->notify_buffer_status_handler(worker, worker->owner,
@@ -1296,20 +1316,33 @@ static void _set_mute(MafwGstRendererWorker *worker)
 static void _start_play(MafwGstRendererWorker *worker)
 {
 	MafwGstRenderer *renderer = (MafwGstRenderer*) worker->owner;
+	GstStateChangeReturn state_change_info;
 
 	g_assert(worker->pipeline);
 	g_object_set(G_OBJECT(worker->pipeline),
 		     "uri", worker->media.location, NULL);
+
 	g_debug("setting pipeline to PAUSED");
-	worker->prerolling = TRUE;
 	worker->report_statechanges = TRUE;
-	gst_element_set_state(worker->pipeline, GST_STATE_PAUSED);
+	state_change_info = gst_element_set_state(worker->pipeline, 
+						  GST_STATE_PAUSED);
+	if (state_change_info == GST_STATE_CHANGE_NO_PREROLL) {
+		/* FIXME:  for live sources we may have to handle
+		   buffering and prerolling differently */
+		g_debug ("Source is live!");
+		worker->is_live = TRUE;
+		worker->prerolling = FALSE;
+	} else {
+		worker->prerolling = TRUE;
+	}
+
 	worker->is_stream = uri_is_stream(worker->media.location);
 
         if (renderer->update_playcount_id > 0) {
                 g_source_remove(renderer->update_playcount_id);
                 renderer->update_playcount_id = 0;
         }
+
 }
 
 static void _set_playback_volume(MafwGstRendererWorker *worker, gdouble volume)
@@ -1738,6 +1771,7 @@ void mafw_gst_renderer_worker_stop(MafwGstRendererWorker *worker)
 	worker->report_statechanges = TRUE;
 	worker->state = GST_STATE_NULL;
 	worker->prerolling = FALSE;
+	worker->is_live = FALSE;
 	worker->buffering = FALSE;
 	worker->is_stream = FALSE;
 	worker->is_error = FALSE;

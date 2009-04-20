@@ -115,6 +115,7 @@ struct _MafwGstRendererWorker {
 	gboolean is_error;
 	gboolean buffering;
 	gboolean prerolling;
+	gboolean is_live;
 	gboolean stay_paused;
 	gboolean report_statechanges;
 	gdouble current_volume;
