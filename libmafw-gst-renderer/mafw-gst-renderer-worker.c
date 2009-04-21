@@ -1854,7 +1854,14 @@ static gboolean _monitor_volume_poll_hack(gpointer data)
 		_set_playback_volume(worker, volume);
 	}
 
-	return TRUE;
+	/* We add the timeout again and return FALSE instead of just
+	 * returning TRUE because we want it to be run two seconds
+	 * after finishing its execution, not just at regular
+	 * intervals. This is to try to avoid flooding the mainloop
+	 * with tasks, in case it cannot attend everything */
+	g_timeout_add_seconds(2, _monitor_volume_poll_hack, worker);
+
+	return FALSE;
 }
 
 static void _build_volume_pipeline(MafwGstRendererWorker *worker)
