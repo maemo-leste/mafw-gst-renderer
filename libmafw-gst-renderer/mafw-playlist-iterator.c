@@ -157,8 +157,6 @@ mafw_playlist_iterator_playlist_contents_changed_handler(MafwPlaylist *playlist,
 	g_return_if_fail(MAFW_IS_PLAYLIST(playlist));
 	g_return_if_fail(MAFW_IS_PLAYLIST_ITERATOR(iterator));
 
-	iterator->priv->size = -1;
-
 	if (iterator->priv->playlist == NULL) {
 		g_critical("Got playlist:contents-changed but renderer has no" \
 			   "playlist assigned!. Skipping...");
@@ -166,9 +164,11 @@ mafw_playlist_iterator_playlist_contents_changed_handler(MafwPlaylist *playlist,
 	}
 
 	play_index = iterator->priv->current_index;
+	iterator->priv->size += nreplace;
 
 	if (nremove > 0) {
 		/* Items have been removed from the playlist */
+		iterator->priv->size -= nremove;
 		if ((play_index >= from) &&
 		    (play_index < from + nremove)) {
 			/* The current index has been removed */

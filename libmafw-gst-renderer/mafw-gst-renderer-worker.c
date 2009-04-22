@@ -1322,7 +1322,9 @@ static void _start_play(MafwGstRendererWorker *worker)
 	g_object_set(G_OBJECT(worker->pipeline),
 		     "uri", worker->media.location, NULL);
 
+	g_debug("URI: %s", worker->media.location);
 	g_debug("setting pipeline to PAUSED");
+
 	worker->report_statechanges = TRUE;
 	state_change_info = gst_element_set_state(worker->pipeline, 
 						  GST_STATE_PAUSED);
