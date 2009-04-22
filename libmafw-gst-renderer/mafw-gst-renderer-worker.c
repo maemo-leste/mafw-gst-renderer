@@ -1844,21 +1844,6 @@ static gboolean _volume_async_bus_handler(GstBus *bus, GstMessage *msg,
 	return TRUE;
 }
 
-static gboolean _monitor_volume_poll_hack(gpointer data)
-{
-	gdouble volume = -1;
-	MafwGstRendererWorker *worker = data;
-
-	g_object_get(worker->volume_sink, "volume", &volume, NULL);
-
-	if ((guint) (volume * 100.0) !=
-	    (guint) (worker->current_volume * 100.0)) {
-		_set_playback_volume(worker, volume);
-	}
-
-	return TRUE;
-}
-
 static void _build_volume_pipeline(MafwGstRendererWorker *worker)
 {
 	GstElement *fakesrc = NULL;
@@ -1907,8 +1892,6 @@ static void _build_volume_pipeline(MafwGstRendererWorker *worker)
 
         g_signal_connect(worker->volume_sink, "notify::volume",
 			 G_CALLBACK(_volume_cb), worker);
-
-	g_timeout_add_seconds(2, _monitor_volume_poll_hack, worker);
 }
 
 static void _destroy_volume_pipeline(MafwGstRendererWorker *worker)
