@@ -1644,6 +1644,21 @@ static void _on_pl_entry_parsed(TotemPlParser *parser, gchar *uri,
 	}
 }
 
+static gboolean _monitor_volume_poll_hack(gpointer data)
+{
+	gdouble volume = -1;
+	MafwGstRendererWorker *worker = data;
+
+	g_object_get(worker->volume_sink, "volume", &volume, NULL);
+
+	if ((guint) (volume * 100.0) !=
+	    (guint) (worker->current_volume * 100.0)) {
+		_set_playback_volume(worker, volume);
+	}
+
+	return TRUE;
+}
+
 static void _do_play(MafwGstRendererWorker *worker)
 {
 	g_assert(worker != NULL);
@@ -1660,6 +1675,7 @@ static void _do_play(MafwGstRendererWorker *worker)
 					      GST_STATE_PAUSED);
 			g_debug("setting pipeline to PAUSED");
 		} else {
+			_monitor_volume_poll_hack(worker);
 			_set_playback_volume(worker, worker->current_volume);
 			_set_mute(worker);
 			gst_element_set_state(worker->pipeline,
