@@ -1673,6 +1673,21 @@ static void _do_play(MafwGstRendererWorker *worker)
 	}
 }
 
+static gboolean _monitor_volume_poll_hack(gpointer data)
+{
+	gdouble volume = -1;
+	MafwGstRendererWorker *worker = data;
+
+	g_object_get(worker->volume_sink, "volume", &volume, NULL);
+
+	if ((guint) (volume * 100.0) !=
+	    (guint) (worker->current_volume * 100.0)) {
+		_set_playback_volume(worker, volume);
+	}
+
+	return TRUE;
+}
+
 void mafw_gst_renderer_worker_play(MafwGstRendererWorker *worker,
 				  const gchar *uri)
 {
@@ -1747,6 +1762,8 @@ void mafw_gst_renderer_worker_stop(MafwGstRendererWorker *worker)
 {
 	g_debug("worker STOP");
 	g_assert(worker != NULL);
+
+	_monitor_volume_poll_hack(worker);
 
 	/* If location is NULL, this is a pre-created pipeline */
 	if (worker->async_bus_id && worker->pipeline && !worker->media.location)
