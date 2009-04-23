@@ -32,7 +32,8 @@
 #undef  G_LOG_DOMAIN
 #define G_LOG_DOMAIN "mafw-gst-renderer-blanking"
 
-#define VIDEO_BLANKING_TIMER_INTERVAL	45000
+/* In seconds */
+#define VIDEO_BLANKING_TIMER_INTERVAL	45
 
 static guint blanking_timeout_id = 0;
 static osso_context_t *osso_ctx = NULL;
@@ -74,9 +75,9 @@ void blanking_prohibit(void)
 	osso_display_blanking_pause(osso_ctx);
 	if (blanking_timeout_id == 0) {
 		blanking_timeout_id =
-			g_timeout_add(VIDEO_BLANKING_TIMER_INTERVAL,
-				      (gpointer)no_blanking_timeout,
-				      NULL);
+			g_timeout_add_seconds(VIDEO_BLANKING_TIMER_INTERVAL,
+                                              (gpointer)no_blanking_timeout,
+                                              NULL);
 	}
 }
 
