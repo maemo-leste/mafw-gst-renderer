@@ -1,15 +1,30 @@
-mafw-gst-renderer (0.1.2009.17-3) unstable; urgency=low
+mafw-gst-renderer (0.1.2009.18-2) unstable; urgency=low
 
-  * MAFW gst renderer, pre-release 0.2009.17-3
+  * MAFW gst renderer, pre-release 0.2009.18-2
 
- -- Juha Kellokoski <veitikka6@gmail.com>  Fri, 17 Apr 2009 09:18:07 +0300
+ -- Juha Kellokoski <veitikka6@gmail.com>  Thu, 23 Apr 2009 15:30:00 +0300
 
-mafw-gst-renderer (0.1.2009.17-2) unstable; urgency=low
+mafw-gst-renderer (0.1.2009.18-1) unstable; urgency=low
 
-  * MAFW gst renderer, pre-release 0.2009.17-2
+  * MAFW gst renderer, pre-release 0.2009.18-1
+  * Fixes: NB#96483 - Gstreamer renderer does not change from GST_STATE_PAUSED to GST_STATE_READY after timeout
   * Fixes: NB#108833 - [Onsite] Audio volume is turned full when song is changed
   * Fixes: NB#104494 - Missing renderer error when video clib has high framerate
   * Fixes: NB#110654 - mafw-dbus-wrapper prints about a critical error
+  * Fixes: NB#103987 - Audio playback is breaking for few seconds while playing mms live streams.
+  * Added monitor volume hack again, but when going to playing instead of
+    stopping.
+  * Revert "Added monitor_hack again but called only when stopping the worker."
+  * Added monitor_hack again but called only when stopping the worker.
+  * Revert "Added dirty hack to be aware of the volume changes that don't 
+    happen"
+  * Revert "Hack to monitor volume does not return TRUE, but FALSE and 
+    reinstalls"
+  * Improved playlist-change handling
+  * Hack to monitor volume does not return TRUE, but FALSE and reinstalls
+    the timeout not to do it at regular intervals, but a timeout after last
+    callback is run.
+  * Do not go to PLAYING state until we are done buffering.
   * Disable native flags in playbin2 temporarily since this is causing
     trouble with some videos. Also, allow videos with resolution 
     up to 848x576.
@@ -27,6 +42,12 @@ mafw-gst-renderer (0.1.2009.17-2) unstable; urgency=low
   * Fixed critical warning message.
   * When we get the ckey coming from the sync bus to the async bus, we check
     the caps and raise an error if they are not suitable.
+
+ -- Juha Kellokoski <veitikka6@gmail.com>  Thu, 23 Apr 2009 15:30:00 +0300
+
+mafw-gst-renderer (0.1.2009.17-2) unstable; urgency=low
+
+  * MAFW gst renderer, pre-release 0.2009.17-2
 
  -- Juha Kellokoski <veitikka6@gmail.com>  Fri, 17 Apr 2009 09:18:07 +0300
 
