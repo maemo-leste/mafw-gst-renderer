@@ -574,6 +574,16 @@ static void _finalize_startup(MafwGstRendererWorker *worker)
 	MafwGstRenderer *renderer = worker->owner;
 	GstQuery *seek_query;
 
+	if (worker->vsink) {
+		GstPad *pad = GST_BASE_SINK_PAD(worker->vsink);
+		GstCaps *caps = GST_PAD_CAPS(pad);
+		if (caps && gst_caps_is_fixed(caps)) {
+			GstStructure *structure;
+			structure = gst_caps_get_structure(caps, 0);
+			_handle_video_info(worker, structure);
+		}
+	}
+
 	/* Something might have gone wrong at this point already. */
 	if (worker->is_error) {
 		g_debug("Error occured during preroll");
@@ -1193,27 +1203,13 @@ static gboolean _async_bus_handler(GstBus *bus, GstMessage *msg,
 		if (gst_structure_has_name(gst_message_get_structure(msg),
 					   "ckey"))
 		{
-			GstPad *pad;
-			GstCaps *caps;
-			gboolean video_ok = TRUE;
-
-			pad = GST_BASE_SINK_PAD(worker->vsink);
-			caps = GST_PAD_CAPS(pad);
-			if (caps && gst_caps_is_fixed(caps)) {
-				GstStructure *structure;
-				structure = gst_caps_get_structure(caps, 0);
-				video_ok = _handle_video_info(worker,
-							      structure);
-			}
-			if (video_ok) {
-				GValue v = {0};
-				g_value_init(&v, G_TYPE_INT);
-				g_value_set_int(&v, worker->colorkey);
-				mafw_extension_emit_property_changed(
-					MAFW_EXTENSION(worker->owner),
-					MAFW_PROPERTY_RENDERER_COLORKEY,
-					&v);
-			}
+			GValue v = {0};
+			g_value_init(&v, G_TYPE_INT);
+			g_value_set_int(&v, worker->colorkey);
+			mafw_extension_emit_property_changed(
+				MAFW_EXTENSION(worker->owner),
+				MAFW_PROPERTY_RENDERER_COLORKEY,
+				&v);
 		}
 	default: break;
 	}
