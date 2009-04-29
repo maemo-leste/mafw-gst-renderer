@@ -1356,9 +1356,7 @@ static void _set_playback_volume(MafwGstRendererWorker *worker, gdouble volume)
 	 * decimals */
 	if ((guint) (volume * 100.0) !=
 	    (guint) (worker->current_volume * 100.0)) {
-		worker->current_volume = CLAMP(volume, 0.0,
-					       10.0);
-
+		worker->current_volume = CLAMP(volume, 0.0, 1.0);
 		g_value_init(&value, G_TYPE_UINT);
 		g_value_set_uint(&value, (guint)(volume*100.0));
 		mafw_extension_emit_property_changed(
@@ -1491,7 +1489,7 @@ err:    g_set_error(error,
 void mafw_gst_renderer_worker_set_volume(
 	MafwGstRendererWorker *worker, guint volume)
 {
-        _set_volume(worker, CLAMP((gdouble)volume / 100.0, 0.0, 10.0));
+        _set_volume(worker, CLAMP((gdouble)volume / 100.0, 0.0, 1.0));
 }
 
 guint mafw_gst_renderer_worker_get_volume(
@@ -1644,6 +1642,18 @@ static gboolean _monitor_volume_poll_hack(gpointer data)
 {
 	gdouble volume = -1;
 	MafwGstRendererWorker *worker = data;
+	GstStateChangeReturn state_change;
+
+	/* FIXME: Temporal solution, set volume pipeline to PAUSED so we can
+	   read the global volume, then set it back to READY */
+	state_change = gst_element_set_state(worker->volume_pipeline,
+					     GST_STATE_PAUSED);
+	if (state_change == GST_STATE_CHANGE_ASYNC) {
+		GstState state;
+		state_change = gst_element_get_state(worker->volume_pipeline,
+						     &state, NULL,
+						     3 * GST_SECOND);
+	}
 
 	g_object_get(worker->volume_sink, "volume", &volume, NULL);
 
@@ -1651,6 +1661,10 @@ static gboolean _monitor_volume_poll_hack(gpointer data)
 	    (guint) (worker->current_volume * 100.0)) {
 		_set_playback_volume(worker, volume);
 	}
+
+	/* Now, let the volume pipeline go off again */
+	gst_element_set_state(worker->volume_pipeline,
+			      GST_STATE_READY);
 
 	return TRUE;
 }
@@ -1672,7 +1686,6 @@ static void _do_play(MafwGstRendererWorker *worker)
 			g_debug("setting pipeline to PAUSED");
 		} else {
 			_monitor_volume_poll_hack(worker);
-			_set_playback_volume(worker, worker->current_volume);
 			_set_mute(worker);
 			gst_element_set_state(worker->pipeline,
 					      GST_STATE_PLAYING);
@@ -1859,7 +1872,7 @@ static gboolean _volume_async_bus_handler(GstBus *bus, GstMessage *msg,
 static void _build_volume_pipeline(MafwGstRendererWorker *worker)
 {
 	GstElement *fakesrc = NULL;
-	GstStateChangeReturn state_change;
+	/* GstStateChangeReturn state_change; */
 
 	g_assert(worker != NULL && worker->volume_pipeline == NULL);
 
@@ -1879,7 +1892,12 @@ static void _build_volume_pipeline(MafwGstRendererWorker *worker)
 	gst_bin_add_many(GST_BIN(worker->volume_pipeline), fakesrc,
 			 worker->volume_sink, NULL);
 	gst_element_link(fakesrc, worker->volume_sink);
+	_monitor_volume_poll_hack(worker);
 
+/*	FIXME: disabled due to power management requirements. A proper fix 
+        for global volume handling will come later, so meanwhile,
+	we pause the volume pipeline only on demand, and then set it back
+	to READY (see _monitor_volume_poll_hack).
 	state_change = gst_element_set_state(worker->volume_pipeline,
 					     GST_STATE_PAUSED);
 	if (state_change == GST_STATE_CHANGE_ASYNC) {
@@ -1901,9 +1919,10 @@ static void _build_volume_pipeline(MafwGstRendererWorker *worker)
 	g_assert(worker->current_volume != -1);
 
 	_set_playback_volume(worker, worker->current_volume);
-
+*/	
         g_signal_connect(worker->volume_sink, "notify::volume",
 			 G_CALLBACK(_volume_cb), worker);
+
 }
 
 static void _destroy_volume_pipeline(MafwGstRendererWorker *worker)
