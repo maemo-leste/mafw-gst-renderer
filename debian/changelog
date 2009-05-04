@@ -1,17 +1,27 @@
-mafw-gst-renderer (0.1.2009.18-2) unstable; urgency=low
+mafw-gst-renderer (0.1.2009.19-2) unstable; urgency=low
 
-  * MAFW gst renderer, pre-release 0.2009.18-2
+  * MAFW gst renderer, pre-release 0.2009.19-2
 
- -- Juha Kellokoski <veitikka6@gmail.com>  Thu, 23 Apr 2009 15:30:00 +0300
+ -- Juha Kellokoski <veitikka6@gmail.com>  Thu, 30 Apr 2009 10:00:00 +0300
 
-mafw-gst-renderer (0.1.2009.18-1) unstable; urgency=low
+mafw-gst-renderer (0.1.2009.19-1) unstable; urgency=low
 
-  * MAFW gst renderer, pre-release 0.2009.18-1
-  * Fixes: NB#96483 - Gstreamer renderer does not change from GST_STATE_PAUSED to GST_STATE_READY after timeout
+  * MAFW gst renderer, pre-release 0.2009.19-1
   * Fixes: NB#108833 - [Onsite] Audio volume is turned full when song is changed
+  * Fixes: NB#113464 - Dbus connection lost error message displayed in while trying to up/down volume level from MTG 
+  * Fixes: NB#96483 - Gstreamer renderer does not change from GST_STATE_PAUSED to GST_STATE_READY after timeout
   * Fixes: NB#104494 - Missing renderer error when video clib has high framerate
   * Fixes: NB#110654 - mafw-dbus-wrapper prints about a critical error
   * Fixes: NB#103987 - Audio playback is breaking for few seconds while playing mms live streams.
+  * Fixes power management issues caused by the volume pipeline
+    being always in PAUSED state. While a proper implementation
+    for volume management is not in place, this temporal fix
+    workarounds the problem by setting it to PAUSED on demand
+    when global volume has to be read, and then setting it back
+    to READY.
+  * Do not check video caps on prepare-xwindow-id, instead wait
+    for prerolling to finish, otherwise caps are not set yet.
+  * Use 'g_timeout_add_seconds' where possible.
   * Added monitor volume hack again, but when going to playing instead of
     stopping.
   * Revert "Added monitor_hack again but called only when stopping the worker."
@@ -42,6 +52,12 @@ mafw-gst-renderer (0.1.2009.18-1) unstable; urgency=low
   * Fixed critical warning message.
   * When we get the ckey coming from the sync bus to the async bus, we check
     the caps and raise an error if they are not suitable.
+
+ -- Juha Kellokoski <veitikka6@gmail.com>  Thu, 30 Apr 2009 10:00:00 +0300
+
+mafw-gst-renderer (0.1.2009.18-1) unstable; urgency=low
+
+  * MAFW gst renderer, pre-release 0.2009.18-1
 
  -- Juha Kellokoski <veitikka6@gmail.com>  Thu, 23 Apr 2009 15:30:00 +0300
 
