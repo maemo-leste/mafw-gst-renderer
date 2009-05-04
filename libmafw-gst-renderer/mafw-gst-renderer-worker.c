@@ -528,6 +528,8 @@ static GstBusSyncReply _sync_bus_handler(GstBus *bus, GstMessage *msg,
 		/* Disable xvimagesink event handling (stealing). */
 		g_object_set(G_OBJECT(worker->vsink), "handle-events", TRUE,
 			     NULL);
+		g_object_set(worker->vsink, "force-aspect-ratio",
+			     TRUE, NULL);
 		mafw_gst_renderer_worker_set_xid(worker, worker->xid);
 		mafw_gst_renderer_worker_set_autopaint(
 			worker,
