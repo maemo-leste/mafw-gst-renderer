@@ -573,9 +573,12 @@ static void _finalize_startup(MafwGstRendererWorker *worker)
 {
 	GstFormat format;
 	gint64 value;
-	MafwGstRenderer *renderer = worker->owner;
+	MafwGstRenderer *renderer;
 	GstQuery *seek_query;
 
+	renderer = worker->owner;
+	
+	/* Check video caps */
 	if (worker->vsink) {
 		GstPad *pad = GST_BASE_SINK_PAD(worker->vsink);
 		GstCaps *caps = GST_PAD_CAPS(pad);
@@ -1431,6 +1434,24 @@ static void _construct_pipeline(MafwGstRendererWorker *worker)
 	 * video window. */
 	g_signal_connect(worker->pipeline, "notify::stream-info",
 			 G_CALLBACK(_stream_info_cb), worker);
+
+	/* Set the audio sink ourselves and make sure it has
+	   appropriate buffering settings */
+	worker->asink = gst_element_factory_make("pulsesink", NULL);
+	if (worker->asink) {
+		g_object_set(worker->asink, "buffer-time", 
+			     (gint64) 600000L, NULL);
+		g_object_set(worker->pipeline, "audio-sink", 
+			     worker->asink, NULL);		
+	} else {
+		g_warning("Failed to create pipeline audio sink");
+		_send_error(worker,
+			    g_error_new(MAFW_RENDERER_ERROR,
+					MAFW_RENDERER_ERROR_UNSUPPORTED_TYPE,
+					worker->media.location));
+		return;
+	}
+
         /* Listen for volume changes */
 	_set_mute(worker);
 	_set_playback_volume(worker, worker->current_volume);
@@ -1808,6 +1829,7 @@ void mafw_gst_renderer_worker_stop(MafwGstRendererWorker *worker)
 	worker->seek_position = -1;
 	_remove_ready_timeout(worker);
 	worker->vsink = NULL;
+	worker->asink = NULL;
 	g_free(worker->media.location);
 	worker->media.location = NULL;
 	blanking_allow();
@@ -1882,6 +1904,9 @@ static void _build_volume_pipeline(MafwGstRendererWorker *worker)
 	worker->volume_sink = gst_element_factory_make("pulsesink", NULL);
 	g_assert(fakesrc != NULL);
 	g_assert(worker->volume_sink != NULL);
+	g_object_set(worker->volume_sink, "buffer-time", 
+		     (gint64) 600000L, NULL);
+
 
 	worker->volume_pipeline = gst_pipeline_new("volume-pipeline");
 
@@ -1962,6 +1987,7 @@ MafwGstRendererWorker *mafw_gst_renderer_worker_new(gpointer owner)
 	worker->autopaint = TRUE;
 	worker->colorkey = -1;
 	worker->vsink = NULL;
+	worker->asink = NULL;
 	worker->tag_list = NULL;
 	worker->volume_pipeline = NULL;
 	worker->volume_sink = NULL;

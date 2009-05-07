@@ -80,6 +80,7 @@ typedef enum {
  * buffer_probe_id:     ID of the video renderer buffer probe
  * seek_position:       Indicates the pos where to seek, in seconds
  * vsink:               Video sink element of the pipeline
+ * asink:               Audio sink element of the pipeline
  * xid:                 XID for video playback
  * current_frame_on_pause: whether to emit current frame when pausing
  */
@@ -124,6 +125,7 @@ struct _MafwGstRendererWorker {
 	guint ready_timeout;
 	gboolean in_ready;
 	GstElement *vsink;
+	GstElement *asink;
 	XID xid;
 	gboolean autopaint;
 	gint colorkey;
