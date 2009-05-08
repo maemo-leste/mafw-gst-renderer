@@ -54,6 +54,9 @@
 #define MAFW_GST_MISSING_TYPE_DECODER "decoder"
 #define MAFW_GST_MISSING_TYPE_ENCODER "encoder"
 
+#define MAFW_GST_BUFFER_TIME  600000L
+#define MAFW_GST_LATENCY_TIME (MAFW_GST_BUFFER_TIME / 2)
+
 /* Private variables. */
 /* Global reference to worker instance, needed for Xerror handler */
 static MafwGstRendererWorker *Global_worker = NULL;
@@ -1440,7 +1443,9 @@ static void _construct_pipeline(MafwGstRendererWorker *worker)
 	worker->asink = gst_element_factory_make("pulsesink", NULL);
 	if (worker->asink) {
 		g_object_set(worker->asink, "buffer-time", 
-			     (gint64) 600000L, NULL);
+			     (gint64) MAFW_GST_BUFFER_TIME, NULL);
+		g_object_set(worker->asink, "latency-time", 
+			     (gint64) MAFW_GST_LATENCY_TIME, NULL);
 		g_object_set(worker->pipeline, "audio-sink", 
 			     worker->asink, NULL);		
 	} else {
@@ -1904,9 +1909,6 @@ static void _build_volume_pipeline(MafwGstRendererWorker *worker)
 	worker->volume_sink = gst_element_factory_make("pulsesink", NULL);
 	g_assert(fakesrc != NULL);
 	g_assert(worker->volume_sink != NULL);
-	g_object_set(worker->volume_sink, "buffer-time", 
-		     (gint64) 600000L, NULL);
-
 
 	worker->volume_pipeline = gst_pipeline_new("volume-pipeline");
 
