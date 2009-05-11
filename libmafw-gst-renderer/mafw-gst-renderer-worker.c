@@ -580,13 +580,14 @@ static gboolean _query_duration_and_seekability(gpointer data)
 	/* First we try to retrieve the length from pipeline. */
 	format = GST_FORMAT_TIME;
 	value = 0;
-	if (gst_element_query_duration(worker->pipeline, &format, &value))
-		worker->media.length_nanos = value;
+	if (gst_element_query_duration(worker->pipeline, &format, &value)) {
+		if (value > 0 && worker->media.length_nanos != value) {
+			mafw_renderer_emit_metadata_int64(
+				worker->owner, MAFW_METADATA_KEY_DURATION,
+				value / GST_SECOND);
+		}
 
-	if (value > 0) {
-		mafw_renderer_emit_metadata_int64(
-			worker->owner, MAFW_METADATA_KEY_DURATION, 
-			value / GST_SECOND);
+		worker->media.length_nanos = value;
 	}
 	g_debug("media duration: %lld", worker->media.length_nanos);
 
