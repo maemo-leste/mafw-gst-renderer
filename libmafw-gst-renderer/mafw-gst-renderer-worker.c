@@ -1305,7 +1305,7 @@ static void _reset_media_info(MafwGstRendererWorker *worker)
 	}
 	worker->media.length_nanos = -1;
 	worker->media.has_visual_content = FALSE;
-	worker->media.seekable = FALSE;
+	worker->media.seekable = SEEKABILITY_UNKNOWN;
 	worker->media.video_width = 0;
 	worker->media.video_height = 0;
 	worker->media.fps = 0.0;
