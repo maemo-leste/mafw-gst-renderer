@@ -104,12 +104,6 @@ typedef enum {
   Type definitions
   ----------------------------------------------------------------------------*/
 
-typedef enum {
-	SEEKABILITY_UNKNOWN = -1,
-	SEEKABILITY_NO_SEEKABLE,
-	SEEKABILITY_SEEKABLE,
-} MafsGstRendererSourceSeekabilityType;
-
 typedef struct {
 	gchar *object_id;
 	gchar *uri;
@@ -121,7 +115,7 @@ typedef struct {
 	gint position;
 
 	/* Seekability coming from source */
-	MafsGstRendererSourceSeekabilityType seekability;
+	SeekabilityType seekability;
 } MafwGstRendererMedia;
 
 struct _MafwGstRendererClass {

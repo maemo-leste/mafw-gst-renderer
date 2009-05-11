@@ -54,6 +54,12 @@ typedef enum {
         WORKER_MODE_PLAYLIST,
 } PlaybackMode;
 
+typedef enum {
+	SEEKABILITY_UNKNOWN = -1,
+	SEEKABILITY_NO_SEEKABLE,
+	SEEKABILITY_SEEKABLE,
+} SeekabilityType;
+
 /*
  * media:        Information about currently selected media.
  *   location:           Current media location
@@ -92,7 +98,7 @@ struct _MafwGstRendererWorker {
 		gint video_width;
 		gint video_height;
 		gdouble fps;
-		gboolean seekable;
+		SeekabilityType seekable;
 		gint par_n;
 		gint par_d;
 	} media;
