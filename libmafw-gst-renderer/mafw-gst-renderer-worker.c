@@ -568,43 +568,13 @@ static void _free_taglist(MafwGstRendererWorker *worker)
 	}
 }
 
-/*
- * Called when the pipeline transitions into PAUSED state.  It extracts more
- * information from Gst.
- */
-static void _finalize_startup(MafwGstRendererWorker *worker)
+static gboolean _query_duration_and_seekability(gpointer data)
 {
 	GstFormat format;
 	gint64 value;
-	MafwGstRenderer *renderer;
 	GstQuery *seek_query;
-
-	renderer = worker->owner;
-	
-	/* Check video caps */
-	if (worker->vsink) {
-		GstPad *pad = GST_BASE_SINK_PAD(worker->vsink);
-		GstCaps *caps = GST_PAD_CAPS(pad);
-		if (caps && gst_caps_is_fixed(caps)) {
-			GstStructure *structure;
-			structure = gst_caps_get_structure(caps, 0);
-			_handle_video_info(worker, structure);
-		}
-	}
-
-	/* Something might have gone wrong at this point already. */
-	if (worker->is_error) {
-		g_debug("Error occured during preroll");
-		return;
-	}
-
-	/* Streaminfo might reveal the media to be unsupported.  Therefore we
-	 * need to check the error again. */
-	_parse_stream_info(worker);
-	if (worker->is_error) {
-		g_debug("Error occured. Leaving");
-		return;
-	}
+	MafwGstRendererWorker *worker = data;
+	MafwGstRenderer *renderer = worker->owner;
 
 	/* First we try to retrieve the length from pipeline. */
 	format = GST_FORMAT_TIME;
@@ -648,6 +618,42 @@ static void _finalize_startup(MafwGstRendererWorker *worker)
 					MAFW_METADATA_KEY_IS_SEEKABLE,
 					worker->media.seekable);
 	g_debug("media seekable: %d", worker->media.seekable);
+
+	return FALSE;
+}
+
+/*
+ * Called when the pipeline transitions into PAUSED state.  It extracts more
+ * information from Gst.
+ */
+static void _finalize_startup(MafwGstRendererWorker *worker)
+{
+	/* Check video caps */
+	if (worker->vsink) {
+		GstPad *pad = GST_BASE_SINK_PAD(worker->vsink);
+		GstCaps *caps = GST_PAD_CAPS(pad);
+		if (caps && gst_caps_is_fixed(caps)) {
+			GstStructure *structure;
+			structure = gst_caps_get_structure(caps, 0);
+			_handle_video_info(worker, structure);
+		}
+	}
+
+	/* Something might have gone wrong at this point already. */
+	if (worker->is_error) {
+		g_debug("Error occured during preroll");
+		return;
+	}
+
+	/* Streaminfo might reveal the media to be unsupported.  Therefore we
+	 * need to check the error again. */
+	_parse_stream_info(worker);
+	if (worker->is_error) {
+		g_debug("Error occured. Leaving");
+		return;
+	}
+
+	_query_duration_and_seekability(worker);
 }
 
 static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker)
