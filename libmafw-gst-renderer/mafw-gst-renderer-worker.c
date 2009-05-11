@@ -579,36 +579,39 @@ static gboolean _seconds_duration_equal(gint64 duration1, gint64 duration2)
 	return duration1_seconds == duration2_seconds;
 }
 
-static gboolean _query_duration_and_seekability(gpointer data)
+static void _check_duration(MafwGstRendererWorker *worker, gint64 value)
 {
-	GstFormat format;
-	gint64 value;
-	GstQuery *seek_query;
-	MafwGstRendererWorker *worker = data;
+	gboolean right_query = TRUE;
+
+	if (value > -1) {
+		GstFormat format = GST_FORMAT_TIME;
+		right_query =
+			gst_element_query_duration(worker->pipeline, &format,
+						   &value);
+	}
+
+	if (right_query && value > 0 &&
+	    !_seconds_duration_equal(worker->media.length_nanos, value)) {
+		mafw_renderer_emit_metadata_int64(worker->owner,
+						  MAFW_METADATA_KEY_DURATION,
+						  value / GST_SECOND);
+	}
+
+	worker->media.length_nanos = value;
+	g_debug("media duration: %lld", worker->media.length_nanos);
+}
+
+static void _check_seekability(MafwGstRendererWorker *worker)
+{
 	MafwGstRenderer *renderer = worker->owner;
 	SeekabilityType seekable = SEEKABILITY_NO_SEEKABLE;
-
-	/* First we try to retrieve the length from pipeline. */
-	format = GST_FORMAT_TIME;
-	value = 0;
-	if (gst_element_query_duration(worker->pipeline, &format, &value)) {
-		if (value > 0 &&
-		    !_seconds_duration_equal(worker->media.length_nanos,
-					     value)) {
-			mafw_renderer_emit_metadata_int64(
-				worker->owner, MAFW_METADATA_KEY_DURATION,
-				value / GST_SECOND);
-		}
-
-		worker->media.length_nanos = value;
-	}
-	g_debug("media duration: %lld", worker->media.length_nanos);
 
 	if (worker->media.length_nanos != -1)
 	{
 		if (renderer->media->seekability == SEEKABILITY_UNKNOWN) {
+			GstQuery *seek_query;
+			GstFormat format = GST_FORMAT_TIME;
 			/* Query the seekability of the stream */
-			format = GST_FORMAT_TIME;
 			seek_query = gst_query_new_seeking(format);
 			if (gst_element_query(worker->pipeline, seek_query)) {
 				gboolean renderer_seekable = FALSE;
@@ -637,6 +640,14 @@ static gboolean _query_duration_and_seekability(gpointer data)
 	}
 	g_debug("media seekable: %d", worker->media.seekable);
 	worker->media.seekable = seekable;
+}
+
+static gboolean _query_duration_and_seekability_timeout(gpointer data)
+{
+	MafwGstRendererWorker *worker = data;
+
+	_check_duration(worker, -1);
+	_check_seekability(worker);
 
 	worker->duration_seek_timeout = 0;
 
@@ -674,7 +685,12 @@ static void _finalize_startup(MafwGstRendererWorker *worker)
 		return;
 	}
 
-	_query_duration_and_seekability(worker);
+	if (worker->duration_seek_timeout != 0) {
+		g_source_remove(worker->duration_seek_timeout);
+		worker->duration_seek_timeout = 0;
+	}
+	_check_duration(worker, -1);
+	_check_seekability(worker);
 }
 
 static void _add_duration_seek_query_timeout(MafwGstRendererWorker *worker)
@@ -684,7 +700,7 @@ static void _add_duration_seek_query_timeout(MafwGstRendererWorker *worker)
 	}
 	worker->duration_seek_timeout = g_timeout_add_seconds(
 		MAFW_GST_RENDERER_WORKER_SECONDS_DURATION_AND_SEEKABILITY,
-		_query_duration_and_seekability,
+		_query_duration_and_seekability_timeout,
 		worker);
 }
 
@@ -1878,6 +1894,7 @@ void mafw_gst_renderer_worker_stop(MafwGstRendererWorker *worker)
 	_remove_ready_timeout(worker);
 	if (worker->duration_seek_timeout != 0) {
 		g_source_remove(worker->duration_seek_timeout);
+		worker->duration_seek_timeout = 0;
 	}
 	worker->vsink = NULL;
 	worker->asink = NULL;
