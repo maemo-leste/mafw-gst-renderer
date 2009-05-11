@@ -569,6 +569,16 @@ static void _free_taglist(MafwGstRendererWorker *worker)
 	}
 }
 
+static gboolean _seconds_duration_equal(gint64 duration1, gint64 duration2)
+{
+	gint64 duration1_seconds, duration2_seconds;
+
+	duration1_seconds = duration1 / GST_SECOND;
+	duration2_seconds = duration2 / GST_SECOND;
+
+	return duration1_seconds == duration2_seconds;
+}
+
 static gboolean _query_duration_and_seekability(gpointer data)
 {
 	GstFormat format;
