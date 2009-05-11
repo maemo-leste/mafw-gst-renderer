@@ -1029,6 +1029,8 @@ static void _handle_buffering(MafwGstRendererWorker *worker, GstMessage *msg)
 			}
 			_do_play(worker);
 			renderer->play_failed_count = 0;
+		} else if (worker->state == GST_STATE_PLAYING) {
+			_add_duration_seek_query_timeout(worker);
 		}
 	}
 
