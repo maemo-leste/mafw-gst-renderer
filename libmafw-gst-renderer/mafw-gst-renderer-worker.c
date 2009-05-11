@@ -576,6 +576,7 @@ static gboolean _query_duration_and_seekability(gpointer data)
 	GstQuery *seek_query;
 	MafwGstRendererWorker *worker = data;
 	MafwGstRenderer *renderer = worker->owner;
+	SeekabilityType seekable = SEEKABILITY_NO_SEEKABLE;
 
 	/* First we try to retrieve the length from pipeline. */
 	format = GST_FORMAT_TIME;
@@ -591,7 +592,6 @@ static gboolean _query_duration_and_seekability(gpointer data)
 	}
 	g_debug("media duration: %lld", worker->media.length_nanos);
 
-	worker->media.seekable = FALSE;
 	if (worker->media.length_nanos != -1)
 	{
 		if (renderer->media->seekability == SEEKABILITY_UNKNOWN) {
@@ -599,27 +599,32 @@ static gboolean _query_duration_and_seekability(gpointer data)
 			format = GST_FORMAT_TIME;
 			seek_query = gst_query_new_seeking(format);
 			if (gst_element_query(worker->pipeline, seek_query)) {
+				gboolean renderer_seekable = FALSE;
 				gst_query_parse_seeking(seek_query, NULL,
-							&worker->media.seekable,
+							&renderer_seekable,
 							NULL, NULL);
 				g_debug("renderer seekability %d",
-					worker->media.seekable);
-
+					renderer_seekable);
+				seekable = renderer_seekable ?
+					SEEKABILITY_SEEKABLE :
+					SEEKABILITY_NO_SEEKABLE;
 			}
 			gst_query_unref(seek_query);
 		} else {
-			worker->media.seekable =
-				renderer->media->seekability ==
-				SEEKABILITY_SEEKABLE ? TRUE : FALSE;
+			seekable = renderer->media->seekability;
 			g_debug("source seekability %d",
 				renderer->media->seekability);
 		}
 	}
 
-	mafw_renderer_emit_metadata_boolean(worker->owner,
-					MAFW_METADATA_KEY_IS_SEEKABLE,
-					worker->media.seekable);
+	if (worker->media.seekable != seekable) {
+		mafw_renderer_emit_metadata_boolean(
+			worker->owner,
+			MAFW_METADATA_KEY_IS_SEEKABLE,
+			seekable == SEEKABILITY_SEEKABLE ? TRUE : FALSE);
+	}
 	g_debug("media seekable: %d", worker->media.seekable);
+	worker->media.seekable = seekable;
 
 	worker->duration_seek_timeout = 0;
 
