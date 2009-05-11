@@ -665,6 +665,17 @@ static void _finalize_startup(MafwGstRendererWorker *worker)
 	_query_duration_and_seekability(worker);
 }
 
+static void _add_duration_seek_query_timeout(MafwGstRendererWorker *worker)
+{
+	if (worker->duration_seek_timeout != 0) {
+		g_source_remove(worker->duration_seek_timeout);
+	}
+	worker->duration_seek_timeout = g_timeout_add_seconds(
+		MAFW_GST_RENDERER_WORKER_SECONDS_DURATION_AND_SEEKABILITY,
+		_query_duration_and_seekability,
+		worker);
+}
+
 static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker)
 {
 	GstState newstate;
@@ -777,10 +788,7 @@ static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker
 		_emit_metadatas(worker);
 		/* Query duration and seekability. Useful for vbr
 		 * clips or streams. */
-		worker->duration_seek_timeout = g_timeout_add_seconds(
-			MAFW_GST_RENDERER_WORKER_SECONDS_DURATION_AND_SEEKABILITY,
-			_query_duration_and_seekability,
-			worker);
+		_add_duration_seek_query_timeout(worker);
 	}
 	else if (newstate == GST_STATE_READY && worker->in_ready) {
 		g_debug("changed to GST_STATE_READY");
