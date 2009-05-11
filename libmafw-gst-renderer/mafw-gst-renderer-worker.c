@@ -620,6 +620,8 @@ static gboolean _query_duration_and_seekability(gpointer data)
 					worker->media.seekable);
 	g_debug("media seekable: %d", worker->media.seekable);
 
+	worker->duration_seek_timeout = 0;
+
 	return FALSE;
 }
 
@@ -769,7 +771,7 @@ static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker
 		_emit_metadatas(worker);
 		/* Query duration and seekability. Useful for vbr
 		 * clips or streams. */
-		g_timeout_add_seconds(
+		worker->duration_seek_timeout = g_timeout_add_seconds(
 			MAFW_GST_RENDERER_WORKER_SECONDS_DURATION_AND_SEEKABILITY,
 			_query_duration_and_seekability,
 			worker);
@@ -1846,6 +1848,9 @@ void mafw_gst_renderer_worker_stop(MafwGstRendererWorker *worker)
 	worker->eos = FALSE;
 	worker->seek_position = -1;
 	_remove_ready_timeout(worker);
+	if (worker->duration_seek_timeout != 0) {
+		g_source_remove(worker->duration_seek_timeout);
+	}
 	worker->vsink = NULL;
 	worker->asink = NULL;
 	g_free(worker->media.location);

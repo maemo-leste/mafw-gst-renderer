@@ -123,6 +123,7 @@ struct _MafwGstRendererWorker {
 	guint async_bus_id;
 	gint seek_position;
 	guint ready_timeout;
+	guint duration_seek_timeout;
 	gboolean in_ready;
 	GstElement *vsink;
 	GstElement *asink;
