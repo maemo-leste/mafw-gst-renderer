@@ -1,8 +1,19 @@
-mafw-gst-renderer (0.1.2009.19-2) unstable; urgency=low
+mafw-gst-renderer (0.1.2009.20-2) unstable; urgency=low
 
-  * MAFW gst renderer, pre-release 0.2009.19-2
+  * MAFW gst renderer, pre-release 0.2009.20-2
 
- -- Juha Kellokoski <veitikka6@gmail.com>  Thu, 30 Apr 2009 10:00:00 +0300
+ -- Juha Kellokoski <veitikka6@gmail.com>  Thu, 07 May 2009 11:00:00 +0300
+
+mafw-gst-renderer (0.1.2009.20-1) unstable; urgency=low
+
+  * MAFW gst renderer, pre-release 0.2009.20-1
+  * Fixes: NB#107221 - Connecting and disconnecting with an AP while playing an MP3 cause audio breakage
+  * Fixes: NB#114181 - Video aspect ratio is not preserved
+  * Set appropriate buffering settings for audio sink
+    to avoid audio glitches on certain scenarios.
+  * Maintainer changed in control file.
+
+ -- Juha Kellokoski <veitikka6@gmail.com>  Thu, 07 May 2009 11:00:00 +0300
 
 mafw-gst-renderer (0.1.2009.19-1) unstable; urgency=low
 
