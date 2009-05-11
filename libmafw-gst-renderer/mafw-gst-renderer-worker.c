@@ -583,7 +583,7 @@ static void _check_duration(MafwGstRendererWorker *worker, gint64 value)
 {
 	gboolean right_query = TRUE;
 
-	if (value > -1) {
+	if (value == -1) {
 		GstFormat format = GST_FORMAT_TIME;
 		right_query =
 			gst_element_query_duration(worker->pipeline, &format,
@@ -830,27 +830,17 @@ static void _handle_duration(MafwGstRendererWorker *worker, GstMessage *msg)
 {
 	GstFormat fmt;
 	gint64 duration;
-	gint64 duration_secs;
-	gint64 duration_secs_before;
 
 	gst_message_parse_duration(msg, &fmt, &duration);
-	if (duration == GST_CLOCK_TIME_NONE) {
-		gst_element_query_duration(worker->pipeline, &fmt, &duration);
+
+	if (worker->duration_seek_timeout != 0) {
+		g_source_remove(worker->duration_seek_timeout);
+		worker->duration_seek_timeout = 0;
 	}
 
-
-	duration_secs = duration / GST_SECOND;
-	duration_secs_before = worker->media.length_nanos / GST_SECOND;
-	if (duration_secs > 0 && duration_secs != duration_secs_before) {
-		/* We got a new valid duration */
-		g_debug("media duration: changed to %u secs",
-			(guint) duration_secs);
-		worker->media.length_nanos = duration;
-		mafw_renderer_emit_metadata_int64(
-			worker->owner, 
-			MAFW_METADATA_KEY_DURATION, 
-			duration_secs);
-	}
+	_check_duration(worker,
+			duration != GST_CLOCK_TIME_NONE ? duration : -1);
+	_check_seekability(worker);
 }
 
 #ifdef HAVE_GDKPIXBUF
