@@ -50,6 +50,7 @@
 #define G_LOG_DOMAIN "mafw-gst-renderer-worker"
 
 #define MAFW_GST_RENDERER_WORKER_SECONDS_READY 60
+#define MAFW_GST_RENDERER_WORKER_SECONDS_DURATION_AND_SEEKABILITY 4
 
 #define MAFW_GST_MISSING_TYPE_DECODER "decoder"
 #define MAFW_GST_MISSING_TYPE_ENCODER "encoder"
@@ -766,6 +767,12 @@ static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker
 		}
 		_remove_ready_timeout(worker);
 		_emit_metadatas(worker);
+		/* Query duration and seekability. Useful for vbr
+		 * clips or streams. */
+		g_timeout_add_seconds(
+			MAFW_GST_RENDERER_WORKER_SECONDS_DURATION_AND_SEEKABILITY,
+			_query_duration_and_seekability,
+			worker);
 	}
 	else if (newstate == GST_STATE_READY && worker->in_ready) {
 		g_debug("changed to GST_STATE_READY");
