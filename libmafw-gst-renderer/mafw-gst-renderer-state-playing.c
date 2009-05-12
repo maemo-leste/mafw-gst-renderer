@@ -305,7 +305,7 @@ static void _notify_eos(MafwGstRendererState *self, GError **error)
         /* Update playcount */
 	if (renderer->update_playcount_id > 0) {
 		g_source_remove(renderer->update_playcount_id);
-                mafw_gst_renderer_update_playcount_cb(renderer);
+                mafw_gst_renderer_update_stats(renderer);
         }
 
 	/* Notice: playback has already stopped, so calling

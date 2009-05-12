@@ -1681,6 +1681,7 @@ static gboolean set_mdata_called;	/* Whether set_metadata was called or not */
 static gboolean get_mdata_called;	/* Whether get_metadata was called or not */
 static gint reference_pcount;		/* Reference playcount, what should come in set_metadata */
 static gboolean set_for_playcount;	/* TRUE, when the set_metadata is called to modify the playcount */
+static gboolean set_for_lastplayed;	/* TRUE, when the set_metadata is called to modify the last-played */
 
 static void get_metadata(MafwSource *self,
 			     const gchar *object_id,
@@ -1699,9 +1700,15 @@ static void set_metadata(MafwSource *self, const gchar *object_id,
 			     gpointer user_data)
 {
 	GValue *curval;
+	gint htsize = 0;
+
+	if (set_for_playcount)
+		htsize++;
+	if (set_for_lastplayed)
+		htsize++;
 	fail_if(strcmp(object_id, "mocksource::test"));
 	fail_if(!metadata);
-	fail_if(g_hash_table_size(metadata) != 1);
+	fail_if(g_hash_table_size(metadata) != htsize, "Hash table size: %d vs %d", g_hash_table_size(metadata), htsize);
 	if (set_for_playcount)
 	{
 		curval = mafw_metadata_first(metadata,
@@ -1709,7 +1716,7 @@ static void set_metadata(MafwSource *self, const gchar *object_id,
 		fail_if(!curval);
 		fail_if(g_value_get_int(curval) != reference_pcount);
 	}
-	else
+	if (set_for_lastplayed)
 	{
 		curval = mafw_metadata_first(metadata,
 				MAFW_METADATA_KEY_LAST_PLAYED);
@@ -1745,7 +1752,7 @@ GObject* mock_source_new(void)
 }
 
 
-START_TEST(test_update_playcount)
+START_TEST(test_update_stats)
 {
 	MafwGstRenderer *renderer = NULL;
 	MafwSource *src;
@@ -1760,70 +1767,52 @@ START_TEST(test_update_playcount)
 	src = MAFW_SOURCE(mock_source_new());
 	
 	mafw_registry_add_extension(registry, MAFW_EXTENSION(src));
-	
+
 	/* Error on get_mdata_cb*/
-	set_for_playcount = TRUE;
+	set_for_playcount = FALSE;
+	set_for_lastplayed = FALSE;
         get_md_err = NULL;
 	g_set_error(&get_md_err, MAFW_SOURCE_ERROR,
                     MAFW_SOURCE_ERROR_INVALID_OBJECT_ID,
                     "Wrong object id mocksource::test");
-	mafw_gst_renderer_increase_playcount(renderer, "mocksource::test");
+	renderer->media->object_id = "mocksource::test";
+	mafw_gst_renderer_update_stats(renderer);
         g_error_free(get_md_err);
 	fail_if(set_mdata_called);
 	fail_if(!get_mdata_called);
-	
+
 	/* get_mdata ok, but HashTable is NULL */
 	reference_pcount = 1;
 	get_mdata_called = FALSE;
+	set_for_lastplayed = TRUE;
+	set_for_playcount = TRUE;
 	get_md_err = NULL;
-	mafw_gst_renderer_increase_playcount(renderer, "mocksource::test");
+	mafw_gst_renderer_update_stats(renderer);
 	fail_if(!set_mdata_called);
 	fail_if(!get_mdata_called);
 	
 	/* get_mdata ok, but HashTable is empty */
 	get_mdata_called = FALSE;
 	set_mdata_called = FALSE;
+	set_for_lastplayed = TRUE;
+	set_for_playcount = TRUE;
 	get_md_ht = mafw_metadata_new();
-	mafw_gst_renderer_increase_playcount(renderer, "mocksource::test");
+	mafw_gst_renderer_update_stats(renderer);
 	fail_if(!set_mdata_called);
 	fail_if(!get_mdata_called);
 	
 	/* get_mdata ok, but HashTable has valid value */
 	get_mdata_called = FALSE;
 	set_mdata_called = FALSE;
+	set_for_lastplayed = TRUE;
+	set_for_playcount = TRUE;
 	mafw_metadata_add_int(get_md_ht,
 						MAFW_METADATA_KEY_PLAY_COUNT,
 						1);
 	reference_pcount = 2;
-	mafw_gst_renderer_increase_playcount(renderer, "mocksource::test");
+	mafw_gst_renderer_update_stats(renderer);
 	fail_if(!set_mdata_called);
 	fail_if(!get_mdata_called);
-
-}
-END_TEST
-
-START_TEST(test_update_lastplayed)
-{
-	MafwGstRenderer *renderer = NULL;
-	MafwSource *src;
-	MafwRegistry *registry;
-
-	registry = MAFW_REGISTRY(mafw_registry_get_instance());
-	fail_if(registry == NULL,
-		"Error: cannot get MAFW registry");
-		
-
-	renderer = MAFW_GST_RENDERER(g_gst_renderer);
-	src = MAFW_SOURCE(mock_source_new());
-	
-	mafw_registry_add_extension(registry, MAFW_EXTENSION(src));
-
-	set_for_playcount = FALSE;
-	get_mdata_called = FALSE;
-	set_mdata_called = FALSE;
-	mafw_gst_renderer_update_lastplayed(renderer, "mocksource::test");
-	fail_if(!set_mdata_called);
-	fail_if(get_mdata_called);
 }
 END_TEST
 
@@ -4168,8 +4157,7 @@ if (1)	tcase_add_test(tc1, test_basic_playback);
 if (1)	tcase_add_test(tc1, test_playlist_playback);
 if (1)	tcase_add_test(tc1, test_repeat_mode_playback);
 if (1)	tcase_add_test(tc1, test_gst_renderer_mode);
-if (1)	tcase_add_test(tc1, test_update_playcount);
-if (1)	tcase_add_test(tc1, test_update_lastplayed);
+if (1)	tcase_add_test(tc1, test_update_stats);
 if (1)  tcase_add_test(tc1, test_play_state);
 if (1)  tcase_add_test(tc1, test_pause_state);
 if (1)  tcase_add_test(tc1, test_stop_state);

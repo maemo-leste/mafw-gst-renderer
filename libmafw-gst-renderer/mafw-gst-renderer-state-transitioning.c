@@ -300,7 +300,7 @@ static void _notify_play(MafwGstRendererState *self, GError **error)
 	{
                 renderer->update_playcount_id = g_timeout_add_seconds(
 			UPDATE_DELAY,
-			mafw_gst_renderer_update_playcount_cb,
+			mafw_gst_renderer_update_stats,
 			renderer);
 	}
 

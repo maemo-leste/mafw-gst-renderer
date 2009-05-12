@@ -533,7 +533,8 @@ void mafw_gst_renderer_get_metadata(MafwGstRenderer* self,
 		   Transitioning state */
 		static const gchar * const keys[] =
 			{ MAFW_METADATA_KEY_URI,
-			  MAFW_METADATA_KEY_IS_SEEKABLE, NULL };
+			  MAFW_METADATA_KEY_IS_SEEKABLE,
+				NULL };
 
 		/* Source found, get metadata */
 		mafw_source_get_metadata(source, objectid,
@@ -1154,22 +1155,157 @@ static void _run_error_policy(MafwGstRenderer *self, const GError *in_err,
 	}
 }
 
+static void _metadata_set_cb(MafwSource *self, const gchar *object_id,
+				const gchar **failed_keys, gpointer user_data,
+				const GError *error)
+{
+	if (error != NULL) {
+		g_debug("Ignoring error received when setting metadata: "
+			"%s (%d): %s", g_quark_to_string(error->domain),
+			error->code, error->message);
+	} else {
+		g_debug("Metadata set correctly");
+	}
+}
+
 /**
- * mafw_gst_renderer_update_playcount_cb:
+ * _update_playcount_metadata_cb:
+ * @cb_source:   The #MafwSource that sent the metadata results
+ * @cb_object_id: The object ID, whose metadata results were received
+ * @cb_metadata: GHashTable containing metadata key-value pairs
+ * @cb_user_data: Optional user data pointer (self)
+ * @cb_error:    Set if any errors occurred during metadata browsing
+ *
+ * Receives the results of a metadata request about the playcount. It increases
+ * it, or sets to 1, and sets the metadata to that.
+ */
+static void _update_playcount_metadata_cb (MafwSource *cb_source,
+					   const gchar *cb_object_id,
+					   GHashTable *cb_metadata,
+					   gpointer cb_user_data,
+					   const GError *cb_error)
+{
+	GValue *curval = NULL;
+	gint curplaycount = -1;
+	GHashTable *mdata = cb_user_data;
+
+	if (cb_error == NULL) {
+		if (cb_metadata)
+			curval = mafw_metadata_first(cb_metadata,
+				MAFW_METADATA_KEY_PLAY_COUNT);
+		if (curval && !G_VALUE_HOLDS(curval, G_TYPE_INT))
+			goto set_data;
+		if (curval)
+		{
+			curplaycount = g_value_get_int(curval);
+			curplaycount++;
+		}
+		else
+		{ /* Playing at first time, or not supported... */
+			curplaycount = 1;
+		}
+		if (!mdata)
+			mdata = mafw_metadata_new();
+		mafw_metadata_add_int(mdata,
+					MAFW_METADATA_KEY_PLAY_COUNT,
+					curplaycount);
+
+	} else {
+		g_warning("_playcount_metadata received an error: "
+			  "%s (%d): %s", g_quark_to_string(cb_error->domain),
+			  cb_error->code, cb_error->message);
+		if (mdata)
+			g_hash_table_unref(mdata);
+		return;
+	}
+set_data:
+	
+	if (mdata)
+	{
+		mafw_source_set_metadata(cb_source, cb_object_id, mdata,
+						_metadata_set_cb, NULL);
+		g_hash_table_unref(mdata);
+	}
+}
+
+/**
+ * mafw_gst_renderer_add_lastplayed:
+ * @mdata:   Exisiting mdata, or NULL
+ *
+ * Sets the MAFW_METADATA_KEY_LAST_PLAYED metadata in the given metadata-table,
+ * or creates a new metadata-table, and sets the current time there.
+ */
+static GHashTable *mafw_gst_renderer_add_lastplayed(GHashTable *mdata)
+{
+	GHashTable *metadata;
+	GTimeVal timeval;
+
+	
+	if (!mdata)
+		metadata = mafw_metadata_new();
+	else
+		metadata = mdata;
+	
+		
+
+	g_get_current_time(&timeval);
+		
+	mafw_metadata_add_long(metadata,
+					MAFW_METADATA_KEY_LAST_PLAYED,
+					timeval.tv_sec);
+	return metadata;
+}
+
+/**
+ * mafw_gst_renderer_increase_playcount:
+ * @self:   Gst renderer
+ * @object_id: The object ID of the touched object
+ * @mdat: Existing metadatas to add the playcount to, or NULL
+ *
+ * Increases the playcount of the given object.
+ */
+static void mafw_gst_renderer_increase_playcount(MafwGstRenderer* self,
+					const gchar *object_id, GHashTable *mdat)
+{
+	MafwSource* source;
+	gchar* sourceid = NULL;
+
+	g_assert(self != NULL);
+	g_assert(object_id != NULL);
+
+	/* Attempt to find a source that provided the object ID */
+	mafw_source_split_objectid(object_id, &sourceid, NULL);
+	source = MAFW_SOURCE(mafw_registry_get_extension_by_uuid(self->registry,
+							    sourceid));
+	g_free(sourceid);
+	if (source != NULL)
+	{
+		static const gchar * const keys[] =
+			{ MAFW_METADATA_KEY_PLAY_COUNT, NULL };
+
+		mafw_source_get_metadata(source, object_id,
+					 keys,
+					 _update_playcount_metadata_cb,
+					 mdat);
+
+ 	}
+}
+
+/**
+ * mafw_gst_renderer_update_stats:
  * @data: user data
  *
  * Updates both playcount and lastplayed after a while.
  **/
-gboolean mafw_gst_renderer_update_playcount_cb(gpointer data)
+gboolean mafw_gst_renderer_update_stats(gpointer data)
 {
         MafwGstRenderer *renderer = (MafwGstRenderer *) data;
 	
 	if (renderer->media->object_id)
 	{
+		GHashTable *mdata = mafw_gst_renderer_add_lastplayed(NULL);
 		mafw_gst_renderer_increase_playcount(renderer,
-                                             renderer->media->object_id);
-		mafw_gst_renderer_update_lastplayed(renderer,
-                                            renderer->media->object_id);
+                                            renderer->media->object_id, mdata);
 	}
         renderer->update_playcount_id = 0;
         return FALSE;
@@ -1892,145 +2028,6 @@ static void mafw_gst_renderer_set_property(MafwExtension *self,
 	mafw_extension_emit_property_changed(self, key, value);
 }
 
-static void _metadata_set_cb(MafwSource *self, const gchar *object_id,
-				const gchar **failed_keys, gpointer user_data,
-				const GError *error)
-{
-	if (error != NULL) {
-		g_debug("Ignoring error received when setting metadata: "
-			"%s (%d): %s", g_quark_to_string(error->domain),
-			error->code, error->message);
-	} else {
-		g_debug("Metadata set correctly");
-	}
-}
-
-/**
- * _update_playcount_metadata_cb:
- * @cb_source:   The #MafwSource that sent the metadata results
- * @cb_object_id: The object ID, whose metadata results were received
- * @cb_metadata: GHashTable containing metadata key-value pairs
- * @cb_user_data: Optional user data pointer (self)
- * @cb_error:    Set if any errors occurred during metadata browsing
- *
- * Receives the results of a metadata request about the playcount. It increases
- * it, or sets to 1, and sets the metadata to that.
- */
-static void _update_playcount_metadata_cb (MafwSource *cb_source,
-					   const gchar *cb_object_id,
-					   GHashTable *cb_metadata,
-					   gpointer cb_user_data,
-					   const GError *cb_error)
-{
-	GValue *curval = NULL;
-	gint curplaycount;
-
-	if (cb_error == NULL) {
-		if (cb_metadata)
-			curval = mafw_metadata_first(cb_metadata,
-				MAFW_METADATA_KEY_PLAY_COUNT);
-		if (curval && !G_VALUE_HOLDS(curval, G_TYPE_INT))
-			return;
-		if (curval)
-		{
-			curplaycount = g_value_get_int(curval);
-			curplaycount++;
-			g_hash_table_ref(cb_metadata);
-			g_value_set_int(curval, curplaycount);
-		}
-		else
-		{ /* Playing at first time, or not supported... */
-			cb_metadata = mafw_metadata_new();
-			mafw_metadata_add_int(cb_metadata,
-						MAFW_METADATA_KEY_PLAY_COUNT,
-						1);
-		}
-
-		mafw_source_set_metadata(cb_source, cb_object_id, cb_metadata,
-						_metadata_set_cb, NULL);
-		g_hash_table_unref(cb_metadata);
-		return;
-	} else {
-		g_warning("_playcount_metadata received an error: "
-			  "%s (%d): %s", g_quark_to_string(cb_error->domain),
-			  cb_error->code, cb_error->message);
-	}
-}
-
-/**
- * mafw_gst_renderer_update_lastplayed:
- * @self:   Gst renderer
- * @object_id: The object ID of the touched object
- *
- * Sets the MAFW_METADATA_KEY_LAST_PLAYED metadata of the given item.
- */
-void mafw_gst_renderer_update_lastplayed(MafwGstRenderer* self,
-					const gchar *object_id)
-{
-	MafwSource* source;
-	gchar* sourceid = NULL;
-
-	g_assert(self != NULL);
-	g_assert(object_id != NULL);
-
-	/* Attempt to find a source that provided the object ID */
-	mafw_source_split_objectid(object_id, &sourceid, NULL);
-	source = MAFW_SOURCE(mafw_registry_get_extension_by_uuid(self->registry,
-							    sourceid));
-	g_free(sourceid);
-	if (source != NULL)
-	{
-		GHashTable *metadata;
-		GTimeVal timeval;
-
-		g_get_current_time(&timeval);
-		metadata = mafw_metadata_new();
-		mafw_metadata_add_long(metadata,
-						MAFW_METADATA_KEY_LAST_PLAYED,
-						timeval.tv_sec);
-		mafw_source_set_metadata(source, object_id, metadata,
-						_metadata_set_cb, NULL);
-		g_hash_table_unref(metadata);
- 	}
-}
-
-/**
- * mafw_gst_renderer_increase_playcount:
- * @self:   Gst renderer
- * @object_id: The object ID of the touched object
- *
- * Increases the playcount of the given object.
- */
-void mafw_gst_renderer_increase_playcount(MafwGstRenderer* self,
-					const gchar *object_id)
-{
-	MafwSource* source;
-	gchar* sourceid = NULL;
-
-	g_assert(self != NULL);
-	g_assert(object_id != NULL);
-
-	/* Attempt to find a source that provided the object ID */
-	mafw_source_split_objectid(object_id, &sourceid, NULL);
-	source = MAFW_SOURCE(mafw_registry_get_extension_by_uuid(self->registry,
-							    sourceid));
-	g_free(sourceid);
-	if (source != NULL)
-	{
-		static const gchar * const keys[] =
-			{ MAFW_METADATA_KEY_PLAY_COUNT, NULL };
-
-		mafw_source_get_metadata(source, object_id,
-					 keys,
-					 _update_playcount_metadata_cb,
-					 NULL);
-
- 	}
-}
-
-/* vi: set noexpandtab ts=8 sw=8 cino=t0,(0: */
-
-
 /*----------------------------------------------------------------------------
   GIO event handlers
   ----------------------------------------------------------------------------*/
@@ -2054,3 +2051,5 @@ static void _pre_unmount_handler(GVolumeMonitor *volume_monitor,
 	g_free(mount_dir_path);
 	g_object_unref(mount_dir);
 }
+
+/* vi: set noexpandtab ts=8 sw=8 cino=t0,(0: */
