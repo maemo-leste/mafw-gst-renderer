@@ -501,6 +501,30 @@ static gboolean _parse_stream_info(MafwGstRendererWorker *worker)
 	return FALSE;
 }
 
+static void mafw_gst_renderer_worker_apply_xid(MafwGstRendererWorker *worker)
+{
+	/* Set sink to render on the provided XID if we have do have
+	   a XID a valid video sink and we are rendeing video content */
+	if (worker->xid && 
+	    worker->vsink && 
+	    worker->media.has_visual_content)
+	{
+		g_debug ("Setting overlay, window id: %x", 
+			 (gint) worker->xid);
+		gst_x_overlay_set_xwindow_id(GST_X_OVERLAY(worker->vsink), 
+					     worker->xid);
+		/* Ask the gst to redraw the frame if we are paused */
+		/* TODO: in MTG this works only in non-fs -> fs way. */
+		if (worker->state == GST_STATE_PAUSED)
+		{
+			gst_x_overlay_expose(GST_X_OVERLAY(worker->vsink));
+		}
+	} else {
+		g_debug("Could not set overlay for window id: %x", 
+			(gint) worker->xid);
+	}
+}
+
 /*
  * GstBus synchronous message handler.  NOTE that this handler is NOT invoked
  * from the glib thread, so be careful what you do here.
@@ -511,7 +535,7 @@ static GstBusSyncReply _sync_bus_handler(GstBus *bus, GstMessage *msg,
 	if (GST_MESSAGE_TYPE(msg) == GST_MESSAGE_ELEMENT &&
 	    gst_structure_has_name(msg->structure, "prepare-xwindow-id"))
 	{
-		g_debug("prepare-xwindow-id");
+		g_debug("got prepare-xwindow-id");
 		worker->media.has_visual_content = TRUE;
 		/* The user has to preset the XID, we don't create windows by
 		 * ourselves. */
@@ -527,14 +551,15 @@ static GstBusSyncReply _sync_bus_handler(GstBus *bus, GstMessage *msg,
 					    MAFW_RENDERER_ERROR_UNSUPPORTED_TYPE,
 					    "No XID set."));
 			return GST_BUS_DROP;
+		} else {
+			g_debug ("Video window to use is: %x", 
+				 (gint) worker->xid);
 		}
-		worker->vsink = (GstElement *)GST_MESSAGE_SRC(msg);
-		/* Disable xvimagesink event handling (stealing). */
-		g_object_set(G_OBJECT(worker->vsink), "handle-events", TRUE,
-			     NULL);
-		g_object_set(worker->vsink, "force-aspect-ratio",
-			     TRUE, NULL);
-		mafw_gst_renderer_worker_set_xid(worker, worker->xid);
+
+		/* Instruct vsink to use the client-provided window */
+		mafw_gst_renderer_worker_apply_xid(worker);
+
+		/* Handle colorkey and autopaint */
 		mafw_gst_renderer_worker_set_autopaint(
 			worker,
 			worker->autopaint);
@@ -661,7 +686,7 @@ static gboolean _query_duration_and_seekability_timeout(gpointer data)
 static void _finalize_startup(MafwGstRendererWorker *worker)
 {
 	/* Check video caps */
-	if (worker->vsink) {
+	if (worker->media.has_visual_content) {
 		GstPad *pad = GST_BASE_SINK_PAD(worker->vsink);
 		GstCaps *caps = GST_PAD_CAPS(pad);
 		if (caps && gst_caps_is_fixed(caps)) {
@@ -1315,7 +1340,7 @@ static int xerror(Display *dpy, XErrorEvent *xev)
 	    xev->resourceid == worker->xid &&
 	    xev->error_code == BadWindow)
 	{
-		g_debug("BadWindow received for current xid (%x).",
+		g_warning("BadWindow received for current xid (%x).",
 			(gint)xev->resourceid);
 		worker->xid = 0;
 		/* We must post a message to the bus, because this function is
@@ -1440,10 +1465,12 @@ static void _construct_pipeline(MafwGstRendererWorker *worker)
 
 	_free_taglist(worker);
 
+	g_debug("Creating a new instance of playbin2");
 	worker->pipeline = gst_element_factory_make("playbin2",
 						    "playbin");
 	if (worker->pipeline == NULL)
 	{
+		/* Let's try with playbin */
 		gboolean use_nw;
 
 		/* Use nwqueue only for non-rtsp and non-mms(h) streams. */
@@ -1487,26 +1514,44 @@ static void _construct_pipeline(MafwGstRendererWorker *worker)
 	g_signal_connect(worker->pipeline, "notify::stream-info",
 			 G_CALLBACK(_stream_info_cb), worker);
 
-	/* Set the audio sink ourselves and make sure it has
-	   appropriate buffering settings */
-	worker->asink = gst_element_factory_make("pulsesink", NULL);
-	if (worker->asink) {
+	/* Set audio and video sinks ourselves. We create and configure
+	   them only once. */
+	if (!worker->asink) {
+		worker->asink = gst_element_factory_make("pulsesink", NULL);
+		if (!worker->asink) {
+			g_warning("Failed to create pipeline audio sink");
+			_send_error(worker,
+				    g_error_new(MAFW_RENDERER_ERROR,
+						MAFW_RENDERER_ERROR_UNSUPPORTED_TYPE,
+						worker->media.location));
+			return;
+		}
 		g_object_set(worker->asink, "buffer-time", 
 			     (gint64) MAFW_GST_BUFFER_TIME, NULL);
 		g_object_set(worker->asink, "latency-time", 
 			     (gint64) MAFW_GST_LATENCY_TIME, NULL);
-		g_object_set(worker->pipeline, "audio-sink", 
-			     worker->asink, NULL);		
-	} else {
-		g_warning("Failed to create pipeline audio sink");
-		_send_error(worker,
-			    g_error_new(MAFW_RENDERER_ERROR,
-					MAFW_RENDERER_ERROR_UNSUPPORTED_TYPE,
-					worker->media.location));
-		return;
 	}
 
-        /* Listen for volume changes */
+	if (!worker->vsink) {
+		worker->vsink = gst_element_factory_make("xvimagesink", NULL);
+		if (!worker->vsink) {
+			g_warning("Failed to create pipeline video sink");
+			_send_error(worker,
+				    g_error_new(MAFW_RENDERER_ERROR,
+						MAFW_RENDERER_ERROR_UNSUPPORTED_TYPE,
+						worker->media.location));
+			return;
+		}
+		g_object_set(G_OBJECT(worker->vsink), "handle-events",
+			     TRUE, NULL);
+		g_object_set(worker->vsink, "force-aspect-ratio",
+			     TRUE, NULL);
+	}
+
+	g_object_set(worker->pipeline, "audio-sink", worker->asink, NULL);		
+	g_object_set(worker->pipeline, "video-sink", worker->vsink, NULL);
+
+	/* Configure volume settings */
 	_set_mute(worker);
 	_set_playback_volume(worker, worker->current_volume);
 }
@@ -1637,25 +1682,15 @@ gint mafw_gst_renderer_worker_get_position(MafwGstRendererWorker *worker)
 
 void mafw_gst_renderer_worker_set_xid(MafwGstRendererWorker *worker, XID xid)
 {
+	/* Check for errors on the target window */
 	XSetErrorHandler(xerror);
-	g_debug("setting xid: %x", (guint)xid);
-	worker->xid = xid;
-	/* If playback is ongoing, replace the window.  Theoretically, it
-	 * should work.  Our mileage may vary.
-	 *
-	 * NOTE: Xvimagesink allows setting the xid in any state (e.g. NULL).
-	 * Helixbin however does only allow when at least in READY state. */
-	if (xid && worker->vsink)// && worker->state >= GST_STATE_PAUSED)
-	{
-		gst_x_overlay_set_xwindow_id(GST_X_OVERLAY(worker->vsink), xid);
-		/* Ask the gst to redraw the frame */
-		/* TODO: in MTG this works only in non-fs -> fs way. */
-		if (worker->state == GST_STATE_PAUSED)
-		{
-			gst_x_overlay_expose(GST_X_OVERLAY(worker->vsink));
-		}
-	}
 
+	/* Store the target window id */
+	g_debug("Setting xid: %x", (guint)xid);
+	worker->xid = xid;
+
+	/* Check if we should use it right away */
+	mafw_gst_renderer_worker_apply_xid(worker);
 }
 
 XID mafw_gst_renderer_worker_get_xid(MafwGstRendererWorker *worker)
@@ -1847,7 +1882,7 @@ void mafw_gst_renderer_worker_play(MafwGstRendererWorker *worker,
  */
 void mafw_gst_renderer_worker_stop(MafwGstRendererWorker *worker)
 {
-	g_debug("worker STOP");
+	g_debug("worker stop");
 	g_assert(worker != NULL);
 
 	/* If location is NULL, this is a pre-created pipeline */
@@ -1861,9 +1896,7 @@ void mafw_gst_renderer_worker_stop(MafwGstRendererWorker *worker)
 			worker->async_bus_id = 0;
 		}
 		gst_bus_set_sync_handler(worker->bus, NULL, NULL);
-		g_debug("set state to NULL");
 		gst_element_set_state(worker->pipeline, GST_STATE_NULL);
-		g_debug("state ok");
 		if (worker->bus) {
 			gst_object_unref(GST_OBJECT_CAST(worker->bus));
 			worker->bus = NULL;
@@ -1872,6 +1905,7 @@ void mafw_gst_renderer_worker_stop(MafwGstRendererWorker *worker)
 		worker->pipeline = NULL;
 	}
 
+	/* Reset worker */
 	worker->report_statechanges = TRUE;
 	worker->state = GST_STATE_NULL;
 	worker->prerolling = FALSE;
@@ -1882,16 +1916,19 @@ void mafw_gst_renderer_worker_stop(MafwGstRendererWorker *worker)
 	worker->eos = FALSE;
 	worker->seek_position = -1;
 	_remove_ready_timeout(worker);
+	_free_taglist(worker);
 	if (worker->duration_seek_timeout != 0) {
 		g_source_remove(worker->duration_seek_timeout);
 		worker->duration_seek_timeout = 0;
 	}
-	worker->vsink = NULL;
-	worker->asink = NULL;
-	g_free(worker->media.location);
-	worker->media.location = NULL;
+
+	/* Reset media iformation */
+	_reset_media_info(worker);
+
+	/* We are not playing, so we can let the screen blank */
 	blanking_allow();
-	_free_taglist(worker);
+
+	/* And now get a fresh pipeline ready */
 	_construct_pipeline(worker);
 }
 
@@ -2062,6 +2099,7 @@ MafwGstRendererWorker *mafw_gst_renderer_worker_new(gpointer owner)
 	_build_volume_pipeline(worker);
 	blanking_init();
 	_construct_pipeline(worker);
+
 	return worker;
 }
 
