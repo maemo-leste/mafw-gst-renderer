@@ -402,7 +402,7 @@ static gboolean _handle_video_info(MafwGstRendererWorker *worker,
 	gint width, height;
 	gdouble fps;
 	gboolean unsupported_res;
-	gint error_code;
+	gint error_code = 0;
 
 	width = height = 0;
 	gst_structure_get_int(structure, "width", &width);
