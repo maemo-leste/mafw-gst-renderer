@@ -128,7 +128,6 @@ struct _MafwGstRendererClass {
  * registry:          The registry that owns this renderer
  * media_timer:      Stream timer data
  * current_state:     The renderer's current state
- * requested_state:   When transitioning, stores the next state to set
  * playlist:          The renderer's playlist
  * play_index:        A playlist index that is currently playing
  * buffering:         Buffering indicator

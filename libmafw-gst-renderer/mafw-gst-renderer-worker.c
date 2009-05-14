@@ -348,12 +348,15 @@ static gboolean _go_to_gst_ready(gpointer user_data)
 static void _add_ready_timeout(MafwGstRendererWorker *worker)
 {
 	if (worker->media.seekable) {
-		g_debug("Adding timeout to go to GST_STATE_READY");
-		worker->ready_timeout =
-			g_timeout_add_seconds(
-				MAFW_GST_RENDERER_WORKER_SECONDS_READY,
-				_go_to_gst_ready,
-				worker);
+		if (!worker->ready_timeout)
+		{
+			g_debug("Adding timeout to go to GST_STATE_READY");
+			worker->ready_timeout =
+				g_timeout_add_seconds(
+					MAFW_GST_RENDERER_WORKER_SECONDS_READY,
+					_go_to_gst_ready,
+					worker);
+		}
 	} else {
 		g_debug("Not adding timeout to go to GST_STATE_READY as media "
 			"is not seekable");
@@ -476,9 +479,11 @@ static void _parse_stream_info_item(MafwGstRendererWorker *worker, GObject *obj)
 		}
 		if (vcaps) {
 			if (gst_caps_is_fixed(vcaps))
+			{
 				_handle_video_info(
 					worker,
 					gst_caps_get_structure(vcaps, 0));
+			}
 			gst_caps_unref(vcaps);
 		}
 	}
@@ -692,7 +697,8 @@ static void _finalize_startup(MafwGstRendererWorker *worker)
 		if (caps && gst_caps_is_fixed(caps)) {
 			GstStructure *structure;
 			structure = gst_caps_get_structure(caps, 0);
-			_handle_video_info(worker, structure);
+			if (!_handle_video_info(worker, structure))
+				return;
 		}
 	}
 

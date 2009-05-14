@@ -157,6 +157,7 @@ GObject *mafw_gst_renderer_state_paused_new(MafwGstRenderer *renderer)
 static void _do_play(MafwGstRendererState *self, GError **error)
 {
         g_return_if_fail(MAFW_IS_GST_RENDERER_STATE_PAUSED(self));
+	self->renderer->worker->stay_paused = FALSE;
 	mafw_gst_renderer_state_do_play(self, error);
 }
 
@@ -167,6 +168,7 @@ static void _do_play_object(MafwGstRendererState *self, const gchar *object_id,
 
         g_return_if_fail(MAFW_IS_GST_RENDERER_STATE_PAUSED(self));
 
+	self->renderer->worker->stay_paused = FALSE;
 	prev_mode = mafw_gst_renderer_get_playback_mode(self->renderer);
 	mafw_gst_renderer_state_do_play_object(self, object_id, error);
 	cur_mode = mafw_gst_renderer_get_playback_mode(self->renderer);
@@ -182,6 +184,7 @@ static void _do_stop(MafwGstRendererState *self, GError **error)
 {
         g_return_if_fail(MAFW_IS_GST_RENDERER_STATE_PAUSED(self));
 
+	self->renderer->worker->stay_paused = FALSE;
 	/* Stop playback */
         mafw_gst_renderer_state_do_stop(self, error);
 }
@@ -191,6 +194,7 @@ static void _do_resume(MafwGstRendererState *self, GError **error)
         g_return_if_fail(MAFW_IS_GST_RENDERER_STATE_PAUSED(self));
 
         MafwGstRenderer *renderer = MAFW_GST_RENDERER_STATE(self)->renderer;
+	self->renderer->worker->stay_paused = FALSE;
         mafw_gst_renderer_worker_resume(renderer->worker);
 
         /* Transition will be done after receiving notify_play */
@@ -201,6 +205,7 @@ static void _do_set_position(MafwGstRendererState *self,
 			     GError **error)
 {
         g_return_if_fail(MAFW_IS_GST_RENDERER_STATE_PAUSED(self));
+	self->renderer->worker->stay_paused = TRUE;
 	mafw_gst_renderer_state_do_set_position(self, mode, seconds, error);
 }
 
@@ -212,12 +217,14 @@ static void _do_set_position(MafwGstRendererState *self,
 static void _do_next(MafwGstRendererState *self, GError **error)
 {
         g_return_if_fail(MAFW_IS_GST_RENDERER_STATE_PAUSED(self));
+	self->renderer->worker->stay_paused = FALSE;
 	mafw_gst_renderer_state_do_next(self, error);
 }
 
 static void _do_previous(MafwGstRendererState *self, GError **error)
 {
         g_return_if_fail(MAFW_IS_GST_RENDERER_STATE_PAUSED(self));
+	self->renderer->worker->stay_paused = FALSE;
 	mafw_gst_renderer_state_do_prev(self, error);
 }
 
@@ -225,6 +232,7 @@ static void _do_goto_index(MafwGstRendererState *self, guint index,
 			   GError **error)
 {
         g_return_if_fail(MAFW_IS_GST_RENDERER_STATE_PAUSED(self));
+	self->renderer->worker->stay_paused = FALSE;
 	mafw_gst_renderer_state_do_goto_index(self, index, error);
 }
 
