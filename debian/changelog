@@ -1,8 +1,41 @@
-mafw-gst-renderer (0.1.2009.20-2) unstable; urgency=low
+mafw-gst-renderer (0.1.2009.21-1) unstable; urgency=low
 
-  * MAFW gst renderer, pre-release 0.2009.20-2
+  * MAFW gst renderer, pre-release 0.2009.21-1
+  * Fixes: NB#100842 - seeking in aac over http fails
+  * Fixes: NB#115126 - Media Player abuses Tracker API while playing songs
+  * Create and configure audio and video sinks once, then provide these
+    to playbin2 when a new pipeline is created.
+  * Changed _handle_duration to use _check_duration and added for
+    seekability too.
+  * Reworked _query_duration_and_seekability into _check_duration and _check
+    seekability.
+  * Added timeout to query duration and seekability and changed when it was
+    called.
+  * Set timeout id to 0 when timeout is removed
+  * Used function to compare duration in seconds instead of comparing pure
+    nano seconds.
+  * Added function to compare durations in seconds.
+  * Query duration and seek after buffering is complete.
+  * Reworked adding the timeout to use a function.
+  * Modified seekability emission to be done only with changes and adapted
+    to type changes.
+  * Modified duration emission to be emitted only with changes.
+  * Media seekability initialized to unknown when playback begins.
+  * SeekabilityType renamed and moved to renderer worker.
+  * Renderer worker seekability uses its type now instead of gboolean.
+  * Stored duration and seek timeout id to be able to remove it later in
+    renderer worker.
+  * Added query for duration and seekability some seconds after going to
+    PLAYING to have more accurate information from GStreamer in renreder
+    worker.
+  * Reworked _finalize_startup in renderer worker into _finalize_startup and
+    _query_duration_and_seekability. The first uses now the second.
+  * Set pulse sink's latency-time property to half of buffer-time,
+    this provides double buffering capabilities and should also help
+    with avoiding audio glitches. Also, removed buffering for volume
+    pipeline, since that is not needed.
 
- -- Juha Kellokoski <veitikka6@gmail.com>  Thu, 07 May 2009 11:00:00 +0300
+ -- Juha Kellokoski <veitikka6@gmail.com>  Thu, 14 May 2009 10:09:18 +0300
 
 mafw-gst-renderer (0.1.2009.20-1) unstable; urgency=low
 
