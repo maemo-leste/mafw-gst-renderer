@@ -1,8 +1,12 @@
 mafw-gst-renderer (0.1.2009.21-1) unstable; urgency=low
 
   * MAFW gst renderer, pre-release 0.2009.21-1
+  * Fixes: NB#117015 - video plays in windowed mode
   * Fixes: NB#100842 - seeking in aac over http fails
   * Fixes: NB#115126 - Media Player abuses Tracker API while playing songs
+  * Do not reuse video sink for now, somehow it gets
+    broken after some time and as a result we cannot set XID of target
+    video window to use.
   * Create and configure audio and video sinks once, then provide these
     to playbin2 when a new pipeline is created.
   * Changed _handle_duration to use _check_duration and added for
