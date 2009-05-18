@@ -75,8 +75,6 @@ static void mafw_gst_renderer_finalize(GObject *object);
 /*----------------------------------------------------------------------------
   Hal callbacks
   ----------------------------------------------------------------------------*/
-static void _device_condition(LibHalContext *ctx, const char *udi,
-			      const char *name, const char *detail);
 static void _property_modified(LibHalContext *ctx, const char *udi,
                                const char *key, dbus_bool_t is_removed,
                                dbus_bool_t is_added);
@@ -436,7 +434,6 @@ GObject *mafw_gst_renderer_new(MafwRegistry* registry)
 
 		goto err3;
 	}
-	libhal_ctx_set_device_condition(ctx, _device_condition);
         libhal_ctx_set_device_property_modified(ctx, _property_modified);
 
         /* Initializes blanking policy */
@@ -680,35 +677,6 @@ _connection_init(MafwGstRenderer *renderer)
 /*----------------------------------------------------------------------------
   Hal callbacks
   ----------------------------------------------------------------------------*/
-
-static void _device_condition(LibHalContext *ctx, const char *udi,
-			      const char *name, const char *detail)
-{
-	MafwGstRenderer* self = MAFW_GST_RENDERER(
-                libhal_ctx_get_user_data(ctx));
-
-	g_assert(NULL != self);
-
-	/* If not playing anything, bail out */
-	if (!self->media->uri) 
-		return;
-
-	g_debug("Codition change event from HAL: name=%s, detail=%s",
-                name, detail);
-	if (!strcmp(name, "ButtonPressed") && !strcmp(detail, "usb.cable")) {
-		g_debug("Usb cable connected! Currently playing %s.",
-                        self->media->uri);
-
-		/* TODO: check if we can always expect this prefix */
-		if (g_str_has_prefix(self->media->uri, "file:///media/mmc")) {
-			g_debug("We are playing from mmc, stopping");
-			mafw_renderer_stop(MAFW_RENDERER(self), NULL, NULL);
-		}
-		else {
-			g_debug("Not playing from mmc, continuing");
-		}
-	}
-}
 
 static gboolean _tv_out_is_connected(LibHalContext *ctx, const char *udi)
 {
