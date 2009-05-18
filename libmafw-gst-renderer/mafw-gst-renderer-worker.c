@@ -1547,7 +1547,7 @@ static void _construct_pipeline(MafwGstRendererWorker *worker)
 			     (gint64) MAFW_GST_LATENCY_TIME, NULL);
 	}
 
-	if (!worker->vsink) {
+/*	if (!worker->vsink) { */
 		worker->vsink = gst_element_factory_make("xvimagesink", NULL);
 		if (!worker->vsink) {
 			g_warning("Failed to create pipeline video sink");
@@ -1561,7 +1561,7 @@ static void _construct_pipeline(MafwGstRendererWorker *worker)
 			     TRUE, NULL);
 		g_object_set(worker->vsink, "force-aspect-ratio",
 			     TRUE, NULL);
-	}
+/*	} */
 
 	g_object_set(worker->pipeline, "audio-sink", worker->asink, NULL);		
 	g_object_set(worker->pipeline, "video-sink", worker->vsink, NULL);
@@ -1936,6 +1936,10 @@ void mafw_gst_renderer_worker_stop(MafwGstRendererWorker *worker)
 		g_source_remove(worker->duration_seek_timeout);
 		worker->duration_seek_timeout = 0;
 	}
+
+	/* FIXME: we should be able to reuse vsink */
+	gst_object_unref(worker->vsink);
+	worker->vsink = NULL;
 
 	/* Reset media iformation */
 	_reset_media_info(worker);
