@@ -15,6 +15,7 @@ mafw_gst_renderer_la_SOURCES	= $(BUILT_SOURCES) \
 				  mafw-gst-renderer.c mafw-gst-renderer.h \
 				  mafw-gst-renderer-utils.c mafw-gst-renderer-utils.h \
 				  mafw-gst-renderer-worker.c mafw-gst-renderer-worker.h \
+				  mafw-gst-renderer-worker-volume.c mafw-gst-renderer-worker-volume.h \
 				  mafw-gst-renderer-state.c mafw-gst-renderer-state.h \
 				  mafw-gst-renderer-state-playing.c mafw-gst-renderer-state-playing.h \
 				  mafw-gst-renderer-state-paused.c mafw-gst-renderer-state-paused.h \
