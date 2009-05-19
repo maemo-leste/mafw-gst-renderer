@@ -37,6 +37,7 @@
 
 #define MAFW_GST_RENDERER_WORKER_VOLUME_SERVER NULL
 
+#define MAFW_GST_RENDERER_WORKER_VOLUME_ROLE_PROPERTY "PULSE_PROP_media.role"
 #define MAFW_GST_RENDERER_WORKER_VOLUME_ROLE_PREFIX "sink-input-by-media-role:"
 #define MAFW_GST_RENDERER_WORKER_VOLUME_ROLE "x-maemo"
 
@@ -274,6 +275,9 @@ void mafw_gst_renderer_worker_volume_init(GMainContext *main_context,
 	InitCbClosure *closure;
 
 	g_return_if_fail(cb != NULL);
+
+	g_assert(g_setenv(MAFW_GST_RENDERER_WORKER_VOLUME_ROLE_PROPERTY,
+			  MAFW_GST_RENDERER_WORKER_VOLUME_ROLE, FALSE));
 
 	g_debug("initializing volume manager");
 
