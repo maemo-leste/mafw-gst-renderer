@@ -185,6 +185,8 @@ _state_cb_init(pa_context *c, void *data)
 
 	state = pa_context_get_state(c);
 
+	g_debug("state: %d", state);
+
 	switch (state) {
 	case PA_CONTEXT_TERMINATED:
 	case PA_CONTEXT_FAILED:
@@ -192,6 +194,8 @@ _state_cb_init(pa_context *c, void *data)
 		break;
 	case PA_CONTEXT_READY: {
 		pa_operation *o;
+
+		g_debug("PA_CONTEXT_READY");
 
 		o = pa_ext_stream_restore2_read(c,
 					       _ext_stream_restore_read_cb_init,
@@ -266,6 +270,8 @@ void mafw_gst_renderer_worker_volume_init(GMainContext *main_context,
 
 	g_return_if_fail(cb != NULL);
 
+	g_debug("initializing volume manager");
+
 	wvolume = g_new0(MafwGstRendererWorkerVolume, 1);
 
 	wvolume->volume = 1.0;
@@ -293,6 +299,8 @@ void mafw_gst_renderer_worker_volume_init(GMainContext *main_context,
 	/* register some essential callbacks */
 	pa_context_set_state_callback(wvolume->context, _state_cb_init,
 				      closure);
+
+	g_debug("connecting to pulse");
 
 	g_assert(pa_context_connect(wvolume->context,
 				    MAFW_GST_RENDERER_WORKER_VOLUME_SERVER,
