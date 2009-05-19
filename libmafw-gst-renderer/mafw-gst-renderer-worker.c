@@ -1322,17 +1322,30 @@ static void _stream_info_cb(GstObject *pipeline, GParamSpec *unused,
 	_parse_stream_info(worker);
 }
 
-static void _volume_cb(GstObject *pipeline, GParamSpec *unused,
-                       MafwGstRendererWorker *worker)
+static void _volume_cb(MafwGstRendererWorkerVolume *wvolume, gdouble volume,
+		       gpointer data)
 {
-	GstStructure *structure;
-	GstMessage *message;
+	MafwGstRendererWorker *worker = data;
+	GValue value = {0, };
 
-        g_debug("volume changed");
+	g_value_init(&value, G_TYPE_UINT);
+	g_value_set_uint(&value, (guint) (volume * 100.0));
+	mafw_extension_emit_property_changed(MAFW_EXTENSION(worker->owner),
+					     MAFW_PROPERTY_RENDERER_VOLUME,
+					     &value);
+}
 
-	structure = gst_structure_empty_new("volume-changed");
-	message = gst_message_new_application(NULL, structure);
-	gst_bus_post(worker->volume_bus, message);
+static void _mute_cb(MafwGstRendererWorkerVolume *wvolume, gboolean mute,
+		     gpointer data)
+{
+	MafwGstRendererWorker *worker = data;
+	GValue value = {0, };
+
+	g_value_init(&value, G_TYPE_BOOLEAN);
+	g_value_set_boolean(&value, mute);
+	mafw_extension_emit_property_changed(MAFW_EXTENSION(worker->owner),
+					     MAFW_PROPERTY_RENDERER_MUTE,
+					     &value);
 }
 
 /* TODO: I think it's not enought to act on error, we need to handle
@@ -1385,22 +1398,30 @@ static void _reset_media_info(MafwGstRendererWorker *worker)
 	worker->media.fps = 0.0;
 }
 
-static void _set_volume(MafwGstRendererWorker *worker, gdouble new_vol)
+static void _set_volume_and_mute(MafwGstRendererWorker *worker, gdouble vol,
+				 gboolean mute)
 {
-	g_assert(worker->volume_pipeline != NULL);
+	g_return_if_fail(worker->wvolume != NULL);
 
-	if  ((guint) (new_vol * 100.0) !=
-	     (guint) (worker->current_volume * 100.0)) {
-	    g_object_set(worker->volume_sink, "volume", new_vol, NULL);
-	}
+	mafw_gst_renderer_worker_volume_set(worker->wvolume, vol, mute);
 }
 
-static void _set_mute(MafwGstRendererWorker *worker)
+static void _set_volume(MafwGstRendererWorker *worker, gdouble new_vol)
 {
-	if (worker->pipeline) {
-		g_debug("setting mute: %d", worker->muted);
-		g_object_set(worker->pipeline, "mute", worker->muted, NULL);
-	}
+	g_return_if_fail(worker->wvolume != NULL);
+
+	_set_volume_and_mute(
+		worker, new_vol,
+		mafw_gst_renderer_worker_volume_is_muted(worker->wvolume));
+}
+
+static void _set_mute(MafwGstRendererWorker *worker, gboolean mute)
+{
+	g_return_if_fail(worker->wvolume != NULL);
+
+	_set_volume_and_mute(
+		worker, mafw_gst_renderer_worker_volume_get(worker->wvolume),
+		mute);
 }
 
 /*
@@ -1438,29 +1459,6 @@ static void _start_play(MafwGstRendererWorker *worker)
                 renderer->update_playcount_id = 0;
         }
 
-}
-
-static void _set_playback_volume(MafwGstRendererWorker *worker, gdouble volume)
-{
-	GValue value = { 0 };
-
-	if (worker->pipeline != NULL) {
-		g_object_set(worker->pipeline, "volume", volume, NULL);
-	}
-
-	/* Only emit new volume if really it changed. To avoid
-	 * precission problems, consider only the first two
-	 * decimals */
-	if ((guint) (volume * 100.0) !=
-	    (guint) (worker->current_volume * 100.0)) {
-		worker->current_volume = CLAMP(volume, 0.0, 1.0);
-		g_value_init(&value, G_TYPE_UINT);
-		g_value_set_uint(&value, (guint)(volume*100.0));
-		mafw_extension_emit_property_changed(
-			MAFW_EXTENSION(worker->owner),
-			MAFW_PROPERTY_RENDERER_VOLUME,
-			&value);
-	}
 }
 
 /*
@@ -1567,10 +1565,6 @@ static void _construct_pipeline(MafwGstRendererWorker *worker)
 
 	g_object_set(worker->pipeline, "audio-sink", worker->asink, NULL);		
 	g_object_set(worker->pipeline, "video-sink", worker->vsink, NULL);
-
-	/* Configure volume settings */
-	_set_mute(worker);
-	_set_playback_volume(worker, worker->current_volume);
 }
 
 /*
@@ -1634,19 +1628,19 @@ void mafw_gst_renderer_worker_set_volume(
 guint mafw_gst_renderer_worker_get_volume(
 	MafwGstRendererWorker *worker)
 {
-        return (guint)(worker->current_volume * 100);
+        return (guint)
+		(mafw_gst_renderer_worker_volume_get(worker->wvolume) * 100);
 }
 
 void mafw_gst_renderer_worker_set_mute(MafwGstRendererWorker *worker,
                                      gboolean mute)
 {
-        worker->muted = mute;
-        _set_mute(worker);
+        _set_mute(worker, mute);
 }
 
 gboolean mafw_gst_renderer_worker_get_mute(MafwGstRendererWorker *worker)
 {
-	return worker->muted;
+	return mafw_gst_renderer_worker_volume_is_muted(worker->wvolume);
 }
 
 #ifdef HAVE_GDKPIXBUF
@@ -1767,37 +1761,6 @@ static void _on_pl_entry_parsed(TotemPlParser *parser, gchar *uri,
 	}
 }
 
-static gboolean _monitor_volume_poll_hack(gpointer data)
-{
-	gdouble volume = -1;
-	MafwGstRendererWorker *worker = data;
-	GstStateChangeReturn state_change;
-
-	/* FIXME: Temporal solution, set volume pipeline to PAUSED so we can
-	   read the global volume, then set it back to READY */
-	state_change = gst_element_set_state(worker->volume_pipeline,
-					     GST_STATE_PAUSED);
-	if (state_change == GST_STATE_CHANGE_ASYNC) {
-		GstState state;
-		state_change = gst_element_get_state(worker->volume_pipeline,
-						     &state, NULL,
-						     3 * GST_SECOND);
-	}
-
-	g_object_get(worker->volume_sink, "volume", &volume, NULL);
-
-	if ((guint) (volume * 100.0) !=
-	    (guint) (worker->current_volume * 100.0)) {
-		_set_playback_volume(worker, volume);
-	}
-
-	/* Now, let the volume pipeline go off again */
-	gst_element_set_state(worker->volume_pipeline,
-			      GST_STATE_READY);
-
-	return TRUE;
-}
-
 static void _do_play(MafwGstRendererWorker *worker)
 {
 	g_assert(worker != NULL);
@@ -1814,8 +1777,6 @@ static void _do_play(MafwGstRendererWorker *worker)
 					      GST_STATE_PAUSED);
 			g_debug("setting pipeline to PAUSED");
 		} else {
-			_monitor_volume_poll_hack(worker);
-			_set_mute(worker);
 			gst_element_set_state(worker->pipeline,
 					      GST_STATE_PLAYING);
 			g_debug("setting pipeline to PLAYING");
@@ -1972,113 +1933,27 @@ void mafw_gst_renderer_worker_resume(MafwGstRendererWorker *worker)
 	_do_play(worker);
 }
 
-static gboolean _volume_async_bus_handler(GstBus *bus, GstMessage *msg,
-					  gpointer data)
+static void _volume_init_cb(MafwGstRendererWorkerVolume *wvolume,
+			    gpointer data)
 {
 	MafwGstRendererWorker *worker = data;
-	GError *error = NULL;
+	gdouble volume;
+	gboolean mute;
 
-	switch (GST_MESSAGE_TYPE(msg)) {
-	case GST_MESSAGE_ERROR:
-		gst_message_parse_error(msg, &error, NULL);
-		g_critical("gst error in volume pipeline: domain = %d, "
-			   "code = %d, message = '%s'",
-			   error->domain, error->code, error->message);
-		g_error_free(error);
-		break;
-	case GST_MESSAGE_EOS:
-		g_critical("eos in volume pipeline");
-		break;
-	case GST_MESSAGE_APPLICATION:
-		if (gst_structure_has_name(gst_message_get_structure(msg),
-					   "volume-changed")) {
-			gdouble volume;
-			g_debug("volume async bus handler: volume changed");
-			g_object_get(worker->volume_sink, "volume", &volume,
-				     NULL);
-			_set_playback_volume(worker, volume);
-		}
-	default:
-		break;
-	}
+	worker->wvolume = wvolume;
 
-	return TRUE;
-}
+	g_debug("volume manager initialized");
 
-static void _build_volume_pipeline(MafwGstRendererWorker *worker)
-{
-	GstElement *fakesrc = NULL;
-	/* GstStateChangeReturn state_change; */
-
-	g_assert(worker != NULL && worker->volume_pipeline == NULL);
-
-	fakesrc = gst_element_factory_make("audiotestsrc", NULL);
-	worker->volume_sink = gst_element_factory_make("pulsesink", NULL);
-	g_assert(fakesrc != NULL);
-	g_assert(worker->volume_sink != NULL);
-
-	worker->volume_pipeline = gst_pipeline_new("volume-pipeline");
-
-	worker->volume_bus =
-		gst_pipeline_get_bus(GST_PIPELINE(worker->volume_pipeline));
-	worker->volume_async_bus_id =
-		gst_bus_add_watch(worker->volume_bus, _volume_async_bus_handler,
-				  (gpointer) worker);
-
-	gst_bin_add_many(GST_BIN(worker->volume_pipeline), fakesrc,
-			 worker->volume_sink, NULL);
-	gst_element_link(fakesrc, worker->volume_sink);
-	_monitor_volume_poll_hack(worker);
-
-/*	FIXME: disabled due to power management requirements. A proper fix 
-        for global volume handling will come later, so meanwhile,
-	we pause the volume pipeline only on demand, and then set it back
-	to READY (see _monitor_volume_poll_hack).
-	state_change = gst_element_set_state(worker->volume_pipeline,
-					     GST_STATE_PAUSED);
-	if (state_change == GST_STATE_CHANGE_ASYNC) {
-		GstState state;
-
-		state_change = gst_element_get_state(worker->volume_pipeline,
-						     &state, NULL,
-						     5 * GST_SECOND);
-
-		g_assert(state == GST_STATE_PAUSED);
-	}
-
-	g_assert(state_change == GST_STATE_CHANGE_SUCCESS ||
-		 state_change == GST_STATE_CHANGE_NO_PREROLL);
-
-	g_object_get(worker->volume_sink, "volume", &(worker->current_volume),
-		     NULL);
-
-	g_assert(worker->current_volume != -1);
-
-	_set_playback_volume(worker, worker->current_volume);
-*/	
-        g_signal_connect(worker->volume_sink, "notify::volume",
-			 G_CALLBACK(_volume_cb), worker);
-
-}
-
-static void _destroy_volume_pipeline(MafwGstRendererWorker *worker)
-{
-	g_assert(worker != NULL && worker->volume_pipeline != NULL);
-
-	g_debug("destroying volume pipeline");
-	g_source_remove(worker->volume_async_bus_id);
-	gst_element_set_state(worker->volume_pipeline, GST_STATE_NULL);
-	gst_object_unref(GST_OBJECT_CAST(worker->volume_bus));
-	gst_object_unref(GST_OBJECT(worker->volume_pipeline));
-	worker->volume_async_bus_id = 0;
-	worker->volume_bus = NULL;
-	worker->volume_sink = NULL;
-	worker->volume_pipeline = NULL;
+	volume = mafw_gst_renderer_worker_volume_get(wvolume);
+	mute = mafw_gst_renderer_worker_volume_is_muted(wvolume);
+	_volume_cb(wvolume, volume, worker);
+	_mute_cb(wvolume, mute, worker);
 }
 
 MafwGstRendererWorker *mafw_gst_renderer_worker_new(gpointer owner)
 {
         MafwGstRendererWorker *worker;
+	GMainContext *main_context;
 
 	worker = g_new0(MafwGstRendererWorker, 1);
 	worker->mode = WORKER_MODE_SINGLE_PLAY;
@@ -2091,17 +1966,12 @@ MafwGstRendererWorker *mafw_gst_renderer_worker_new(gpointer owner)
 	worker->seek_position = -1;
 	worker->ready_timeout = 0;
 	worker->in_ready = FALSE;
-	worker->current_volume = -1;
 	worker->xid = 0;
 	worker->autopaint = TRUE;
 	worker->colorkey = -1;
 	worker->vsink = NULL;
 	worker->asink = NULL;
 	worker->tag_list = NULL;
-	worker->volume_pipeline = NULL;
-	worker->volume_sink = NULL;
-	worker->volume_bus = NULL;
-	worker->volume_async_bus_id = 0;
 #ifdef HAVE_GDKPIXBUF
 	worker->current_frame_on_pause = FALSE;
 	_init_tmp_files_pool(worker);
@@ -2113,7 +1983,12 @@ MafwGstRendererWorker *mafw_gst_renderer_worker_new(gpointer owner)
 	worker->notify_eos_handler = NULL;
 	worker->notify_error_handler = NULL;
 	Global_worker = worker;
-	_build_volume_pipeline(worker);
+	main_context = g_main_context_default();
+	worker->wvolume = NULL;
+	mafw_gst_renderer_worker_volume_init(main_context,
+					     _volume_init_cb, worker,
+					     _volume_cb, worker,
+					     _mute_cb, worker);
 	blanking_init();
 	_construct_pipeline(worker);
 
@@ -2126,7 +2001,7 @@ void mafw_gst_renderer_worker_exit(MafwGstRendererWorker *worker)
 #ifdef HAVE_GDKPIXBUF
 	_destroy_tmp_files_pool(worker);
 #endif
+	mafw_gst_renderer_worker_volume_destroy(worker->wvolume);
         mafw_gst_renderer_worker_stop(worker);
-	_destroy_volume_pipeline(worker);
 }
 /* vi: set noexpandtab ts=8 sw=8 cino=t0,(0: */

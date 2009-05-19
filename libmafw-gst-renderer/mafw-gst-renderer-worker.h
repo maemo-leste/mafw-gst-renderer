@@ -27,6 +27,7 @@
 #include <X11/Xdefs.h>
 #include <glib-object.h>
 #include <gst/gst.h>
+#include "mafw-gst-renderer-worker-volume.h"
 
 /* Video restrictions */
 #define VIDEO_MIN_WIDTH     16
@@ -112,10 +113,7 @@ struct _MafwGstRendererWorker {
 	GstElement *pipeline;
 	GstBus *bus;
 	GstState state;
-	GstElement *volume_pipeline;
-	GstElement *volume_sink;
-	GstBus *volume_bus;
-	guint volume_async_bus_id;
+	MafwGstRendererWorkerVolume *wvolume;
 	gboolean is_stream;
 	gboolean muted;
 	gboolean eos;
@@ -125,7 +123,6 @@ struct _MafwGstRendererWorker {
 	gboolean is_live;
 	gboolean stay_paused;
 	gboolean report_statechanges;
-	gdouble current_volume;
 	guint async_bus_id;
 	gint seek_position;
 	guint ready_timeout;
