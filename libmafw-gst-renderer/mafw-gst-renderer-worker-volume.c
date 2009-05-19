@@ -36,7 +36,10 @@
 #define G_LOG_DOMAIN "mafw-gst-renderer-worker-volume"
 
 #define MAFW_GST_RENDERER_WORKER_VOLUME_SERVER NULL
-#define MAFW_GST_RENDERER_WORKER_VOLUME_ROLE "sink-input-by-media-role:x-maemo"
+
+#define MAFW_GST_RENDERER_WORKER_VOLUME_ROLE_PREFIX "sink-input-by-media-role:"
+#define MAFW_GST_RENDERER_WORKER_VOLUME_ROLE "x-maemo"
+
 
 struct _MafwGstRendererWorkerVolume {
 	pa_glib_mainloop *mainloop;
@@ -85,7 +88,8 @@ static void _ext_stream_restore_read_cb(pa_context *c,
 	g_assert(eol >= 0);
 
 	if (i == NULL ||
-	    strcmp(i->name, MAFW_GST_RENDERER_WORKER_VOLUME_ROLE) != 0)
+	    strcmp(i->name, MAFW_GST_RENDERER_WORKER_VOLUME_ROLE_PREFIX
+		   MAFW_GST_RENDERER_WORKER_VOLUME_ROLE) != 0)
 		return;
 
 	volume = _pa_volume_to_per_one(pa_cvolume_max(&i->volume));
@@ -148,7 +152,8 @@ static void _ext_stream_restore_read_cb_init(pa_context *c,
 	g_assert(eol >= 0);
 
 	if (i == NULL ||
-	    strcmp(i->name, MAFW_GST_RENDERER_WORKER_VOLUME_ROLE) != 0)
+	    strcmp(i->name, MAFW_GST_RENDERER_WORKER_VOLUME_ROLE_PREFIX
+		   MAFW_GST_RENDERER_WORKER_VOLUME_ROLE) != 0)
 		return;
 
 	closure->wvolume->volume =
@@ -315,7 +320,8 @@ void mafw_gst_renderer_worker_volume_set(MafwGstRendererWorkerVolume *wvolume,
 	pa_ext_stream_restore2_info info;
         pa_ext_stream_restore2_info *infos[1];
 
-	info.name = MAFW_GST_RENDERER_WORKER_VOLUME_ROLE;
+	info.name = MAFW_GST_RENDERER_WORKER_VOLUME_ROLE_PREFIX
+		MAFW_GST_RENDERER_WORKER_VOLUME_ROLE;
 	info.channel_map.channels = 1;
 	info.channel_map.map[0] = PA_CHANNEL_POSITION_MONO;
 	info.device = NULL;
