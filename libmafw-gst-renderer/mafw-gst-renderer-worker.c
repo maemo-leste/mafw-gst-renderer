@@ -534,7 +534,7 @@ static void mafw_gst_renderer_worker_apply_xid(MafwGstRendererWorker *worker)
 			gst_x_overlay_expose(GST_X_OVERLAY(worker->vsink));
 		}
 	} else {
-		g_debug("Could not set overlay for window id: %x", 
+		g_debug("Not setting overlay for window id: %x", 
 			(gint) worker->xid);
 	}
 }
@@ -1541,6 +1541,7 @@ static void _construct_pipeline(MafwGstRendererWorker *worker)
 						worker->media.location));
 			return;
 		}
+		gst_object_ref(worker->asink);
 		g_object_set(worker->asink, "buffer-time", 
 			     (gint64) MAFW_GST_BUFFER_TIME, NULL);
 		g_object_set(worker->asink, "latency-time", 
@@ -1557,6 +1558,7 @@ static void _construct_pipeline(MafwGstRendererWorker *worker)
 						worker->media.location));
 			return;
 		}
+		gst_object_ref(worker->vsink);
 		g_object_set(G_OBJECT(worker->vsink), "handle-events",
 			     TRUE, NULL);
 		g_object_set(worker->vsink, "force-aspect-ratio",
