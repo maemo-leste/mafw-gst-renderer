@@ -41,6 +41,8 @@
 #define MAFW_GST_RENDERER_WORKER_VOLUME_ROLE_PREFIX "sink-input-by-media-role:"
 #define MAFW_GST_RENDERER_WORKER_VOLUME_ROLE "x-maemo"
 
+#define MAFW_GST_RENDERER_WORKER_SET_TIMEOUT 500
+
 
 struct _MafwGstRendererWorkerVolume {
 	pa_glib_mainloop *mainloop;
@@ -51,6 +53,9 @@ struct _MafwGstRendererWorkerVolume {
 	gpointer user_data;
 	MafwGstRendererWorkerVolumeMuteCb mute_cb;
 	gpointer mute_user_data;
+	gdouble requested_volume;
+	gboolean requested_mute;
+	guint change_request_id;
 };
 
 typedef struct {
@@ -260,6 +265,38 @@ static void _success_cb(pa_context *c, int success, void *userdata)
 	g_assert(success != 0);
 }
 
+static gboolean _set_timeout(gpointer data)
+{
+	pa_ext_stream_restore2_info info;
+        pa_ext_stream_restore2_info *infos[1];
+	MafwGstRendererWorkerVolume *wvolume = data;
+
+	info.name = MAFW_GST_RENDERER_WORKER_VOLUME_ROLE_PREFIX
+		MAFW_GST_RENDERER_WORKER_VOLUME_ROLE;
+	info.channel_map.channels = 1;
+	info.channel_map.map[0] = PA_CHANNEL_POSITION_MONO;
+	info.device = NULL;
+	info.mute = wvolume->requested_mute;
+	info.volume_is_absolute = TRUE;
+        infos[0] = &info;
+
+	pa_cvolume_init(&info.volume);
+	pa_cvolume_set(&info.volume, info.channel_map.channels,
+		       _pa_volume_from_per_one(wvolume->requested_volume));
+
+	g_debug("setting volume to %lf and mute to %d",
+		wvolume->requested_volume, wvolume->requested_mute);
+
+	pa_ext_stream_restore2_write(wvolume->context, PA_UPDATE_REPLACE,
+				     (const pa_ext_stream_restore2_info *
+				      const *)infos,
+                                     1, TRUE, _success_cb, NULL);
+
+	wvolume->change_request_id = 0;
+
+	return FALSE;
+}
+
 void mafw_gst_renderer_worker_volume_init(GMainContext *main_context,
 					  MafwGstRendererWorkerVolumeInitCb cb,
 					  gpointer user_data,
@@ -321,28 +358,14 @@ void mafw_gst_renderer_worker_volume_init(GMainContext *main_context,
 void mafw_gst_renderer_worker_volume_set(MafwGstRendererWorkerVolume *wvolume,
 					 gdouble volume, gboolean mute)
 {
-	pa_ext_stream_restore2_info info;
-        pa_ext_stream_restore2_info *infos[1];
+	wvolume->requested_volume = volume;
+	wvolume->requested_mute = mute;
 
-	info.name = MAFW_GST_RENDERER_WORKER_VOLUME_ROLE_PREFIX
-		MAFW_GST_RENDERER_WORKER_VOLUME_ROLE;
-	info.channel_map.channels = 1;
-	info.channel_map.map[0] = PA_CHANNEL_POSITION_MONO;
-	info.device = NULL;
-	info.mute = mute;
-	info.volume_is_absolute = TRUE;
-        infos[0] = &info;
-
-	pa_cvolume_init(&info.volume);
-	pa_cvolume_set(&info.volume, info.channel_map.channels,
-		       _pa_volume_from_per_one(volume));
-
-	g_debug("setting volume to %lf", volume);
-
-	pa_ext_stream_restore2_write(wvolume->context, PA_UPDATE_REPLACE,
-				     (const pa_ext_stream_restore2_info *
-				      const *)infos,
-                                     1, TRUE, _success_cb, NULL);
+	if (wvolume->change_request_id == 0) {
+		wvolume->change_request_id =
+			g_timeout_add(MAFW_GST_RENDERER_WORKER_SET_TIMEOUT,
+				      _set_timeout, wvolume);
+	}
 }
 
 gdouble mafw_gst_renderer_worker_volume_get(
