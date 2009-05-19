@@ -1,3 +1,22 @@
+mafw-gst-renderer (0.1.2009.21-3) unstable; urgency=low
+
+  * MAFW gst renderer, pre-release 0.2009.21-3
+  * Fixes: NB#104494 - Missing renderer error when video clib has high framerate 
+  * Fixes: NB#115514 - UPnP:After seeking the seekbar on Pause state audio/video clip started playing
+  * Fixes: NB#115304 - Video playback will stop if we plug in usb cable
+  * Fixes: NB#115299 - Media player seek bar comes to starting position if usb cable is pluged in
+  * Properly initialize variable.
+  * Use specific error codes for unsupported 
+    resolution and unsupported fps conditions.
+
+ -- Juha Kellokoski <veitikka6@gmail.com>  Tue, 19 May 2009 10:30:00 +0300
+
+mafw-gst-renderer (0.1.2009.21-2) unstable; urgency=low
+
+  * MAFW gst renderer, pre-release 0.2009.21-2
+
+ -- Juha Kellokoski <veitikka6@gmail.com>  Mon, 18 May 2009 11:00:00 +0300
+
 mafw-gst-renderer (0.1.2009.21-1) unstable; urgency=low
 
   * MAFW gst renderer, pre-release 0.2009.21-1
