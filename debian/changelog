@@ -1,3 +1,14 @@
+mafw-gst-renderer (0.1.2009.21-4) unstable; urgency=low
+
+  * MAFW gst renderer, pre-release 0.2009.21-4
+  * Fixes: NB#107711 - Audio cutting/breaks when opening Web browser
+  * Reuse video sink component, do not create a new one every time
+    we play something.
+  * Ref audio and video sink before setting them, since we want them
+    to persist after the pipeline has been destroyed.
+
+ -- Juha Kellokoski <veitikka6@gmail.com>  Wed, 20 May 2009 11:00:00 +0300
+
 mafw-gst-renderer (0.1.2009.21-3) unstable; urgency=low
 
   * MAFW gst renderer, pre-release 0.2009.21-3
