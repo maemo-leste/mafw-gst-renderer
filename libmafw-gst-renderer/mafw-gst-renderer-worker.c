@@ -648,6 +648,7 @@ static void _check_seekability(MafwGstRendererWorker *worker)
 	if (worker->media.length_nanos != -1)
 	{
 		if (renderer->media->seekability == SEEKABILITY_UNKNOWN) {
+			g_debug("No seekability info from source");
 			GstQuery *seek_query;
 			GstFormat format = GST_FORMAT_TIME;
 			/* Query the seekability of the stream */
@@ -677,7 +678,7 @@ static void _check_seekability(MafwGstRendererWorker *worker)
 			MAFW_METADATA_KEY_IS_SEEKABLE,
 			seekable == SEEKABILITY_SEEKABLE ? TRUE : FALSE);
 	}
-	g_debug("media seekable: %d", worker->media.seekable);
+	g_debug("media seekable: %d", seekable);
 	worker->media.seekable = seekable;
 }
 
@@ -1494,13 +1495,15 @@ static void _construct_pipeline(MafwGstRendererWorker *worker)
 
 		worker->pipeline = gst_element_factory_make("playbin",
 							    "playbin");
-		/* playbin2 doesn't have these properties. */
-		/* These need a modified version of playbin. */
-		g_object_set(G_OBJECT(worker->pipeline),
-			     "nw-queue", use_nw, NULL);
-		g_debug("playbin using network queue: %d", use_nw);
-		g_object_set(G_OBJECT(worker->pipeline),
-			     "no-video-transform", TRUE, NULL);
+
+		if (worker->pipeline) {
+			/* These need a modified version of playbin. */
+			g_object_set(G_OBJECT(worker->pipeline),
+				     "nw-queue", use_nw, NULL);
+			g_debug("playbin using network queue: %d", use_nw);
+			g_object_set(G_OBJECT(worker->pipeline),
+				     "no-video-transform", TRUE, NULL);
+		}
 	}
 
 	if (!worker->pipeline) {
