@@ -65,7 +65,8 @@ typedef struct {
 } InitCbClosure;
 
 #define _pa_volume_to_per_one(volume) \
-	((gdouble)(volume) / (gdouble) PA_VOLUME_NORM)
+	((guint) ((((gdouble)(volume) / (gdouble) PA_VOLUME_NORM) + \
+		   (gdouble) 0.005) * (gdouble) 100.0) / (gdouble) 100.0)
 #define _pa_volume_from_per_one(volume) \
 	((pa_volume_t)((gdouble)(volume) * (gdouble) PA_VOLUME_NORM))
 
