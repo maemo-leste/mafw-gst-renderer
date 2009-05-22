@@ -1,3 +1,27 @@
+mafw-gst-renderer (0.1.2009.22-1) unstable; urgency=low
+
+  * MAFW gst renderer, pre-release 0.2009.22-1
+  * Fixes: NB#112697 - gst-renderer not listening volume change events from pulseaudio
+  * Fixes: NB#118001 - seekbar is disabled after playing a unsupported clip
+  * If we fallback to use playbin instead of playbin2, check that
+    we can actually create an instance before attempting to
+    set properties.
+  * Changed to filter volume and mute changes to join several in a single
+    call.
+  * Setting property to ensure pulse role when initializing volume manager
+    in renderer.
+  * Separated role and its prefix for checking in volume manager in renderer
+  * Added more debug to volume manager in renderer
+  * Added dependencies to debian/control and configure.ac
+  * Migrated volume management in worker to use pulse implementation.
+  * Added code to manage volume with pulse. This code was developed in
+    collaboration with Marc-André Lureau in gitorious. Link:
+    http://gitorious.org/~calvaris/mafw-pulse/calvaris
+  * Added compilation of volume files to Makefile.am in renderer.
+  * Added empty files with licenses for volume management in renderer.
+
+ -- Juha Kellokoski <veitikka6@gmail.com>  Fri, 22 May 2009 12:00:00 +0300
+
 mafw-gst-renderer (0.1.2009.21-4) unstable; urgency=low
 
   * MAFW gst renderer, pre-release 0.2009.21-4
