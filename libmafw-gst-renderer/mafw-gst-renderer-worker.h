@@ -29,14 +29,6 @@
 #include <gst/gst.h>
 #include "mafw-gst-renderer-worker-volume.h"
 
-/* Video restrictions */
-#define VIDEO_MIN_WIDTH     16
-#define VIDEO_MIN_HEIGHT    16
-#define VIDEO_MAX_WIDTH     848
-#define VIDEO_MAX_HEIGHT    576
-#define VIDEO_MIN_FRAMERATE 1.0
-#define VIDEO_MAX_FRAMERATE 30.1
-
 #define MAFW_GST_RENDERER_MAX_TMP_FILES 5
 
 typedef struct _MafwGstRendererWorker MafwGstRendererWorker;

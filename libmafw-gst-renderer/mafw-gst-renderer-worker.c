@@ -401,8 +401,6 @@ static gboolean _handle_video_info(MafwGstRendererWorker *worker,
 {
 	gint width, height;
 	gdouble fps;
-	gboolean unsupported_res;
-	gint error_code = 0;
 
 	width = height = 0;
 	gst_structure_get_int(structure, "width", &width);
@@ -428,28 +426,6 @@ static gboolean _handle_video_info(MafwGstRendererWorker *worker,
 		if (fps_d > 0)
 			fps = (gdouble)fps_n / (gdouble)fps_d;
 		g_debug("video fps: %f", fps);
-	}
-
-	unsupported_res = (width  < VIDEO_MIN_WIDTH  ||
-			   width  > VIDEO_MAX_WIDTH  ||
-			   height < VIDEO_MIN_HEIGHT ||
-			   height > VIDEO_MAX_HEIGHT ||
-			   width  % 4 != 0 ||
-			   height % 2 != 0);
-	
-	if (unsupported_res) {
-		error_code = MAFW_RENDERER_ERROR_UNSUPPORTED_RESOLUTION;
-	} else if (fps > VIDEO_MAX_FRAMERATE) {
-		error_code = MAFW_RENDERER_ERROR_UNSUPPORTED_FPS;
-	}
-
-	if (!worker->is_error && error_code) {
-		_post_error(worker,
-			    g_error_new(MAFW_RENDERER_ERROR,
-					error_code,
-					"Unsupported video: %dx%d @ %f",
-					width, height, fps));
-		return FALSE;
 	}
 
 	worker->media.video_width = width;
