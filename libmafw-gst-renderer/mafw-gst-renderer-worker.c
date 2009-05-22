@@ -1485,22 +1485,27 @@ static void _construct_pipeline(MafwGstRendererWorker *worker)
 	if (worker->pipeline == NULL)
 	{
 		/* Let's try with playbin */
-		gboolean use_nw;
-
-		/* Use nwqueue only for non-rtsp and non-mms(h) streams. */
-		use_nw = worker->media.location && 
-			!g_str_has_prefix(worker->media.location, "rtsp://") &&
-			!g_str_has_prefix(worker->media.location, "mms://") &&
-			!g_str_has_prefix(worker->media.location, "mmsh://");
-
+		g_warning ("playbin2 failed, falling back to playbin");
 		worker->pipeline = gst_element_factory_make("playbin",
 							    "playbin");
 
 		if (worker->pipeline) {
+			/* Use nwqueue only for non-rtsp and non-mms(h)
+			   streams. */
+			gboolean use_nw;
+			use_nw = worker->media.location && 
+				!g_str_has_prefix(worker->media.location, 
+						  "rtsp://") &&
+				!g_str_has_prefix(worker->media.location, 
+						  "mms://") &&
+				!g_str_has_prefix(worker->media.location, 
+						  "mmsh://");
+			
+			g_debug("playbin using network queue: %d", use_nw);
+
 			/* These need a modified version of playbin. */
 			g_object_set(G_OBJECT(worker->pipeline),
 				     "nw-queue", use_nw, NULL);
-			g_debug("playbin using network queue: %d", use_nw);
 			g_object_set(G_OBJECT(worker->pipeline),
 				     "no-video-transform", TRUE, NULL);
 		}
