@@ -272,30 +272,35 @@ static gboolean _set_timeout(gpointer data)
         pa_ext_stream_restore2_info *infos[1];
 	MafwGstRendererWorkerVolume *wvolume = data;
 
-	info.name = MAFW_GST_RENDERER_WORKER_VOLUME_ROLE_PREFIX
-		MAFW_GST_RENDERER_WORKER_VOLUME_ROLE;
-	info.channel_map.channels = 1;
-	info.channel_map.map[0] = PA_CHANNEL_POSITION_MONO;
-	info.device = NULL;
-	info.mute = wvolume->requested_mute;
-	info.volume_is_absolute = TRUE;
-        infos[0] = &info;
+	if (wvolume->mute != wvolume->requested_mute ||
+	    wvolume->volume != wvolume->requested_volume) {
+		info.name = MAFW_GST_RENDERER_WORKER_VOLUME_ROLE_PREFIX
+			MAFW_GST_RENDERER_WORKER_VOLUME_ROLE;
+		info.channel_map.channels = 1;
+		info.channel_map.map[0] = PA_CHANNEL_POSITION_MONO;
+		info.device = NULL;
+		info.volume_is_absolute = TRUE;
+		infos[0] = &info;
 
-	pa_cvolume_init(&info.volume);
-	pa_cvolume_set(&info.volume, info.channel_map.channels,
-		       _pa_volume_from_per_one(wvolume->requested_volume));
+		pa_cvolume_init(&info.volume);
+		pa_cvolume_set(&info.volume, info.channel_map.channels,
+			       _pa_volume_from_per_one(wvolume->
+						       requested_volume));
 
-	g_debug("setting volume to %lf and mute to %d",
-		wvolume->requested_volume, wvolume->requested_mute);
+		g_debug("setting volume to %lf and mute to %d",
+			wvolume->requested_volume, wvolume->requested_mute);
 
-	pa_ext_stream_restore2_write(wvolume->context, PA_UPDATE_REPLACE,
-				     (const pa_ext_stream_restore2_info *
-				      const *)infos,
-                                     1, TRUE, _success_cb, NULL);
+		pa_ext_stream_restore2_write(wvolume->context,
+					     PA_UPDATE_REPLACE,
+					     (const pa_ext_stream_restore2_info*
+					      const *)infos,
+					     1, TRUE, _success_cb, NULL);
+	} else {
+		g_debug("removing volume timeout");
+		wvolume->change_request_id = 0;
+	}
 
-	wvolume->change_request_id = 0;
-
-	return FALSE;
+	return wvolume->change_request_id != 0;
 }
 
 void mafw_gst_renderer_worker_volume_init(GMainContext *main_context,
@@ -365,6 +370,8 @@ void mafw_gst_renderer_worker_volume_set(MafwGstRendererWorkerVolume *wvolume,
 	wvolume->requested_mute = mute;
 
 	if (wvolume->change_request_id == 0) {
+		_set_timeout(wvolume);
+
 		wvolume->change_request_id =
 			g_timeout_add(MAFW_GST_RENDERER_WORKER_SET_TIMEOUT,
 				      _set_timeout, wvolume);
