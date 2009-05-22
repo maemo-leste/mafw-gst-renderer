@@ -41,7 +41,7 @@
 #define MAFW_GST_RENDERER_WORKER_VOLUME_ROLE_PREFIX "sink-input-by-media-role:"
 #define MAFW_GST_RENDERER_WORKER_VOLUME_ROLE "x-maemo"
 
-#define MAFW_GST_RENDERER_WORKER_SET_TIMEOUT 500
+#define MAFW_GST_RENDERER_WORKER_SET_TIMEOUT 200
 
 
 struct _MafwGstRendererWorkerVolume {
