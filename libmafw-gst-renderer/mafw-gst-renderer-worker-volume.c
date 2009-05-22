@@ -358,6 +358,8 @@ void mafw_gst_renderer_worker_volume_init(GMainContext *main_context,
 void mafw_gst_renderer_worker_volume_set(MafwGstRendererWorkerVolume *wvolume,
 					 gdouble volume, gboolean mute)
 {
+	g_return_if_fail(wvolume != NULL);
+
 	wvolume->requested_volume = volume;
 	wvolume->requested_mute = mute;
 
@@ -371,6 +373,8 @@ void mafw_gst_renderer_worker_volume_set(MafwGstRendererWorkerVolume *wvolume,
 gdouble mafw_gst_renderer_worker_volume_get(
 	MafwGstRendererWorkerVolume *wvolume)
 {
+	g_return_val_if_fail(wvolume != NULL, 0.0);
+
 	g_debug("getting volume; %lf", wvolume->volume);
 
 	return wvolume->volume;
@@ -379,6 +383,8 @@ gdouble mafw_gst_renderer_worker_volume_get(
 gboolean mafw_gst_renderer_worker_volume_is_muted(
 	MafwGstRendererWorkerVolume *wvolume)
 {
+	g_return_val_if_fail(wvolume != NULL, FALSE);
+
 	g_debug("getting mute; %d", wvolume->mute);
 
 	return wvolume->mute;
@@ -387,6 +393,8 @@ gboolean mafw_gst_renderer_worker_volume_is_muted(
 void mafw_gst_renderer_worker_volume_destroy(
 	MafwGstRendererWorkerVolume *wvolume)
 {
+	g_return_if_fail(wvolume != NULL);
+
 	g_debug("disconnecting");
 
 	pa_ext_stream_restore_set_subscribe_cb(wvolume->context, NULL, NULL);
