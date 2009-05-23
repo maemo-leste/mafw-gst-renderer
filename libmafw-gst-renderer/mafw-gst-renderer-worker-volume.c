@@ -47,8 +47,8 @@
 struct _MafwGstRendererWorkerVolume {
 	pa_glib_mainloop *mainloop;
 	pa_context *context;
-	gdouble volume;
-	gboolean mute;
+	gdouble pulse_volume;
+	gboolean pulse_mute;
 	MafwGstRendererWorkerVolumeChangedCb cb;
 	gpointer user_data;
 	MafwGstRendererWorkerVolumeMuteCb mute_cb;
@@ -102,15 +102,15 @@ static void _ext_stream_restore_read_cb(pa_context *c,
 	volume = _pa_volume_to_per_one(pa_cvolume_max(&i->volume));
 	mute = i->mute != 0 ? TRUE : FALSE;
 
-	signal_volume = volume != wvolume->volume;
-	signal_mute = mute != wvolume->mute;
+	signal_volume = volume != wvolume->pulse_volume;
+	signal_mute = mute != wvolume->pulse_mute;
 
-	wvolume->volume = volume;
-	wvolume->mute = mute;
+	wvolume->pulse_volume = volume;
+	wvolume->pulse_mute = mute;
 
 	/* EMIT VOLUME */
 	g_debug("ext stream volume is %lf (mute: %d) for role %s in device %s",
-		wvolume->volume, i->mute, i->name, i->device);
+		wvolume->pulse_volume, i->mute, i->name, i->device);
 	if (signal_volume && wvolume->cb != NULL) {
 		g_debug("signalling volume");
 		wvolume->cb(wvolume, volume, wvolume->user_data);
@@ -163,13 +163,13 @@ static void _ext_stream_restore_read_cb_init(pa_context *c,
 		   MAFW_GST_RENDERER_WORKER_VOLUME_ROLE) != 0)
 		return;
 
-	closure->wvolume->volume =
+	closure->wvolume->pulse_volume =
 		_pa_volume_to_per_one(pa_cvolume_max(&i->volume));
-	closure->wvolume->mute = i->mute != 0 ? TRUE : FALSE;
+	closure->wvolume->pulse_mute = i->mute != 0 ? TRUE : FALSE;
 
 	/* NOT EMIT VOLUME, BUT DEBUG */
 	g_debug("ext stream volume is %lf (mute: %d) for role %s in device %s",
-		closure->wvolume->volume, i->mute, i->name, i->device);
+		closure->wvolume->pulse_volume, i->mute, i->name, i->device);
 
 	closure->cb(closure->wvolume, closure->user_data);
 
@@ -272,8 +272,8 @@ static gboolean _set_timeout(gpointer data)
         pa_ext_stream_restore2_info *infos[1];
 	MafwGstRendererWorkerVolume *wvolume = data;
 
-	if (wvolume->mute != wvolume->requested_mute ||
-	    wvolume->volume != wvolume->requested_volume) {
+	if (wvolume->pulse_mute != wvolume->requested_mute ||
+	    wvolume->pulse_volume != wvolume->requested_volume) {
 		info.name = MAFW_GST_RENDERER_WORKER_VOLUME_ROLE_PREFIX
 			MAFW_GST_RENDERER_WORKER_VOLUME_ROLE;
 		info.channel_map.channels = 1;
@@ -327,8 +327,8 @@ void mafw_gst_renderer_worker_volume_init(GMainContext *main_context,
 
 	wvolume = g_new0(MafwGstRendererWorkerVolume, 1);
 
-	wvolume->volume = 1.0;
-	wvolume->mute = FALSE;
+	wvolume->pulse_volume = 1.0;
+	wvolume->pulse_mute = FALSE;
 	wvolume->cb = changed_cb;
 	wvolume->user_data = changed_user_data;
 	wvolume->mute_cb = mute_cb;
@@ -384,9 +384,9 @@ gdouble mafw_gst_renderer_worker_volume_get(
 {
 	g_return_val_if_fail(wvolume != NULL, 0.0);
 
-	g_debug("getting volume; %lf", wvolume->volume);
+	g_debug("getting volume; %lf", wvolume->pulse_volume);
 
-	return wvolume->volume;
+	return wvolume->pulse_volume;
 }
 
 gboolean mafw_gst_renderer_worker_volume_is_muted(
@@ -394,9 +394,9 @@ gboolean mafw_gst_renderer_worker_volume_is_muted(
 {
 	g_return_val_if_fail(wvolume != NULL, FALSE);
 
-	g_debug("getting mute; %d", wvolume->mute);
+	g_debug("getting mute; %d", wvolume->pulse_mute);
 
-	return wvolume->mute;
+	return wvolume->pulse_mute;
 }
 
 void mafw_gst_renderer_worker_volume_destroy(
