@@ -53,8 +53,8 @@ struct _MafwGstRendererWorkerVolume {
 	gpointer user_data;
 	MafwGstRendererWorkerVolumeMuteCb mute_cb;
 	gpointer mute_user_data;
-	gdouble requested_volume;
-	gboolean requested_mute;
+	gdouble current_volume;
+	gboolean current_mute;
 	guint change_request_id;
 };
 
@@ -272,8 +272,8 @@ static gboolean _set_timeout(gpointer data)
         pa_ext_stream_restore2_info *infos[1];
 	MafwGstRendererWorkerVolume *wvolume = data;
 
-	if (wvolume->pulse_mute != wvolume->requested_mute ||
-	    wvolume->pulse_volume != wvolume->requested_volume) {
+	if (wvolume->pulse_mute != wvolume->current_mute ||
+	    wvolume->pulse_volume != wvolume->current_volume) {
 		info.name = MAFW_GST_RENDERER_WORKER_VOLUME_ROLE_PREFIX
 			MAFW_GST_RENDERER_WORKER_VOLUME_ROLE;
 		info.channel_map.channels = 1;
@@ -282,14 +282,14 @@ static gboolean _set_timeout(gpointer data)
 		info.volume_is_absolute = TRUE;
 		infos[0] = &info;
 
-		info.mute = wvolume->requested_mute;
+		info.mute = wvolume->current_mute;
 		pa_cvolume_init(&info.volume);
 		pa_cvolume_set(&info.volume, info.channel_map.channels,
 			       _pa_volume_from_per_one(wvolume->
-						       requested_volume));
+						       current_volume));
 
 		g_debug("setting volume to %lf and mute to %d",
-			wvolume->requested_volume, wvolume->requested_mute);
+			wvolume->current_volume, wvolume->current_mute);
 
 		pa_ext_stream_restore2_write(wvolume->context,
 					     PA_UPDATE_REPLACE,
@@ -367,8 +367,8 @@ void mafw_gst_renderer_worker_volume_set(MafwGstRendererWorkerVolume *wvolume,
 {
 	g_return_if_fail(wvolume != NULL);
 
-	wvolume->requested_volume = volume;
-	wvolume->requested_mute = mute;
+	wvolume->current_volume = volume;
+	wvolume->current_mute = mute;
 
 	if (wvolume->change_request_id == 0) {
 		_set_timeout(wvolume);
