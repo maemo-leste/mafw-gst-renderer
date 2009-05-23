@@ -282,6 +282,7 @@ static gboolean _set_timeout(gpointer data)
 		info.volume_is_absolute = TRUE;
 		infos[0] = &info;
 
+		info.mute = wvolume->requested_mute;
 		pa_cvolume_init(&info.volume);
 		pa_cvolume_set(&info.volume, info.channel_map.channels,
 			       _pa_volume_from_per_one(wvolume->
