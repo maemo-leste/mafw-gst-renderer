@@ -56,6 +56,7 @@ struct _MafwGstRendererWorkerVolume {
 	gdouble current_volume;
 	gboolean current_mute;
 	guint change_request_id;
+	pa_operation *pa_operation;
 };
 
 typedef struct {
@@ -235,6 +236,12 @@ static gboolean _destroy_idle(gpointer data)
 
 	g_debug("destroying");
 
+	if (wvolume->pa_operation != NULL) {
+		if (pa_operation_get_state(wvolume->pa_operation) == PA_OPERATION_RUNNING) {
+			pa_operation_cancel(wvolume->pa_operation);
+		}
+		pa_operation_unref(wvolume->pa_operation);
+	}
 	pa_context_unref(wvolume->context);
 	pa_glib_mainloop_free(wvolume->mainloop);
 	g_free(wvolume);
@@ -291,11 +298,18 @@ static gboolean _set_timeout(gpointer data)
 		g_debug("setting volume to %lf and mute to %d",
 			wvolume->current_volume, wvolume->current_mute);
 
-		pa_ext_stream_restore2_write(wvolume->context,
-					     PA_UPDATE_REPLACE,
-					     (const pa_ext_stream_restore2_info*
-					      const *)infos,
-					     1, TRUE, _success_cb, NULL);
+		if (wvolume->pa_operation != NULL) {
+			pa_operation_unref(wvolume->pa_operation);
+		}
+
+		wvolume->pa_operation = pa_ext_stream_restore2_write(
+			wvolume->context,
+			PA_UPDATE_REPLACE,
+			(const pa_ext_stream_restore2_info*
+			 const *)infos,
+			1, TRUE, _success_cb, wvolume);
+
+		g_assert(wvolume->pa_operation != NULL);
 	} else {
 		g_debug("removing volume timeout");
 		wvolume->change_request_id = 0;
