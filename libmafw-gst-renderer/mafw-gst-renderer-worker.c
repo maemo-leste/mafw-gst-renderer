@@ -1489,12 +1489,13 @@ static void _construct_pipeline(MafwGstRendererWorker *worker)
 	}
 
 	if (!worker->pipeline) {
-		g_debug("failed to create playback pipeline");
-		_send_error(worker,
-			    g_error_new(MAFW_RENDERER_ERROR,
-					MAFW_RENDERER_ERROR_UNSUPPORTED_TYPE,
-					worker->media.location));
-		return;
+		g_critical("failed to create playback pipeline");
+		g_signal_emit_by_name(MAFW_EXTENSION (worker->owner), 
+				      "error",
+				      MAFW_RENDERER_ERROR,
+				      MAFW_RENDERER_ERROR_UNSUPPORTED_TYPE,
+				      worker->media.location);
+		g_assert_not_reached();
 	}
 
 	/* g_object_set(worker->pipeline,"flags",99,NULL); */
@@ -1517,12 +1518,13 @@ static void _construct_pipeline(MafwGstRendererWorker *worker)
 	if (!worker->asink) {
 		worker->asink = gst_element_factory_make("pulsesink", NULL);
 		if (!worker->asink) {
-			g_warning("Failed to create pipeline audio sink");
-			_send_error(worker,
-				    g_error_new(MAFW_RENDERER_ERROR,
-						MAFW_RENDERER_ERROR_UNSUPPORTED_TYPE,
-						worker->media.location));
-			return;
+			g_critical("Failed to create pipeline audio sink");
+			g_signal_emit_by_name(MAFW_EXTENSION (worker->owner), 
+					      "error",
+					      MAFW_RENDERER_ERROR,
+					      MAFW_RENDERER_ERROR_UNSUPPORTED_TYPE,
+					      worker->media.location);
+			g_assert_not_reached();
 		}
 		gst_object_ref(worker->asink);
 		g_object_set(worker->asink, "buffer-time", 
@@ -1534,12 +1536,13 @@ static void _construct_pipeline(MafwGstRendererWorker *worker)
 	if (!worker->vsink) {
 		worker->vsink = gst_element_factory_make("xvimagesink", NULL);
 		if (!worker->vsink) {
-			g_warning("Failed to create pipeline video sink");
-			_send_error(worker,
-				    g_error_new(MAFW_RENDERER_ERROR,
-						MAFW_RENDERER_ERROR_UNSUPPORTED_TYPE,
-						worker->media.location));
-			return;
+			g_critical("Failed to create pipeline video sink");
+			g_signal_emit_by_name(MAFW_EXTENSION (worker->owner), 
+					      "error",
+					      MAFW_RENDERER_ERROR,
+					      MAFW_RENDERER_ERROR_UNSUPPORTED_TYPE,
+					      worker->media.location);
+			g_assert_not_reached();
 		}
 		gst_object_ref(worker->vsink);
 		g_object_set(G_OBJECT(worker->vsink), "handle-events",
