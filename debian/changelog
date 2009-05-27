@@ -1,3 +1,15 @@
+mafw-gst-renderer (0.1.2009.22-3) unstable; urgency=low
+
+  * MAFW gst renderer, pre-release 0.2009.22-3
+  * Fixes: NB#118459 - Cannot play Nokia 5800 video clip 
+  * Fixes: NB#115776 - Renderer state changed signal are not coming when playing and seeking video
+  * Use appropriate error codes when the renderer cannot create
+    the playback pipeline and when there are problems with the
+    video window.
+  * Abort the renderer if cannot create pipeline ot sinks.
+
+ -- Juha Kellokoski <veitikka6@gmail.com>  Wed, 27 May 2009 10:30:00 +0300
+
 mafw-gst-renderer (0.1.2009.22-2) unstable; urgency=low
 
   * MAFW gst renderer, pre-release 0.2009.22-2
