@@ -538,8 +538,8 @@ static GstBusSyncReply _sync_bus_handler(GstBus *bus, GstMessage *msg,
 			_post_error(worker,
 				    g_error_new_literal(
 					    MAFW_RENDERER_ERROR,
-					    MAFW_RENDERER_ERROR_UNSUPPORTED_TYPE,
-					    "No XID set."));
+					    MAFW_RENDERER_ERROR_PLAYBACK,
+					    "No video window XID set"));
 			return GST_BUS_DROP;
 		} else {
 			g_debug ("Video window to use is: %x", 
@@ -1353,7 +1353,7 @@ static int xerror(Display *dpy, XErrorEvent *xev)
 		 * invoked from a different thread (xvimagerenderer's queue). */
 		_post_error(worker, g_error_new_literal(
 				    MAFW_RENDERER_ERROR,
-				    MAFW_RENDERER_ERROR_UNSUPPORTED_TYPE,
+				    MAFW_RENDERER_ERROR_PLAYBACK,
 				    "Video window gone"));
 	}
 	return 0;
@@ -1493,8 +1493,8 @@ static void _construct_pipeline(MafwGstRendererWorker *worker)
 		g_signal_emit_by_name(MAFW_EXTENSION (worker->owner), 
 				      "error",
 				      MAFW_RENDERER_ERROR,
-				      MAFW_RENDERER_ERROR_UNSUPPORTED_TYPE,
-				      worker->media.location);
+				      MAFW_RENDERER_ERROR_UNABLE_TO_PERFORM,
+				      "Could not create pipeline");
 		g_assert_not_reached();
 	}
 
@@ -1522,8 +1522,8 @@ static void _construct_pipeline(MafwGstRendererWorker *worker)
 			g_signal_emit_by_name(MAFW_EXTENSION (worker->owner), 
 					      "error",
 					      MAFW_RENDERER_ERROR,
-					      MAFW_RENDERER_ERROR_UNSUPPORTED_TYPE,
-					      worker->media.location);
+					      MAFW_RENDERER_ERROR_UNABLE_TO_PERFORM,
+					      "Could not create audio sink");
 			g_assert_not_reached();
 		}
 		gst_object_ref(worker->asink);
@@ -1540,8 +1540,8 @@ static void _construct_pipeline(MafwGstRendererWorker *worker)
 			g_signal_emit_by_name(MAFW_EXTENSION (worker->owner), 
 					      "error",
 					      MAFW_RENDERER_ERROR,
-					      MAFW_RENDERER_ERROR_UNSUPPORTED_TYPE,
-					      worker->media.location);
+					      MAFW_RENDERER_ERROR_UNABLE_TO_PERFORM,
+					      "Could not create video sink");
 			g_assert_not_reached();
 		}
 		gst_object_ref(worker->vsink);
