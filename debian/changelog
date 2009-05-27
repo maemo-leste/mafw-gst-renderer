@@ -1,8 +1,34 @@
+mafw-gst-renderer (0.1.2009.22-2) unstable; urgency=low
+
+  * MAFW gst renderer, pre-release 0.2009.22-2
+  * Fixes: NB#114972 - NP: AUdio- Taping on Next or Previous song volume goes to 0 level
+  * Fixes: NB#109166 - NP view - Volume bar does not popup for Hardware volume +/- key presses
+  * Fixes: NB#116070 - video plays before displaying unsupported resolution error message
+  * Fixes: NB#112697 - gst-renderer not listening volume change events from pulseaudio
+  * Fixes: NB#118001 - seekbar is disabled after playing a unsupported clip
+  * We switch volume manager volume to the just set so we signal it directly
+    when the change is requested. We don't signal any change in the volume
+    subscription if we have and operation in progress.
+  * We keep the pa_operation when writing the volume and cancel it and unref
+    it when a new one comes.
+  * Changed requested_* structure members to current_* in volume manager
+  * Renamed volume and mute structure members to pulse_* in volume manager.
+  * Fixed a small problem with mute. We were forgetting to set it when
+    sending it to pulse.
+  * Changed timeout interval for setting volume to 200ms.
+  * We just change the volume as soon as we get the first call and then we
+    add the timeout to filter following changes.
+  * Improved rounding volumes as we signalled different ones from the one we
+    were setting.
+  * Added protections to public methods so that they are not called when
+    volume manager is not alive yet.
+  * Minor changes when falling back to playbin usage.
+
+ -- Juha Kellokoski <veitikka6@gmail.com>  Mon, 25 May 2009 12:21:24 +0300
+
 mafw-gst-renderer (0.1.2009.22-1) unstable; urgency=low
 
   * MAFW gst renderer, pre-release 0.2009.22-1
-  * Fixes: NB#112697 - gst-renderer not listening volume change events from pulseaudio
-  * Fixes: NB#118001 - seekbar is disabled after playing a unsupported clip
   * If we fallback to use playbin instead of playbin2, check that
     we can actually create an instance before attempting to
     set properties.
@@ -25,7 +51,6 @@ mafw-gst-renderer (0.1.2009.22-1) unstable; urgency=low
 mafw-gst-renderer (0.1.2009.21-4) unstable; urgency=low
 
   * MAFW gst renderer, pre-release 0.2009.21-4
-  * Fixes: NB#107711 - Audio cutting/breaks when opening Web browser
   * Reuse video sink component, do not create a new one every time
     we play something.
   * Ref audio and video sink before setting them, since we want them
