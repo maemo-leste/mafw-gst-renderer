@@ -131,6 +131,19 @@ static void _ext_stream_restore_read_cb(pa_context *c,
 	}
 }
 
+static void _destroy_context(MafwGstRendererWorkerVolume *wvolume)
+{
+	if (wvolume->pa_operation != NULL) {
+		if (pa_operation_get_state(wvolume->pa_operation) ==
+		    PA_OPERATION_RUNNING) {
+			pa_operation_cancel(wvolume->pa_operation);
+		}
+		pa_operation_unref(wvolume->pa_operation);
+		wvolume->pa_operation = NULL;
+	}
+	pa_context_unref(wvolume->context);
+}
+
 static void
 _state_cb(pa_context *c, void *data)
 {
@@ -247,13 +260,7 @@ static gboolean _destroy_idle(gpointer data)
 
 	g_debug("destroying");
 
-	if (wvolume->pa_operation != NULL) {
-		if (pa_operation_get_state(wvolume->pa_operation) == PA_OPERATION_RUNNING) {
-			pa_operation_cancel(wvolume->pa_operation);
-		}
-		pa_operation_unref(wvolume->pa_operation);
-	}
-	pa_context_unref(wvolume->context);
+	_destroy_context(wvolume);
 	pa_glib_mainloop_free(wvolume->mainloop);
 	g_free(wvolume);
 
