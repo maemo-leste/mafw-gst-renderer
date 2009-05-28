@@ -232,7 +232,9 @@ static void _ext_stream_restore_read_cb_init(pa_context *c,
 	g_debug("ext stream volume is %lf (mute: %d) for role %s in device %s",
 		closure->wvolume->pulse_volume, i->mute, i->name, i->device);
 
-	closure->cb(closure->wvolume, closure->user_data);
+	if (closure->cb != NULL) {
+		closure->cb(closure->wvolume, closure->user_data);
+	}
 
 	pa_context_set_state_callback(closure->wvolume->context, _state_cb,
 				      closure->wvolume);
