@@ -191,7 +191,9 @@ _state_cb(pa_context *c, void *data)
 	switch (state) {
 	case PA_CONTEXT_TERMINATED:
 	case PA_CONTEXT_FAILED:
-		g_error("Unexpected problem in volume management");
+		g_warning("got disconnected from pulse, reconnecting");
+		_destroy_context(wvolume);
+		_connect(wvolume, NULL, NULL);
 		break;
 	case PA_CONTEXT_READY: {
 		pa_operation *o;
