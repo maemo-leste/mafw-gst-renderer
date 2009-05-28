@@ -236,6 +236,21 @@ static void _ext_stream_restore_read_cb_init(pa_context *c,
 
 	if (closure->cb != NULL) {
 		closure->cb(closure->wvolume, closure->user_data);
+	} else {
+		if (closure->wvolume->cb != NULL) {
+			g_debug("signalling volume after reconnection");
+			closure->wvolume->cb(closure->wvolume,
+					     closure->wvolume->current_volume,
+					     closure->wvolume->user_data);
+		}
+		if (closure->wvolume->mute_cb != NULL) {
+			g_debug("signalling mute after reconnection");
+			closure->wvolume->mute_cb(closure->wvolume,
+						  closure->wvolume->
+						  current_mute,
+						  closure->wvolume->
+						  mute_user_data);
+		}
 	}
 
 	pa_context_set_state_callback(closure->wvolume->context, _state_cb,
