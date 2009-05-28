@@ -75,6 +75,9 @@ typedef struct {
 	(wvolume->pa_operation != NULL && \
 	 pa_operation_get_state(wvolume->pa_operation) == PA_OPERATION_RUNNING)
 
+static void _state_cb_init(pa_context *c, void *data);
+
+
 static gchar *_get_client_name(void) {
 	gchar buf[PATH_MAX];
 	gchar *name = NULL;
@@ -142,6 +145,39 @@ static void _destroy_context(MafwGstRendererWorkerVolume *wvolume)
 		wvolume->pa_operation = NULL;
 	}
 	pa_context_unref(wvolume->context);
+}
+
+static void _connect(MafwGstRendererWorkerVolume *wvolume,
+		     MafwGstRendererWorkerVolumeInitCb cb,
+		     gpointer user_data)
+{
+	gchar *name = NULL;
+	pa_mainloop_api *api = NULL;
+	InitCbClosure *closure;
+
+	name = _get_client_name();
+
+	/* get the mainloop api and create a context */
+	api = pa_glib_mainloop_get_api(wvolume->mainloop);
+	wvolume->context = pa_context_new(api, name);
+	g_assert(wvolume->context != NULL);
+
+	closure = g_new(InitCbClosure, 1);
+	closure->wvolume = wvolume;
+	closure->cb = cb;
+	closure->user_data = user_data;
+
+	/* register some essential callbacks */
+	pa_context_set_state_callback(wvolume->context, _state_cb_init,
+				      closure);
+
+	g_debug("connecting to pulse");
+
+	g_assert(pa_context_connect(wvolume->context,
+				    MAFW_GST_RENDERER_WORKER_VOLUME_SERVER,
+				    PA_CONTEXT_NOAUTOSPAWN | PA_CONTEXT_NOFAIL,
+				    NULL) >= 0);
+	g_free(name);
 }
 
 static void
@@ -346,9 +382,6 @@ void mafw_gst_renderer_worker_volume_init(GMainContext *main_context,
 					  mute_cb, gpointer mute_user_data)
 {
 	MafwGstRendererWorkerVolume *wvolume = NULL;
-	gchar *name = NULL;
-	pa_mainloop_api *api = NULL;
-	InitCbClosure *closure;
 
 	g_return_if_fail(cb != NULL);
 
@@ -369,29 +402,7 @@ void mafw_gst_renderer_worker_volume_init(GMainContext *main_context,
 	wvolume->mainloop = pa_glib_mainloop_new(main_context);
 	g_assert(wvolume->mainloop != NULL);
 
-	name = _get_client_name();
-
-	/* get the mainloop api and create a context */
-	api = pa_glib_mainloop_get_api(wvolume->mainloop);
-	wvolume->context = pa_context_new(api, name);
-	g_assert(wvolume->context != NULL);
-
-	closure = g_new(InitCbClosure, 1);
-	closure->wvolume = wvolume;
-	closure->cb = cb;
-	closure->user_data = user_data;
-
-	/* register some essential callbacks */
-	pa_context_set_state_callback(wvolume->context, _state_cb_init,
-				      closure);
-
-	g_debug("connecting to pulse");
-
-	g_assert(pa_context_connect(wvolume->context,
-				    MAFW_GST_RENDERER_WORKER_VOLUME_SERVER,
-				    PA_CONTEXT_NOAUTOSPAWN | PA_CONTEXT_NOFAIL,
-				    NULL) >= 0);
-	g_free(name);
+	_connect(wvolume, cb, user_data);
 }
 
 void mafw_gst_renderer_worker_volume_set(MafwGstRendererWorkerVolume *wvolume,
