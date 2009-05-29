@@ -1126,17 +1126,17 @@ static GError * _get_specific_missing_plugin_error(GstMessage *msg)
 		mime = gst_structure_get_name(caps_struct);
 
 		if (g_strrstr(mime, "video")) {
-			error = g_error_new(
+			error = g_error_new_literal(
 				MAFW_RENDERER_ERROR,
 				MAFW_RENDERER_ERROR_VIDEO_CODEC_NOT_FOUND,
 				desc);
 		} else if (g_strrstr(mime, "audio")) {
-			error = g_error_new(
+			error = g_error_new_literal(
 				MAFW_RENDERER_ERROR,
 				MAFW_RENDERER_ERROR_AUDIO_CODEC_NOT_FOUND,
 				desc);
 		} else {
-			error = g_error_new(
+			error = g_error_new_literal(
 				MAFW_RENDERER_ERROR,
 				MAFW_RENDERER_ERROR_CODEC_NOT_FOUND,
 				desc);
