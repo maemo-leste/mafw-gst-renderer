@@ -451,7 +451,7 @@ void mafw_gst_renderer_worker_volume_set(MafwGstRendererWorkerVolume *wvolume,
 	}
 
 	if (signal_mute) {
-		g_debug("signalling volume");
+		g_debug("signalling mute");
 		wvolume->mute_cb(wvolume, mute, wvolume->mute_user_data);
 	}
 
@@ -469,7 +469,7 @@ gdouble mafw_gst_renderer_worker_volume_get(
 {
 	g_return_val_if_fail(wvolume != NULL, 0.0);
 
-	g_debug("getting volume; %lf", wvolume->pulse_volume);
+	g_debug("getting volume; %lf", wvolume->current_volume);
 
 	return wvolume->current_volume;
 }
@@ -479,7 +479,7 @@ gboolean mafw_gst_renderer_worker_volume_is_muted(
 {
 	g_return_val_if_fail(wvolume != NULL, FALSE);
 
-	g_debug("getting mute; %d", wvolume->pulse_mute);
+	g_debug("getting mute; %d", wvolume->current_mute);
 
 	return wvolume->current_mute;
 }
