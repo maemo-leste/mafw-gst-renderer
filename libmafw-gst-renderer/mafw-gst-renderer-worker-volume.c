@@ -31,6 +31,7 @@
 #include <string.h>
 
 #include "mafw-gst-renderer-worker-volume.h"
+#include "config.h"
 
 #undef  G_LOG_DOMAIN
 #define G_LOG_DOMAIN "mafw-gst-renderer-worker-volume"
@@ -430,6 +431,10 @@ void mafw_gst_renderer_worker_volume_set(MafwGstRendererWorkerVolume *wvolume,
 	gboolean signal_volume, signal_mute;
 
 	g_return_if_fail(wvolume != NULL);
+
+#ifndef MAFW_GST_RENDERER_ENABLE_MUTE
+	mute = FALSE;
+#endif
 
 	signal_volume = wvolume->current_volume != volume &&
 		wvolume->cb != NULL;
