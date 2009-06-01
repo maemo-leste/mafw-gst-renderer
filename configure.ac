@@ -166,6 +166,12 @@ fi
 AM_CONDITIONAL(ENABLE_TESTS,
                [test "x$enable_tests" = xyes && test -n "$CHECKMORE_LIBS"])
 
+dnl Mute
+DISABLED_BY_DEFAULT([mute], [enable mute handling])
+if test "x$enable_mute" = xyes; then
+	AC_DEFINE([MAFW_GST_RENDERER_ENABLE_MUTE], [1], [Enable mute.])
+fi
+
 dnl Tracing.
 DISABLED_BY_DEFAULT([tracing], [enable function instrumentation (tracing)])
 if test "x$enable_tracing" = xyes; then
