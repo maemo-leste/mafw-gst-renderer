@@ -455,7 +455,7 @@ void mafw_gst_renderer_worker_volume_set(MafwGstRendererWorkerVolume *wvolume,
 		wvolume->mute_cb(wvolume, mute, wvolume->mute_user_data);
 	}
 
-	if (wvolume->change_request_id == 0) {
+	if ((signal_mute || signal_volume) && wvolume->change_request_id == 0) {
 		_set_timeout(wvolume);
 
 		wvolume->change_request_id =
