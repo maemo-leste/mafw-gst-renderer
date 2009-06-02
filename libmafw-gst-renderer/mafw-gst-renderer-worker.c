@@ -623,8 +623,10 @@ static void _check_seekability(MafwGstRendererWorker *worker)
 
 	if (worker->media.length_nanos != -1)
 	{
+		g_debug("source seekability %d", renderer->media->seekability);
+
 		if (renderer->media->seekability != SEEKABILITY_NO_SEEKABLE) {
-			g_debug("No seekability info from source");
+			g_debug("Quering GStreamer for seekability");
 			GstQuery *seek_query;
 			GstFormat format = GST_FORMAT_TIME;
 			/* Query the seekability of the stream */
@@ -634,7 +636,7 @@ static void _check_seekability(MafwGstRendererWorker *worker)
 				gst_query_parse_seeking(seek_query, NULL,
 							&renderer_seekable,
 							NULL, NULL);
-				g_debug("renderer seekability %d",
+				g_debug("GStreamer seekability %d",
 					renderer_seekable);
 				seekable = renderer_seekable ?
 					SEEKABILITY_SEEKABLE :
