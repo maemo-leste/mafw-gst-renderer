@@ -1749,7 +1749,7 @@ gboolean mafw_gst_renderer_assign_playlist(MafwRenderer *self,
 
 		if (new_error == NULL) {
 
-			renderer->playlist = g_object_ref(playlist);
+			renderer->playlist = playlist;
 			renderer->iterator = iterator;
 
 			/* Increment the use_count to avoid the playlist destruction
