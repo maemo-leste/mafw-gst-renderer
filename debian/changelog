@@ -1,8 +1,31 @@
+mafw-gst-renderer (0.1.2009.23-3) unstable; urgency=low
+
+  * MAFW gst renderer, pre-release 0.2009.23-3
+
+ -- Juha Kellokoski <veitikka6@gmail.com>  Tue, 02 Jun 2009 12:00:00 +0300
+
+mafw-gst-renderer (0.1.2009.23-2) unstable; urgency=low
+
+  * MAFW gst renderer, pre-release 0.2009.23-2
+  * Fixes: NB#119440 - Dbus wrapper crashes when high bit rate, high resolution clips are played.
+  * Fixes: NB#119613 - Random mafw-dbus-wrapper coredump generated after booting.
+  * Fixes: NB#119467 - Deleted playlists are not freed.
+  * Fixes: NB#118459 - Cannot play Nokia 5800 video clip 
+  * Fixes: NB#115776 - Renderer state changed signal are not coming when playing and seeking video
+  * No need to ref the playlist in the renderer, 
+    the playlist manager does that already.
+  * Changed to avoid setting the timeout if neither volume nor mute have
+    changed in volume manager
+  * Changed debug messages in volume manager
+  * We ignore mute if it not enabled (default = not enabled).
+  * Added option to configure.ac to disable or enable mute handling
+  * Use g_error_new_literal if string is constant.
+
+ -- Juha Kellokoski <veitikka6@gmail.com>  Tue, 02 Jun 2009 12:00:00 +0300
+
 mafw-gst-renderer (0.1.2009.23-1) unstable; urgency=low
 
   * MAFW gst renderer, pre-release 0.2009.23-1
-  * Fixes: NB#118459 - Cannot play Nokia 5800 video clip 
-  * Fixes: NB#115776 - Renderer state changed signal are not coming when playing and seeking video
   * Signalling volume when reconnecting to pulse
   * Added code to reconnect to pulse when it gets disconnected.
   * Closure callback for initialization is not called if it is NULL in
