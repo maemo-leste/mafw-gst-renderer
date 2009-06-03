@@ -1268,12 +1268,14 @@ static void mafw_gst_renderer_increase_playcount(MafwGstRenderer* self,
 gboolean mafw_gst_renderer_update_stats(gpointer data)
 {
         MafwGstRenderer *renderer = (MafwGstRenderer *) data;
-	
-	if (renderer->media->object_id)
-	{
+
+        /* Update stats only for audio content */
+        if (renderer->media->object_id &&
+            !renderer->worker->media.has_visual_content) {
 		GHashTable *mdata = mafw_gst_renderer_add_lastplayed(NULL);
 		mafw_gst_renderer_increase_playcount(renderer,
-                                            renderer->media->object_id, mdata);
+                                                     renderer->media->object_id,
+                                                     mdata);
 	}
         renderer->update_playcount_id = 0;
         return FALSE;
