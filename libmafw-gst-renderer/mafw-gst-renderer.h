@@ -258,6 +258,14 @@ void mafw_gst_renderer_get_position(MafwRenderer *self, MafwRendererPositionCB c
                                     gpointer user_data);
 
 /*----------------------------------------------------------------------------
+  Metadata
+  ----------------------------------------------------------------------------*/
+
+void mafw_gst_renderer_get_current_metadata(MafwRenderer *self,
+					    MafwRendererMetadataResultCB callback,
+					    gpointer user_data);
+
+/*----------------------------------------------------------------------------
   Local API
   ----------------------------------------------------------------------------*/
 

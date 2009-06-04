@@ -838,7 +838,6 @@ static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker
 		g_debug("changed to GST_STATE_READY");
 		worker->state = GST_STATE_READY;
 		worker->ready_timeout = 0;
-		_free_taglist(worker);
 	}
 }
 
@@ -916,49 +915,51 @@ static GHashTable* _build_tagmap(void)
 	return hash_table;
 }
 
-/*
- * Emits metadata-changed signals for gst tags.
- */
-static void _emit_tag(const GstTagList *list, const gchar *tag,
-		      MafwGstRendererWorker *worker)
+static void _get_mafw_tag_values(const gchar *tag, const GstTagList *list,
+				 const gchar **mafwtag, GValueArray **values)
 {
+
 	/* Mapping between Gst <-> MAFW metadata tags
 	 * NOTE: This assumes that GTypes matches between GST and MAFW. */
+
 	static GHashTable *tagmap = NULL;
 	gint i, count;
-	const gchar *mafwtag;
 	GType type;
-	GValueArray *values;
 
-	if (tagmap == NULL) {
+	g_assert(mafwtag);
+	g_assert(values);
+
+	/* Initialize return values  */
+	*mafwtag = NULL;
+	*values = NULL;
+
+	/* Don't handle MAFW_METADATA_KEY_RENDERER_ART_URI here because its
+	   value is asynchronously obtained. */
+	if (strcmp(tag, GST_TAG_IMAGE) == 0) {
+		return;
+	}
+
+	if (!tagmap) {
 		tagmap = _build_tagmap();
 	}
 
-	g_debug("tag: '%s' (type: %s)", tag,
-		g_type_name(gst_tag_get_type(tag)));
 	/* Is there a mapping for this tag? */
-	mafwtag = g_hash_table_lookup(tagmap, tag);
-	if (!mafwtag)
-		return;
-
-#ifdef HAVE_GDKPIXBUF
-	if (strcmp (mafwtag, MAFW_METADATA_KEY_RENDERER_ART_URI) == 0) {
-		_emit_renderer_art(worker, list);
+	if (!(*mafwtag = g_hash_table_lookup(tagmap, tag))) {
 		return;
 	}
-#endif
 
 	/* Build a value array of this tag.  We need to make sure that strings
 	 * are UTF-8.  GstTagList API says that the value is always UTF8, but it
 	 * looks like the ID3 demuxer still might sometimes produce non-UTF-8
 	 * strings. */
+
 	count = gst_tag_list_get_tag_size(list, tag);
 	type = gst_tag_get_type(tag);
-	values = g_value_array_new(count);
+	*values = g_value_array_new(count);
 	for (i = 0; i < count; ++i) {
 		GValue *v;
 
-		v = (GValue *)gst_tag_list_get_value_index(list, tag, i);
+		v = (GValue *) gst_tag_list_get_value_index(list, tag, i);
 		if (type == G_TYPE_STRING) {
 			gchar *orig, *utf8;
 
@@ -968,17 +969,50 @@ static void _emit_tag(const GstTagList *list, const gchar *tag,
 
 				g_value_init(&utf8gval, G_TYPE_STRING);
 				g_value_take_string(&utf8gval, utf8);
-				g_value_array_append(values, &utf8gval);
+				g_value_array_append(*values, &utf8gval);
 				g_value_unset(&utf8gval);
 			}
 			g_free(orig);
+		} else if (type == G_TYPE_UINT) {
+			GValue intgval = {0};
+
+			g_value_init(&intgval, G_TYPE_INT);
+			g_value_transform(v, &intgval);
+			g_value_array_append(*values, &intgval);
+			g_value_unset(&intgval);
 		} else {
-			g_value_array_append(values, v);
+			g_value_array_append(*values, v);
 		}
 	}
-	g_signal_emit_by_name(worker->owner, "metadata-changed",
-			      mafwtag, values);
-	g_value_array_free(values);
+}
+
+/*
+ * Emits metadata-changed signals for gst tags.
+ */
+static void _emit_tag(const GstTagList *list, const gchar *tag,
+		      MafwGstRendererWorker *worker)
+{
+
+	const gchar *mafwtag;
+	GValueArray *values = NULL;
+
+	g_debug("tag: '%s' (type: %s)", tag,
+		g_type_name(gst_tag_get_type(tag)));
+
+#ifdef HAVE_GDKPIXBUF
+	if (strcmp(tag, GST_TAG_IMAGE) == 0) {
+		_emit_renderer_art(worker, list);
+		return;
+	}
+#endif
+
+	_get_mafw_tag_values(tag, list, &mafwtag, &values);
+
+	if (mafwtag && values) {
+		g_signal_emit_by_name(worker->owner, "metadata-changed",
+				      mafwtag, values);
+		g_value_array_free(values);
+	}
 }
 
 /**
@@ -1009,7 +1043,6 @@ static void _parse_tagmsg(GstMessage *msg, MafwGstRendererWorker *worker)
 	gst_message_parse_tag(msg, &new_tags);
 	gst_tag_list_foreach(new_tags, (gpointer)_emit_tag, worker);
 	gst_tag_list_free(new_tags);
-	gst_message_unref(msg);	
 }
 
 /**
@@ -1021,9 +1054,48 @@ static void _emit_metadatas(MafwGstRendererWorker *worker)
 	{
 		g_ptr_array_foreach(worker->tag_list, (GFunc)_parse_tagmsg,
 				    worker);
-		g_ptr_array_free(worker->tag_list, TRUE);
-		worker->tag_list = NULL;
 	}
+}
+
+static void _get_tag_metadata(const GstTagList *list, const gchar *tag,
+			      gpointer data)
+{
+	GHashTable **metadata = (GHashTable **) data;
+	const gchar *mafwtag;
+	GValueArray *values;
+
+	g_assert(metadata);
+
+	_get_mafw_tag_values(tag, list, &mafwtag, &values);
+
+	if (mafwtag && values) {
+		if (!*metadata)
+			*metadata = mafw_metadata_new();
+
+		if (values->n_values == 1) {
+			GValue *val = g_value_array_get_nth(values, 0);
+			GValue *new_val = g_new0(GValue, 1);
+
+			g_value_init(new_val, G_VALUE_TYPE(val));
+			g_value_copy(val, new_val);
+			g_hash_table_insert(*metadata, g_strdup(mafwtag),
+					    new_val);
+
+			g_value_array_free(values);
+		} else {
+			g_hash_table_insert(*metadata, g_strdup(mafwtag),
+					    values);
+		}
+	}
+}
+
+static void _get_metadata(GstMessage *msg, gpointer data)
+{
+	GstTagList *tags;
+
+	gst_message_parse_tag(msg, &tags);
+	gst_tag_list_foreach(tags, (gpointer) _get_tag_metadata, data);
+	gst_tag_list_free(tags);
 }
 
 static void _handle_buffering(MafwGstRendererWorker *worker, GstMessage *msg)
@@ -1455,8 +1527,6 @@ static void _construct_pipeline(MafwGstRendererWorker *worker)
 	if (worker->pipeline)
 		return;
 
-	_free_taglist(worker);
-
 	g_debug("Creating a new instance of playbin2");
 	worker->pipeline = gst_element_factory_make("playbin2",
 						    "playbin");
@@ -1721,6 +1791,18 @@ gint mafw_gst_renderer_worker_get_colorkey(
 gboolean mafw_gst_renderer_worker_get_seekable(MafwGstRendererWorker *worker)
 {
 	return worker->media.seekable;
+}
+
+GHashTable *mafw_gst_renderer_worker_get_current_metadata(
+	MafwGstRendererWorker *worker)
+{
+	GHashTable *metadata = NULL;
+
+	if (worker->tag_list)
+		g_ptr_array_foreach(worker->tag_list, (GFunc) _get_metadata,
+				    &metadata);
+
+	return metadata;
 }
 
 static void _play_pl_next(MafwGstRendererWorker *worker) {

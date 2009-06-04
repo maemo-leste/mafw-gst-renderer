@@ -219,6 +219,11 @@ static void mafw_gst_renderer_class_init(MafwGstRendererClass *klass)
 	renderer_class->set_position = mafw_gst_renderer_set_position;
 	renderer_class->get_position = mafw_gst_renderer_get_position;
 
+	/* Metadata */
+
+	renderer_class->get_current_metadata =
+		mafw_gst_renderer_get_current_metadata;
+
 	/* Properties */
 
 	MAFW_EXTENSION_CLASS(klass)->get_extension_property =
@@ -1692,6 +1697,31 @@ void mafw_gst_renderer_get_status(MafwRenderer *self, MafwRendererStatusCB callb
 	/* TODO: Set error parameter */
 	callback(self, renderer->playlist, index, renderer->current_state,
 		 (const gchar*) renderer->media->object_id, user_data, NULL);
+}
+
+void mafw_gst_renderer_get_current_metadata(MafwRenderer *self,
+					    MafwRendererMetadataResultCB callback,
+					    gpointer user_data)
+{
+	MafwGstRenderer *renderer;
+	GHashTable *metadata = NULL;
+
+	g_return_if_fail(MAFW_IS_GST_RENDERER(self));
+	renderer = MAFW_GST_RENDERER(self);
+
+	if (renderer->media->object_id) {
+		/* Fill metadata information */
+		metadata = mafw_gst_renderer_worker_get_current_metadata(
+			renderer->worker);
+	}
+
+	callback(self,
+		 (const gchar*) renderer->media->object_id,
+		 metadata,
+		 user_data,
+		 NULL);
+
+	mafw_metadata_release(metadata);
 }
 
 /*----------------------------------------------------------------------------
