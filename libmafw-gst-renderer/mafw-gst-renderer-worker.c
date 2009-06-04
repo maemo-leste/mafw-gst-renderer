@@ -1034,39 +1034,44 @@ static void _handle_buffering(MafwGstRendererWorker *worker, GstMessage *msg)
 	gst_message_parse_buffering(msg, &percent);
 	g_debug("buffering: %d", percent);
 
-	if (!worker->buffering) {
-		worker->buffering = TRUE;
-		if (worker->state == GST_STATE_PLAYING) {
-			worker->report_statechanges = FALSE;
-			/* We can't call _pause() here, since it sets the
-			 * "report_statechanges" to TRUE.  We don't want that,
-			 * application doesn't need to know that internally the
-			 * state changed to PAUSED. */
-			gst_element_set_state(worker->pipeline,
-					      GST_STATE_PAUSED);
-			/* XXX this blocks till statechange. */
-			gst_element_get_state(worker->pipeline, NULL,
-					      NULL, GST_CLOCK_TIME_NONE);
-		}
-	} 
+        /* No state management needed for live pipelines */
+        if (!worker->is_live) {
+                if (!worker->buffering) {
+                        worker->buffering = TRUE;
+                        if (worker->state == GST_STATE_PLAYING) {
+                                worker->report_statechanges = FALSE;
+                                /* We can't call _pause() here, since it sets
+                                 * the "report_statechanges" to TRUE.  We don't
+                                 * want that, application doesn't need to know
+                                 * that internally the state changed to
+                                 * PAUSED. */
+                                gst_element_set_state(worker->pipeline,
+                                                      GST_STATE_PAUSED);
+                                /* XXX this blocks till statechange. */
+                                gst_element_get_state(worker->pipeline, NULL,
+                                                      NULL,
+                                                      GST_CLOCK_TIME_NONE);
+                        }
+                }
 
-	if (percent >= 100) {
-		worker->buffering = FALSE;
-		/* On buffering we go to PAUSED, so here we move
-		   back to PLAYING */
-		if (worker->state == GST_STATE_PAUSED) {
-			/* If buffering more than once, do this only the
-			   first time we are done with buffering */
-			if (worker->prerolling) {
-				_finalize_startup(worker);
-				worker->prerolling = FALSE;
-			}
-			_do_play(worker);
-			renderer->play_failed_count = 0;
-		} else if (worker->state == GST_STATE_PLAYING) {
-			_add_duration_seek_query_timeout(worker);
-		}
-	}
+                if (percent >= 100) {
+                        worker->buffering = FALSE;
+                        /* On buffering we go to PAUSED, so here we move back to
+                           PLAYING */
+                        if (worker->state == GST_STATE_PAUSED) {
+                                /* If buffering more than once, do this only the
+                                   first time we are done with buffering */
+                                if (worker->prerolling) {
+                                        _finalize_startup(worker);
+                                        worker->prerolling = FALSE;
+                                }
+                                _do_play(worker);
+                                renderer->play_failed_count = 0;
+                        } else if (worker->state == GST_STATE_PLAYING) {
+                                _add_duration_seek_query_timeout(worker);
+                        }
+                }
+        }
 
 	/* Send buffer percentage */
         if (worker->notify_buffer_status_handler)
@@ -1423,10 +1428,8 @@ static void _start_play(MafwGstRendererWorker *worker)
 		   buffering and prerolling differently */
 		g_debug ("Source is live!");
 		worker->is_live = TRUE;
-		worker->prerolling = FALSE;
-	} else {
-		worker->prerolling = TRUE;
 	}
+        worker->prerolling = TRUE;
 
 	worker->is_stream = uri_is_stream(worker->media.location);
 
