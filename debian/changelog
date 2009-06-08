@@ -1,8 +1,12 @@
-mafw-gst-renderer (0.1.2009.23-3) unstable; urgency=low
+mafw-gst-renderer (0.1.2009.24-1) unstable; urgency=low
 
-  * MAFW gst renderer, pre-release 0.2009.23-3
+  * MAFW gst renderer, pre-release 0.2009.24-1
+  * Fixes: NB#120287 - Video recorded using other camera (e.g. Canon, Pentax) not playing smooth
+  * Fixed debug for seekability in renderer.
+  * We check always GStreamer seekability unless it is reported FALSE from
+    source.
 
- -- Juha Kellokoski <veitikka6@gmail.com>  Tue, 02 Jun 2009 12:00:00 +0300
+ -- Juha Kellokoski <veitikka6@gmail.com>  Thu, 04 Jun 2009 10:00:00 +0300
 
 mafw-gst-renderer (0.1.2009.23-2) unstable; urgency=low
 
