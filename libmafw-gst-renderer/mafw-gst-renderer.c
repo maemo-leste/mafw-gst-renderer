@@ -1503,6 +1503,9 @@ void mafw_gst_renderer_manage_error(MafwGstRenderer *self, const GError *error)
 			 (self->current_state != _LastMafwPlayState) &&
 			 (self->states[self->current_state] != NULL));
 
+	g_warning("Got error in renderer:\n\tdomain: %d, code: %d, message: %s",
+		  error->domain, error->code, error->message);
+
         /* Get a MAFW error */
 	if (error->domain == GST_RESOURCE_ERROR) {
 		/* handle RESOURCE errors */
