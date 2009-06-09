@@ -204,8 +204,13 @@ static void _emit_gst_buffer_as_graphic_file_cb(GstBuffer *new_buffer,
 							   sgd->metadata_key,
 							   (gchar *) filename);
 		} else {
-			g_warning ("%s\n", error->message);
-			g_error_free (error);
+			if (error != NULL) {
+				g_warning ("%s\n", error->message);
+				g_error_free (error);
+			} else {
+				g_critical("Unknown error when saving pixbuf "
+					   "with GStreamer data");
+			}
 		}
 	} else {
 		g_warning("Could not create pixbuf from GstBuffer");
