@@ -431,6 +431,8 @@ void mafw_gst_renderer_worker_volume_set(MafwGstRendererWorkerVolume *wvolume,
 	gboolean signal_volume, signal_mute;
 
 	g_return_if_fail(wvolume != NULL);
+	g_return_if_fail(pa_context_get_state(wvolume->context) ==
+			 PA_CONTEXT_READY);
 
 #ifndef MAFW_GST_RENDERER_ENABLE_MUTE
 	mute = FALSE;
