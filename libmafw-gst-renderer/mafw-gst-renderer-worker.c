@@ -726,11 +726,13 @@ static void _add_duration_seek_query_timeout(MafwGstRendererWorker *worker)
 
 static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker)
 {
-	GstState newstate;
+	GstState newstate, oldstate;
 	MafwGstRenderer *renderer = (MafwGstRenderer*)worker->owner;
 
-	gst_message_parse_state_changed(msg, NULL, &newstate, NULL);
-	g_debug("pipeline changed state to %d", newstate);
+	gst_message_parse_state_changed(msg, &oldstate, &newstate, NULL);
+	if (oldstate == newstate) {
+		return;
+	}
 
 	/* While buffering, we have to wait in PAUSED 
 	   until we reach 100% before doing anything */
@@ -763,7 +765,7 @@ static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker
 		/* PAUSED after pipeline has been constructed */
 		if (worker->prerolling) {
 			g_debug ("Prerolling done, finalizaing startup");
-		        _finalize_startup(worker);
+			_finalize_startup(worker);
 			_do_play(worker);
 			renderer->play_failed_count = 0;
 		} else {
@@ -1109,7 +1111,7 @@ static void _handle_buffering(MafwGstRendererWorker *worker, GstMessage *msg)
 	MafwGstRenderer *renderer = (MafwGstRenderer*)worker->owner;
 
 	gst_message_parse_buffering(msg, &percent);
-	g_debug("buffering: %d", percent);
+	g_debug("buffering: %d, live: %d", percent, worker->is_live);
 
         /* No state management needed for live pipelines */
         if (!worker->is_live) {
@@ -1139,12 +1141,33 @@ static void _handle_buffering(MafwGstRendererWorker *worker, GstMessage *msg)
                                 /* If buffering more than once, do this only the
                                    first time we are done with buffering */
                                 if (worker->prerolling) {
-                                        _finalize_startup(worker);
-                                        worker->prerolling = FALSE;
+					_finalize_startup(worker);
+					worker->prerolling = FALSE;
                                 }
                                 _do_play(worker);
                                 renderer->play_failed_count = 0;
                         } else if (worker->state == GST_STATE_PLAYING) {
+				/* In this case we got a PLAY command while 
+				   buffering, likely because it was issued
+				   before we got the first buffering signal.
+				   The UI should not do this, but if it does,
+				   we have to signal that we have executed
+				   the state change, since in 
+				   _handle_state_changed we do not do anything 
+				   if we are buffering  */
+				if (worker->report_statechanges) {
+					if (worker->state == GST_STATE_PAUSED && 
+		                            worker->notify_pause_handler) {
+						worker->notify_pause_handler(
+                                		                worker,
+                                                		worker->owner);
+					} else  if (worker->state == GST_STATE_PLAYING &&
+                		                    worker->notify_play_handler) {
+						worker->notify_play_handler(
+                                                		worker,
+		                                                worker->owner);
+					}
+				}
                                 _add_duration_seek_query_timeout(worker);
                         }
                 }
