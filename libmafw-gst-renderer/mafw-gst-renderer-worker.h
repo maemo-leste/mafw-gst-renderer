@@ -126,6 +126,7 @@ struct _MafwGstRendererWorker {
 	gboolean autopaint;
 	gint colorkey;
 	GPtrArray *tag_list;
+	GHashTable *current_metadata;
 
 #ifdef HAVE_GDKPIXBUF
 	gboolean current_frame_on_pause;

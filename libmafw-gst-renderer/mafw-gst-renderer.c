@@ -1707,24 +1707,19 @@ void mafw_gst_renderer_get_current_metadata(MafwRenderer *self,
 					    gpointer user_data)
 {
 	MafwGstRenderer *renderer;
-	GHashTable *metadata = NULL;
+	GHashTable *metadata;
 
 	g_return_if_fail(MAFW_IS_GST_RENDERER(self));
 	renderer = MAFW_GST_RENDERER(self);
 
-	if (renderer->media->object_id) {
-		/* Fill metadata information */
-		metadata = mafw_gst_renderer_worker_get_current_metadata(
+	metadata = mafw_gst_renderer_worker_get_current_metadata(
 			renderer->worker);
-	}
 
 	callback(self,
 		 (const gchar*) renderer->media->object_id,
 		 metadata,
 		 user_data,
 		 NULL);
-
-	mafw_metadata_release(metadata);
 }
 
 /*----------------------------------------------------------------------------
