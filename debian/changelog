@@ -1,8 +1,32 @@
+mafw-gst-renderer (0.1.2009.25-1) unstable; urgency=low
+
+  * MAFW gst renderer, pre-release 0.2009.25-1
+  * Fixes: NB#121545 - pa_context_connect fails though flag PA_CONTEXT_NOFAIL set
+  * Fixes: NB#120942 - State changed signal is not coming when play issued right after seeking with video streams
+  * Reconnection to pulse is done using an idle call in volume manager.
+  * If PLAY is issued rigtht after seek,
+    signal the state change when we are done buffering. Still,
+    there is a problem because we should not execute a PLAY command
+    while buffering...
+
+ -- Juha Kellokoski <veitikka6@gmail.com>  Fri, 12 Jun 2009 11:00:00 +0300
+
+mafw-gst-renderer (0.1.2009.24-3) unstable; urgency=low
+
+  * MAFW gst renderer, pre-release 0.2009.24-3
+  * Fixes: NB#118019 - Playing a clip of Unsupported format will stop the playback. 
+  * Fixes: NB#120378 - Video doesn't start to play when clicked
+  * Stop setting volume if pulse is down in volume manager
+  * Written small workaround for problem when getting an empty error while
+    saving a pixbuf in renderer worker.
+  * Log a warning message when processing an error.
+  * A mafw-gst-renderer dependency version shortened to 0.9.15-1.
+
+ -- Juha Kellokoski <veitikka6@gmail.com>  Wed, 10 Jun 2009 11:00:00 +0300
+
 mafw-gst-renderer (0.1.2009.24-2) unstable; urgency=low
 
   * MAFW gst renderer, pre-release 0.2009.24-2
-  * Fixes: NB#118019 - Playing a clip of Unsupported format will stop the playback. 
-  * Fixes: NB#120378 - Video doesn't start to play when clicked
   * Added "mafw_renderer_get_current_metadata" function to the API.
 
  -- Juha Kellokoski <veitikka6@gmail.com>  Mon, 08 Jun 2009 11:00:00 +0300
