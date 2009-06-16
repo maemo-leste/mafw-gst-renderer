@@ -1649,7 +1649,7 @@ static void _construct_pipeline(MafwGstRendererWorker *worker)
 		g_assert_not_reached();
 	}
 
-	/* g_object_set(worker->pipeline,"flags",99,NULL); */
+	g_object_set(worker->pipeline, "flags", 99, NULL);
 
 	worker->bus = gst_pipeline_get_bus(GST_PIPELINE(worker->pipeline));
 	gst_bus_set_sync_handler(worker->bus,
