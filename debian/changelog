@@ -1,8 +1,24 @@
+mafw-gst-renderer (0.1.2009.25-3) unstable; urgency=low
+
+  * MAFW gst renderer, pre-release 0.2009.25-3
+
+ -- Juha Kellokoski <veitikka6@gmail.com>  Mon, 15 Jun 2009 14:00:00 +0300
+
+mafw-gst-renderer (0.1.2009.25-2) unstable; urgency=low
+
+  * MAFW gst renderer, pre-release 0.2009.25-2
+  * Fixes: NB#117207 - Random MAFW-DBUS-WRAPPER crashes observed
+  * Fixes: NB#104213 - 'Unable to Find Media file' information note not displayed when MMC removed.
+  * Fixes: NB#116426 - Renderer fails to go to pause state when media clips are seeked while streaming
+  * Fixes: NB#121545 - pa_context_connect fails though flag PA_CONTEXT_NOFAIL set
+  * Fixes: NB#120942 - State changed signal is not coming when play issued right after seeking with video streams
+  * Extended current metadata function.
+
+ -- Juha Kellokoski <veitikka6@gmail.com>  Mon, 15 Jun 2009 14:00:00 +0300
+
 mafw-gst-renderer (0.1.2009.25-1) unstable; urgency=low
 
   * MAFW gst renderer, pre-release 0.2009.25-1
-  * Fixes: NB#121545 - pa_context_connect fails though flag PA_CONTEXT_NOFAIL set
-  * Fixes: NB#120942 - State changed signal is not coming when play issued right after seeking with video streams
   * Reconnection to pulse is done using an idle call in volume manager.
   * If PLAY is issued rigtht after seek,
     signal the state change when we are done buffering. Still,
