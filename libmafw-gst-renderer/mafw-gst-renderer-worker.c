@@ -778,14 +778,17 @@ static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker
 	MafwGstRenderer *renderer = (MafwGstRenderer*)worker->owner;
 
 	gst_message_parse_state_changed(msg, &oldstate, &newstate, NULL);
-	if (oldstate == newstate) {
+	g_debug ("State changed: %d: %d -> %d", worker->state, oldstate, newstate);
+
+	if (worker->state == newstate) {
 		return;
 	}
+
+	worker->state = newstate;
 
 	/* While buffering, we have to wait in PAUSED 
 	   until we reach 100% before doing anything */
 	if (worker->buffering) {
-		worker->state = newstate;
 		return;
 	}
 
@@ -1161,7 +1164,7 @@ static void _handle_buffering(MafwGstRendererWorker *worker, GstMessage *msg)
 	MafwGstRenderer *renderer = (MafwGstRenderer*)worker->owner;
 
 	gst_message_parse_buffering(msg, &percent);
-	g_debug("buffering: %d, live: %d", percent, worker->is_live);
+	g_debug("buffering: %d", percent);
 
         /* No state management needed for live pipelines */
         if (!worker->is_live) {
@@ -1205,18 +1208,12 @@ static void _handle_buffering(MafwGstRendererWorker *worker, GstMessage *msg)
 				   the state change, since in 
 				   _handle_state_changed we do not do anything 
 				   if we are buffering  */
-				if (worker->report_statechanges) {
-					if (worker->state == GST_STATE_PAUSED && 
-		                            worker->notify_pause_handler) {
-						worker->notify_pause_handler(
-                                		                worker,
-                                                		worker->owner);
-					} else  if (worker->state == GST_STATE_PLAYING &&
-                		                    worker->notify_play_handler) {
-						worker->notify_play_handler(
-                                                		worker,
-		                                                worker->owner);
-					}
+				if (worker->report_statechanges &&
+                		    worker->notify_play_handler) {
+					g_warning ("STATE IS PLAYING NOTIFYING!!!");
+					worker->notify_play_handler(
+                                               		worker,
+	                                                worker->owner);
 				}
                                 _add_duration_seek_query_timeout(worker);
                         }
