@@ -318,7 +318,7 @@ static void mafw_gst_renderer_init(MafwGstRenderer *self)
 			     GCONF_CLIENT_PRELOAD_ONELEVEL, &error);
 	if (error) {
 		g_warning("%s", error->message);
-		g_free(error);
+		g_error_free(error);
 		error = NULL;
 	}
 
@@ -330,7 +330,7 @@ static void mafw_gst_renderer_init(MafwGstRenderer *self)
 
 	if (error) {
 		g_warning("%s", error->message);
-		g_free(error);
+		g_error_free(error);
 	}
 }
 
