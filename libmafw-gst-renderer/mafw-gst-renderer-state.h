@@ -76,6 +76,9 @@ struct _MafwGstRendererStateClass {
 	void (*set_position) (MafwGstRendererState *self,
 			      MafwRendererSeekMode mode, gint seconds,
 			      GError **error);
+	void (*get_position) (MafwGstRendererState *self,
+			      gint *seconds,
+			      GError **error);
 
 	/* Playlist */
 
@@ -139,6 +142,9 @@ void mafw_gst_renderer_state_pause(MafwGstRendererState *self, GError **error);
 void mafw_gst_renderer_state_resume(MafwGstRendererState *self, GError **error);
 void mafw_gst_renderer_state_set_position(MafwGstRendererState *self,
                                           MafwRendererSeekMode mode, gint seconds,
+                                          GError **error);
+void mafw_gst_renderer_state_get_position(MafwGstRendererState *self,
+                                          gint *seconds,
                                           GError **error);
 
 /*----------------------------------------------------------------------------
@@ -218,6 +224,9 @@ void mafw_gst_renderer_state_do_goto_index(MafwGstRendererState *self,
                                            GError **error);
 void mafw_gst_renderer_state_do_set_position(MafwGstRendererState *self,
                                              MafwRendererSeekMode mode, gint seconds,
+                                             GError **error);
+void mafw_gst_renderer_state_do_get_position(MafwGstRendererState *self,
+                                             gint *seconds,
                                              GError **error);
 void mafw_gst_renderer_state_do_notify_seek(MafwGstRendererState *self,
                                             GError **error);

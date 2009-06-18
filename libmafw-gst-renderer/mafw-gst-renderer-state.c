@@ -86,6 +86,15 @@ static void _default_set_position (MafwGstRendererState *self,
 		    MAFW_GST_RENDERER_STATE_GET_CLASS(self)->name);
 }
 
+static void _default_get_position (MafwGstRendererState *self,
+				   gint *seconds,
+				   GError **error)
+{
+	g_set_error(error, MAFW_RENDERER_ERROR, MAFW_RENDERER_ERROR_CANNOT_GET_POSITION,
+		    "Get position: operation not allowed in %s state",
+		    MAFW_GST_RENDERER_STATE_GET_CLASS(self)->name);
+}
+
 /*----------------------------------------------------------------------------
   Default playlist implementations
   ----------------------------------------------------------------------------*/
@@ -220,6 +229,7 @@ static void mafw_gst_renderer_state_class_init(MafwGstRendererStateClass *klass)
 	klass->pause        = _default_pause;
 	klass->resume       = _default_resume;
 	klass->set_position = _default_set_position;
+	klass->get_position = _default_get_position;
 
 	/* Playlist */
 
@@ -294,6 +304,14 @@ void mafw_gst_renderer_state_set_position(MafwGstRendererState *self,
 {
 	MAFW_GST_RENDERER_STATE_GET_CLASS(self)->set_position(self, mode, seconds,
 							     error);
+}
+
+void mafw_gst_renderer_state_get_position(MafwGstRendererState *self,
+					  gint *seconds,
+					  GError **error)
+{
+	MAFW_GST_RENDERER_STATE_GET_CLASS(self)->get_position(self, seconds, 
+							      error);
 }
 
 /*----------------------------------------------------------------------------
@@ -718,6 +736,19 @@ void mafw_gst_renderer_state_do_goto_index(MafwGstRendererState *self,
 		break;
 	default:
 		g_critical("Movement not controlled");
+	}
+}
+
+void mafw_gst_renderer_state_do_get_position(MafwGstRendererState *self,
+					    gint *seconds,
+					    GError **error)
+{
+	*seconds = mafw_gst_renderer_worker_get_position(self->renderer->worker);
+	if (*seconds < 0) {
+		*seconds = 0;
+		g_set_error(error, MAFW_EXTENSION_ERROR, 
+			    MAFW_RENDERER_ERROR_CANNOT_GET_POSITION,
+			    "Position query failed");
 	}
 }
 

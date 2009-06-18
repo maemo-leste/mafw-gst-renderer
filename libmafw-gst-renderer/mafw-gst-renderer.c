@@ -1011,6 +1011,32 @@ void mafw_gst_renderer_goto_index(MafwRenderer *self, guint index,
 		g_error_free(error);
 }
 
+void mafw_gst_renderer_get_position(MafwRenderer *self, MafwRendererPositionCB callback,
+				  gpointer user_data)
+{
+	MafwGstRenderer *renderer;
+	gint pos;
+	GError *error = NULL;
+
+	g_return_if_fail(callback != NULL);
+	g_return_if_fail(MAFW_IS_GST_RENDERER(self));
+
+	renderer = MAFW_GST_RENDERER(self);
+
+	g_return_if_fail((renderer->states != 0) &&
+			 (renderer->current_state != _LastMafwPlayState) &&
+			 (renderer->states[renderer->current_state] != NULL));
+
+	mafw_gst_renderer_state_get_position(
+                MAFW_GST_RENDERER_STATE (renderer->states[renderer->current_state]),
+		&pos,
+		&error);
+	
+	callback(self, pos, user_data, error);
+	if (error)
+		g_error_free(error);
+}
+
 void mafw_gst_renderer_set_position(MafwRenderer *self, MafwRendererSeekMode mode,
 				   gint seconds, MafwRendererPositionCB callback,
 				   gpointer user_data)
@@ -1661,22 +1687,6 @@ static void _notify_eos(MafwGstRendererWorker *worker, gpointer owner)
 /*----------------------------------------------------------------------------
   Status
   ----------------------------------------------------------------------------*/
-
-void mafw_gst_renderer_get_position(MafwRenderer *self, MafwRendererPositionCB callback,
-				  gpointer user_data)
-{
-	MafwGstRenderer *renderer;
-	gint pos;
-
-	g_return_if_fail(callback != NULL);
-	g_return_if_fail(MAFW_IS_GST_RENDERER(self));
-	renderer = MAFW_GST_RENDERER(self);
-
-	pos = mafw_gst_renderer_worker_get_position(renderer->worker);
-
-	/* TODO: Set error if something fails? */
-	callback(self, pos, user_data, NULL);
-}
 
 void mafw_gst_renderer_get_status(MafwRenderer *self, MafwRendererStatusCB callback,
 				gpointer user_data)

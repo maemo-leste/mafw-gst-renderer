@@ -40,6 +40,8 @@ static void _do_play_object(MafwGstRendererState *self, const gchar *object_id,
 static void _do_pause(MafwGstRendererState *self, GError **error);
 static void _do_stop(MafwGstRendererState *self, GError **error);
 static void _do_resume(MafwGstRendererState *self, GError **error);
+static void _do_get_position(MafwGstRendererState *self, gint *seconds, 
+			     GError **error);
 
 /*----------------------------------------------------------------------------
   Playlist
@@ -110,11 +112,12 @@ static void mafw_gst_renderer_state_transitioning_class_init(
 
 	/* Playback */
 
-	state_klass->play        = _do_play;
-	state_klass->play_object = _do_play_object;
-	state_klass->stop        = _do_stop;
-	state_klass->pause       = _do_pause;
-	state_klass->resume      = _do_resume;
+	state_klass->play         = _do_play;
+	state_klass->play_object  = _do_play_object;
+	state_klass->stop         = _do_stop;
+	state_klass->pause        = _do_pause;
+	state_klass->resume       = _do_resume;
+	state_klass->get_position = _do_get_position;
 
 	/* Playlist */
 
@@ -208,6 +211,12 @@ static void _do_resume(MafwGstRendererState *self, GError **error)
 			    "cannot resume in transitioning state without "
 			    "having paused before");
 	}
+}
+
+static void _do_get_position(MafwGstRendererState *self, gint *seconds, 
+			     GError **error)
+{
+	*seconds = 0;
 }
 
 /*----------------------------------------------------------------------------

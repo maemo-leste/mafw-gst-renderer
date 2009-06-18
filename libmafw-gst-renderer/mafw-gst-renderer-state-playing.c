@@ -41,6 +41,9 @@ static void _do_pause(MafwGstRendererState *self, GError **error);
 static void _do_set_position(MafwGstRendererState *self,
 			     MafwRendererSeekMode mode, gint seconds,
 			     GError **error);
+static void _do_get_position(MafwGstRendererState *self,
+			     gint *seconds,
+			     GError **error);
 
 /*----------------------------------------------------------------------------
   Playlist
@@ -122,6 +125,7 @@ static void mafw_gst_renderer_state_playing_class_init(
 	state_class->pause        = _do_pause;
         /* state_class->resume is not allowed */
 	state_class->set_position = _do_set_position;
+	state_class->get_position = _do_get_position;
 
 	/* Playlist */
 
@@ -219,6 +223,14 @@ static void _do_set_position(MafwGstRendererState *self,
 {
         g_return_if_fail(MAFW_IS_GST_RENDERER_STATE_PLAYING(self));
 	mafw_gst_renderer_state_do_set_position(self, mode, seconds, error);
+}
+
+static void _do_get_position(MafwGstRendererState *self,
+			     gint *seconds,
+			     GError **error)
+{
+        g_return_if_fail(MAFW_IS_GST_RENDERER_STATE_PLAYING(self));
+	mafw_gst_renderer_state_do_get_position(self, seconds, error);
 }
 
 
