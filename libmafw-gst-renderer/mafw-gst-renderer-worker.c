@@ -784,11 +784,10 @@ static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker
 		return;
 	}
 
-	worker->state = newstate;
-
 	/* While buffering, we have to wait in PAUSED 
 	   until we reach 100% before doing anything */
 	if (worker->buffering) {
+		worker->state = newstate;
 		return;
 	}
 
@@ -1187,7 +1186,6 @@ static void _handle_buffering(MafwGstRendererWorker *worker, GstMessage *msg)
                 }
 
                 if (percent >= 100) {
-                        worker->buffering = FALSE;
                         /* On buffering we go to PAUSED, so here we move back to
                            PLAYING */
                         if (worker->state == GST_STATE_PAUSED) {
@@ -1217,6 +1215,7 @@ static void _handle_buffering(MafwGstRendererWorker *worker, GstMessage *msg)
 				}
                                 _add_duration_seek_query_timeout(worker);
                         }
+                        worker->buffering = FALSE;
                 }
         }
 
@@ -1926,6 +1925,12 @@ static void _do_play(MafwGstRendererWorker *worker)
 	}
 	else {
 		g_debug("staying in PAUSED state");
+                /* If buffering, means that we didn't send the change to PAUSED
+                 * state */
+                if (worker->buffering &&
+                    worker->notify_pause_handler) {
+                        worker->notify_pause_handler(worker, worker->owner);
+                }
 		_add_ready_timeout(worker);
 	}
 }
