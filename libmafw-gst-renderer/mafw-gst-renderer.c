@@ -53,6 +53,9 @@
 	(((self)->media != NULL) && ((self)->media->uri != NULL) &&	\
 	 uri_is_stream((self)->media->uri))
 
+#define GCONF_OSSO_AF "/system/osso/af"
+#define GCONF_BATTERY_COVER_OPEN "/system/osso/af/mmc-cover-open"
+
 /*----------------------------------------------------------------------------
   Static variable definitions
   ----------------------------------------------------------------------------*/
@@ -79,6 +82,16 @@ static void _property_modified(LibHalContext *ctx, const char *udi,
                                const char *key, dbus_bool_t is_removed,
                                dbus_bool_t is_added);
 static gboolean _tv_out_is_connected(LibHalContext *ctx, const char *udi);
+
+/*----------------------------------------------------------------------------
+  GConf notifications
+  ----------------------------------------------------------------------------*/
+
+static void _battery_cover_open_cb(GConfClient *client,
+				   guint cnxn_id,
+				   GConfEntry *entry,
+				   MafwGstRenderer *renderer);
+
 /*----------------------------------------------------------------------------
   Playback
   ----------------------------------------------------------------------------*/
@@ -131,14 +144,6 @@ static void _error_handler(MafwGstRendererWorker *worker, gpointer owner,
 
 static void _connection_init(MafwGstRenderer *renderer);
 #endif
-
-/*----------------------------------------------------------------------------
-  GIO event handlers
-  ----------------------------------------------------------------------------*/
-
-static void _pre_unmount_handler(GVolumeMonitor *volume_monitor,
-				 GMount *mount,
-				 MafwGstRenderer *renderer);
 
 /*----------------------------------------------------------------------------
   Plugin initialization
@@ -249,6 +254,8 @@ static void mafw_gst_renderer_class_init(MafwGstRendererClass *klass)
 static void mafw_gst_renderer_init(MafwGstRenderer *self)
 {
 	MafwGstRenderer *renderer = NULL;
+	GError *error = NULL;
+
 	g_return_if_fail(MAFW_IS_GST_RENDERER(self));
 
 	renderer = MAFW_GST_RENDERER(self);
@@ -306,12 +313,25 @@ static void mafw_gst_renderer_init(MafwGstRenderer *self)
 
 	_connection_init(renderer);
 #endif
+	renderer->gconf_client = gconf_client_get_default();
+	gconf_client_add_dir(renderer->gconf_client, GCONF_OSSO_AF,
+			     GCONF_CLIENT_PRELOAD_ONELEVEL, &error);
+	if (error) {
+		g_warning("%s", error->message);
+		g_free(error);
+		error = NULL;
+	}
 
-	renderer->volume_monitor = g_volume_monitor_get();
-	g_signal_connect(G_OBJECT(renderer->volume_monitor),
-			 "mount-pre-unmount",
-			 G_CALLBACK(_pre_unmount_handler),
-			 renderer);
+	gconf_client_notify_add(renderer->gconf_client,
+				GCONF_BATTERY_COVER_OPEN,
+				(GConfClientNotifyFunc) _battery_cover_open_cb,
+				renderer,
+				NULL, &error);
+
+	if (error) {
+		g_warning("%s", error->message);
+		g_free(error);
+	}
 }
 
 static void mafw_gst_renderer_dispose(GObject *object)
@@ -356,6 +376,11 @@ static void mafw_gst_renderer_dispose(GObject *object)
 		renderer->connection = NULL;
 	}
 #endif
+
+	if (renderer->gconf_client != NULL) {
+		g_object_unref(renderer->gconf_client);
+		renderer->gconf_client = NULL;
+	}
 
 	G_OBJECT_CLASS(mafw_gst_renderer_parent_class)->dispose(object);
 }
@@ -723,6 +748,32 @@ static void _property_modified(LibHalContext *ctx, const char *udi,
         if (strcmp(key, "input.jack.type") == 0) {
                 blanking_control(_tv_out_is_connected(ctx, udi) == FALSE);
         }
+}
+
+/*----------------------------------------------------------------------------
+  GConf notifications
+  ----------------------------------------------------------------------------*/
+
+static void _battery_cover_open_cb(GConfClient *client,
+				   guint cnxn_id,
+				   GConfEntry *entry,
+				   MafwGstRenderer *renderer)
+{
+	GConfValue *value = NULL;
+	gboolean is_cover_open;
+
+	value = gconf_entry_get_value(entry);
+	is_cover_open = gconf_value_get_bool(value);
+
+	if (is_cover_open) {
+		/* External mmc could be removed!. */
+		const gchar *emmc_path = g_getenv("MMC_MOUNTPOINT");
+
+	   	mafw_gst_renderer_state_handle_pre_unmount(
+			MAFW_GST_RENDERER_STATE(
+				renderer->states[renderer->current_state]),
+			         emmc_path);
+	}
 }
 
 /*----------------------------------------------------------------------------
@@ -2034,30 +2085,6 @@ static void mafw_gst_renderer_set_property(MafwExtension *self,
 	 * Maybe we should let the worker do it, when the change
 	 * reached the hardware... */
 	mafw_extension_emit_property_changed(self, key, value);
-}
-
-/*----------------------------------------------------------------------------
-  GIO event handlers
-  ----------------------------------------------------------------------------*/
-
-static void _pre_unmount_handler(GVolumeMonitor *volume_monitor,
-				 GMount *mount,
-				 MafwGstRenderer *renderer)
-{
-	GFile *mount_dir = g_mount_get_root(mount);
-	gchar *mount_dir_path = g_file_get_path(mount_dir);
-	const gchar *emmc_path = g_getenv("MMC_MOUNTPOINT");
-
-	if (!g_strcmp0(mount_dir_path, emmc_path)) {
-		/* External mmc pre-unmount. */
-		mafw_gst_renderer_state_handle_pre_unmount(
-			MAFW_GST_RENDERER_STATE(
-				renderer->states[renderer->current_state]),
-			mount_dir_path);
-	}
-
-	g_free(mount_dir_path);
-	g_object_unref(mount_dir);
 }
 
 /* vi: set noexpandtab ts=8 sw=8 cino=t0,(0: */

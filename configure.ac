@@ -58,6 +58,7 @@ PKG_CHECK_MODULES(DEPS,
 		  hal
 		  totem-plparser
                   libpulse-mainloop-glib >= 0.9.15
+                  gconf-2.0 >= 2.0
 )
 
 dnl Check for GdkPixbuf, needed for dumping current frame
