@@ -1219,7 +1219,6 @@ static void _handle_buffering(MafwGstRendererWorker *worker, GstMessage *msg)
 				   if we are buffering  */
 				if (worker->report_statechanges &&
                 		    worker->notify_play_handler) {
-					g_warning ("STATE IS PLAYING NOTIFYING!!!");
 					worker->notify_play_handler(
                                                		worker,
 	                                                worker->owner);
