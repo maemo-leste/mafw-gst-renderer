@@ -855,11 +855,10 @@ static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker
 	{
 		/* if seek was called, at this point it is really ended */
 		worker->seek_position = -1;
-		if (worker->report_statechanges)
-		{
-			worker->state = GST_STATE_PLAYING;
-			worker->eos = FALSE;
+                worker->state = GST_STATE_PLAYING;
+                worker->eos = FALSE;
 
+		if (worker->report_statechanges) {
 			switch (worker->mode) {
 			case WORKER_MODE_SINGLE_PLAY:
 				/* Notify play */
@@ -882,9 +881,10 @@ static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker
 				break;
 			default: break;
 			}
-			if (worker->media.has_visual_content)
-				blanking_prohibit();
 		}
+                if (worker->media.has_visual_content) {
+                        blanking_prohibit();
+                }
 		_remove_ready_timeout(worker);
 		_emit_metadatas(worker);
 		/* Query duration and seekability. Useful for vbr
