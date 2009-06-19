@@ -1188,15 +1188,26 @@ static void _handle_buffering(MafwGstRendererWorker *worker, GstMessage *msg)
                 if (percent >= 100) {
                         /* On buffering we go to PAUSED, so here we move back to
                            PLAYING */
+                        worker->buffering = FALSE;
                         if (worker->state == GST_STATE_PAUSED) {
                                 /* If buffering more than once, do this only the
                                    first time we are done with buffering */
                                 if (worker->prerolling) {
 					_finalize_startup(worker);
-					worker->prerolling = FALSE;
                                 }
                                 _do_play(worker);
                                 renderer->play_failed_count = 0;
+                                /* Send the paused notification */
+                                if ((worker->prerolling &&
+                                     worker->stay_paused) ||
+                                    !worker->prerolling) {
+                                        if (worker->notify_pause_handler) {
+                                                worker->notify_pause_handler(
+                                                        worker,
+                                                        worker->owner);
+                                        }
+                                }
+                                worker->prerolling = FALSE;
                         } else if (worker->state == GST_STATE_PLAYING) {
 				/* In this case we got a PLAY command while 
 				   buffering, likely because it was issued
@@ -1215,7 +1226,6 @@ static void _handle_buffering(MafwGstRendererWorker *worker, GstMessage *msg)
 				}
                                 _add_duration_seek_query_timeout(worker);
                         }
-                        worker->buffering = FALSE;
                 }
         }
 
@@ -1925,12 +1935,6 @@ static void _do_play(MafwGstRendererWorker *worker)
 	}
 	else {
 		g_debug("staying in PAUSED state");
-                /* If buffering, means that we didn't send the change to PAUSED
-                 * state */
-                if (worker->buffering &&
-                    worker->notify_pause_handler) {
-                        worker->notify_pause_handler(worker, worker->owner);
-                }
 		_add_ready_timeout(worker);
 	}
 }
