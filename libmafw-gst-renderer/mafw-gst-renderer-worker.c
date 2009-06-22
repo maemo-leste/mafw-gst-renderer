@@ -2045,8 +2045,10 @@ void mafw_gst_renderer_worker_stop(MafwGstRendererWorker *worker)
 	worker->seek_position = -1;
 	_remove_ready_timeout(worker);
 	_free_taglist(worker);
-	g_hash_table_destroy(worker->current_metadata);
-	worker->current_metadata = NULL;
+	if (worker->current_metadata) {
+		g_hash_table_destroy(worker->current_metadata);
+		worker->current_metadata = NULL;
+	}
 
 	if (worker->duration_seek_timeout != 0) {
 		g_source_remove(worker->duration_seek_timeout);
