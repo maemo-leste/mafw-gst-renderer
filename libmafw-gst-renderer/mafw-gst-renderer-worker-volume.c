@@ -231,7 +231,9 @@ static void _ext_stream_restore_read_cb_init(pa_context *c,
 {
 	InitCbClosure *closure = userdata;
 
-	g_assert(eol >= 0);
+	if (eol < 0) {
+		g_critical("eol parameter should not be < 1");
+	}
 
 	if (i == NULL ||
 	    strcmp(i->name, MAFW_GST_RENDERER_WORKER_VOLUME_ROLE_PREFIX
