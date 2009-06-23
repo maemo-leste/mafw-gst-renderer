@@ -398,7 +398,11 @@ static gboolean _set_timeout(gpointer data)
 			 const *)infos,
 			1, TRUE, _success_cb, wvolume);
 
-		g_assert(wvolume->pa_operation != NULL);
+		if (wvolume->pa_operation == NULL) {
+			g_critical("NULL operation when writing volume to "
+				   "pulse");
+			wvolume->change_request_id = 0;
+		}
 	} else {
 		g_debug("removing volume timeout");
 		wvolume->change_request_id = 0;
