@@ -477,11 +477,11 @@ void mafw_gst_renderer_worker_volume_set(MafwGstRendererWorkerVolume *wvolume,
 	}
 
 	if ((signal_mute || signal_volume) && wvolume->change_request_id == 0) {
-		_set_timeout(wvolume);
-
 		wvolume->change_request_id =
 			g_timeout_add(MAFW_GST_RENDERER_WORKER_SET_TIMEOUT,
 				      _set_timeout, wvolume);
+
+		_set_timeout(wvolume);
 	}
 }
 
