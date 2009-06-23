@@ -98,7 +98,11 @@ static void _ext_stream_restore_read_cb(pa_context *c,
 {
 	MafwGstRendererWorkerVolume *wvolume = userdata;
 
-	g_assert(eol >= 0);
+	if (eol < 0) {
+		g_critical("eol parameter should not be < 1. "
+			   "Discarding volume event");
+		return;
+	}
 
 	if (_pa_operation_running(wvolume)) {
 		g_debug("volume notification, but operation running, ignoring");
