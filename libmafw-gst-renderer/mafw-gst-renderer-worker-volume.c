@@ -362,6 +362,14 @@ static void _success_cb(pa_context *c, int success, void *userdata)
 	g_assert(success != 0);
 }
 
+static void _remove_set_timeout(MafwGstRendererWorkerVolume *wvolume)
+{
+	if (wvolume->change_request_id != 0) {
+		g_source_remove(wvolume->change_request_id);
+	}
+	wvolume->change_request_id = 0;
+}
+
 static gboolean _set_timeout(gpointer data)
 {
 	pa_ext_stream_restore2_info info;
@@ -401,11 +409,11 @@ static gboolean _set_timeout(gpointer data)
 		if (wvolume->pa_operation == NULL) {
 			g_critical("NULL operation when writing volume to "
 				   "pulse");
-			wvolume->change_request_id = 0;
+			_remove_set_timeout(wvolume);
 		}
 	} else {
 		g_debug("removing volume timeout");
-		wvolume->change_request_id = 0;
+		_remove_set_timeout(wvolume);
 	}
 
 	return wvolume->change_request_id != 0;
