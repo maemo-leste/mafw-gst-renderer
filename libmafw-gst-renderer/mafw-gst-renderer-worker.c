@@ -868,6 +868,7 @@ static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker
 						worker->owner);
 				break;
 			case WORKER_MODE_PLAYLIST:
+                        case WORKER_MODE_REDUNDANT:
 				/* Only notify play when the "playlist"
 				   playback starts, don't notify play for each
 				   individual element of the playlist. */
@@ -886,6 +887,16 @@ static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker
                         blanking_prohibit();
                 }
 		_remove_ready_timeout(worker);
+                /* If mode is redundant we are trying to play one of several
+                 * candidates, so when we get a successful playback, we notify
+                 * the real URI that we are playing */
+                if (worker->mode == WORKER_MODE_REDUNDANT) {
+                        mafw_renderer_emit_metadata_string(
+                                worker->owner,
+                                MAFW_METADATA_KEY_URI,
+                                worker->media.location);
+                }
+
 		_emit_metadatas(worker);
 		/* Query duration and seekability. Useful for vbr
 		 * clips or streams. */
@@ -1140,7 +1151,7 @@ static void _parse_tagmsg(GstMessage *msg, MafwGstRendererWorker *worker)
 	gst_message_parse_tag(msg, &new_tags);
 	gst_tag_list_foreach(new_tags, (gpointer)_emit_tag, worker);
 	gst_tag_list_free(new_tags);
-	gst_message_unref(msg);	
+	gst_message_unref(msg);
 }
 
 /**
@@ -1348,13 +1359,14 @@ static gboolean _async_bus_handler(GstBus *bus, GstMessage *msg,
 			if (debug)
 				g_free(debug);
 
-			/* If we are in playlist mode, we silently
+			/* If we are in playlist/radio mode, we silently
 			   ignore the error and continue with the next
 			   item until we end the playlist. If no
 			   playable elements we raise the error and
 			   after finishing we go to normal mode */
 
-			if (worker->mode == WORKER_MODE_PLAYLIST) {
+			if (worker->mode == WORKER_MODE_PLAYLIST ||
+                            worker->mode == WORKER_MODE_REDUNDANT) {
 				if (worker->pl.current <
 				    (g_slist_length(worker->pl.items) - 1)) {
 					/* If the error is "no space left"
@@ -1368,7 +1380,10 @@ static gboolean _async_bus_handler(GstBus *bus, GstMessage *msg,
 						_play_pl_next(worker);
 					}
 				} else {
-					/* Playlist EOS. Go to normal mode */
+                                        /* Playlist EOS. We cannot try another
+                                         * URI, so we have to go back to normal
+                                         * mode and signal the error (done
+                                         * below) */
 					worker->mode = WORKER_MODE_SINGLE_PLAY;
 					_reset_pl_info(worker);
 				}
@@ -1397,22 +1412,31 @@ static gboolean _async_bus_handler(GstBus *bus, GstMessage *msg,
 				}
 			}
 
-			if (worker->mode == WORKER_MODE_SINGLE_PLAY) {
+			if (worker->mode == WORKER_MODE_SINGLE_PLAY ||
+                            worker->mode == WORKER_MODE_REDUNDANT) {
 				if (worker->notify_eos_handler)
 					worker->notify_eos_handler(
 						worker,
 						worker->owner);
 
 				/* We can remove the message handlers now, we
-				   are not interested in bus messages anymore. */
+				   are not interested in bus messages
+				   anymore. */
 				if (worker->bus) {
-					gst_bus_set_sync_handler(worker->bus, NULL,
+					gst_bus_set_sync_handler(worker->bus,
+                                                                 NULL,
 								 NULL);
 				}
 				if (worker->async_bus_id) {
 					g_source_remove(worker->async_bus_id);
 					worker->async_bus_id = 0;
 				}
+
+                                if (worker->mode == WORKER_MODE_REDUNDANT) {
+                                        /* Go to normal mode */
+                                        worker->mode = WORKER_MODE_SINGLE_PLAY;
+                                        _reset_pl_info(worker);
+                                }
 			}
 		}
 		break;
@@ -2004,6 +2028,40 @@ void mafw_gst_renderer_worker_play(MafwGstRendererWorker *worker,
 	_start_play(worker);
 }
 
+void mafw_gst_renderer_worker_play_alternatives(MafwGstRendererWorker *worker,
+                                                gchar **uris)
+{
+        gint i;
+        gchar *item;
+
+        g_assert(uris && uris[0]);
+
+        mafw_gst_renderer_worker_stop(worker);
+        _reset_media_info(worker);
+        _reset_pl_info(worker);
+
+        /* Add the uris to playlist */
+        i = 0;
+        while (uris[i]) {
+                worker->pl.items =
+                        g_slist_append(worker->pl.items, g_strdup(uris[i]));
+                i++;
+        }
+
+        /* Set the playback mode */
+        worker->mode = WORKER_MODE_REDUNDANT;
+        worker->pl.notify_play_pending = TRUE;
+
+        /* Set the item to be played */
+        worker->pl.current = 0;
+        item = (gchar *) g_slist_nth_data(worker->pl.items, 0);
+        worker->media.location = g_strdup(item);
+
+        /* Start playing */
+        _construct_pipeline(worker);
+        _start_play(worker);
+}
+
 /*
  * Currently, stop destroys the Gst pipeline and resets the worker into
  * default startup configuration.
@@ -2080,7 +2138,8 @@ void mafw_gst_renderer_worker_pause(MafwGstRendererWorker *worker)
 
 void mafw_gst_renderer_worker_resume(MafwGstRendererWorker *worker)
 {
-	if (worker->mode == WORKER_MODE_PLAYLIST) {
+	if (worker->mode == WORKER_MODE_PLAYLIST ||
+            worker->mode == WORKER_MODE_REDUNDANT) {
 		/* We must notify play if the "playlist" playback
 		   is resumed */
 		worker->pl.notify_play_pending = TRUE;

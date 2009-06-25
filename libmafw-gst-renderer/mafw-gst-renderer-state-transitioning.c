@@ -255,6 +255,10 @@ static void _notify_metadata(MafwGstRendererState *self,
 
 	MafwGstRenderer *renderer;
 	GValue *mval;
+        gpointer value;
+        gint nuris, i;
+        gchar **uris;
+        gchar *uri;
 
 	g_debug("running _notify_metadata...");
 
@@ -264,35 +268,59 @@ static void _notify_metadata(MafwGstRendererState *self,
 	   then play it */
 	if (object_id && renderer->media->object_id &&
 	    !strcmp(object_id, renderer->media->object_id)) {
-		gchar *uri;
-		mval = mafw_metadata_first(metadata, MAFW_METADATA_KEY_URI);
-		if (mval != NULL) {
+                /* Check how many uris provide the object_id */
+                value = g_hash_table_lookup(metadata, MAFW_METADATA_KEY_URI);
+                nuris = mafw_metadata_nvalues(value);
+                if (nuris == 1) {
+                        mval = mafw_metadata_first(metadata,
+                                                   MAFW_METADATA_KEY_URI);
+                        g_assert(mval);
 			g_free(renderer->media->uri);
-			renderer->media->uri = g_strdup(g_value_get_string(mval));
+			renderer->media->uri =
+                                g_strdup(g_value_get_string(mval));
 			uri = renderer->media->uri;
+                } else if (nuris > 1) {
+                        uris = g_new0(gchar *, nuris + 1);
+                        for (i = 0; i < nuris; i++) {
+                                mval = g_value_array_get_nth(value, i);
+                                uris[i] = (gchar *) g_value_get_string(mval);
+                        }
 
-			mval = mafw_metadata_first(
-				metadata,
-				MAFW_METADATA_KEY_IS_SEEKABLE);
-			if (mval != NULL) {
-				renderer->media->seekability =
-					g_value_get_boolean(mval) ?
-					SEEKABILITY_SEEKABLE :
-					SEEKABILITY_NO_SEEKABLE;
-				g_debug("_notify_metadata: source seekability "
-					"%d", renderer->media->seekability);
-			} else {
-				renderer->media->seekability =
-					SEEKABILITY_UNKNOWN;
-				g_debug("_notify_metadata: "
-					"source seekability unknown");
-			}
+                        /* Try the first URI, if that fails to play back another
+                         * one will be selected until we get a successful one or
+                         * all failed. On success, the selected URI will be
+                         * emitted as metadata */
+                        g_free(renderer->media->uri);
+                        renderer->media->uri = g_strdup(uris[0]);
+                } else {
+                        g_assert_not_reached();
+                }
 
+                /* Set seekability property; currently, if several uris are
+                 * provided it uses the value of the first uri. If later another
+                 * uri is actually played, then this value should be changed. */
+                mval = mafw_metadata_first(metadata,
+                                           MAFW_METADATA_KEY_IS_SEEKABLE);
+                if (mval != NULL) {
+                        renderer->media->seekability =
+                                g_value_get_boolean(mval) ?
+                                SEEKABILITY_SEEKABLE : SEEKABILITY_NO_SEEKABLE;
+                        g_debug("_notify_metadata: source seekability %d",
+                                renderer->media->seekability);
+                } else {
+                        renderer->media->seekability = SEEKABILITY_UNKNOWN;
+                        g_debug("_notify_metadata: source seekability unknown");
+                }
+
+                /* Play the available uri(s) */
+                if (nuris == 1) {
 			mafw_gst_renderer_worker_play(renderer->worker, uri);
-		}
-		else
-			g_assert_not_reached();
-	}
+		} else {
+                        mafw_gst_renderer_worker_play_alternatives(
+                                renderer->worker, uris);
+                        g_free(uris);
+                }
+        }
 }
 
 /*----------------------------------------------------------------------------

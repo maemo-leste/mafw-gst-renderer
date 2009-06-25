@@ -45,6 +45,7 @@ typedef void (*MafwGstRendererWorkerNotifyErrorCb)(MafwGstRendererWorker *worker
 typedef enum {
 	WORKER_MODE_SINGLE_PLAY,
         WORKER_MODE_PLAYLIST,
+        WORKER_MODE_REDUNDANT,
 } PlaybackMode;
 
 typedef enum {
@@ -172,6 +173,7 @@ gint mafw_gst_renderer_worker_get_colorkey(MafwGstRendererWorker *worker);
 gboolean mafw_gst_renderer_worker_get_seekable(MafwGstRendererWorker *worker);
 GHashTable *mafw_gst_renderer_worker_get_current_metadata(MafwGstRendererWorker *worker);
 void mafw_gst_renderer_worker_play(MafwGstRendererWorker *worker, const gchar *uri);
+void mafw_gst_renderer_worker_play_alternatives(MafwGstRendererWorker *worker, gchar **uris);
 void mafw_gst_renderer_worker_stop(MafwGstRendererWorker *worker);
 void mafw_gst_renderer_worker_pause(MafwGstRendererWorker *worker);
 void mafw_gst_renderer_worker_resume(MafwGstRendererWorker *worker);
