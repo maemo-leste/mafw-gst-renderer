@@ -1182,23 +1182,21 @@ static void _handle_buffering(MafwGstRendererWorker *worker, GstMessage *msg)
 
         /* No state management needed for live pipelines */
         if (!worker->is_live) {
-                if (!worker->buffering) {
-                        worker->buffering = TRUE;
-                        if (worker->state == GST_STATE_PLAYING) {
-                                worker->report_statechanges = FALSE;
-                                /* We can't call _pause() here, since it sets
-                                 * the "report_statechanges" to TRUE.  We don't
-                                 * want that, application doesn't need to know
-                                 * that internally the state changed to
-                                 * PAUSED. */
-                                gst_element_set_state(worker->pipeline,
-                                                      GST_STATE_PAUSED);
-                                /* XXX this blocks till statechange. */
-                                gst_element_get_state(worker->pipeline, NULL,
-                                                      NULL,
-                                                      GST_CLOCK_TIME_NONE);
-                        }
-                }
+		worker->buffering = TRUE;
+		if (worker->state == GST_STATE_PLAYING) {
+			worker->report_statechanges = FALSE;
+			/* We can't call _pause() here, since it sets
+			 * the "report_statechanges" to TRUE.  We don't
+			 * want that, application doesn't need to know
+			 * that internally the state changed to
+			 * PAUSED. */
+			gst_element_set_state(worker->pipeline,
+					      GST_STATE_PAUSED);
+			/* XXX this blocks till statechange. */
+			gst_element_get_state(worker->pipeline, NULL,
+					      NULL,
+					      GST_CLOCK_TIME_NONE);
+		}
 
                 if (percent >= 100) {
                         /* On buffering we go to PAUSED, so here we move back to
