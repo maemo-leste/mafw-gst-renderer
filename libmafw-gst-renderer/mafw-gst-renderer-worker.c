@@ -803,6 +803,7 @@ static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker
 	else if (newstate == GST_STATE_PAUSED &&
 		   worker->report_statechanges && !worker->in_ready)
 	{
+		worker->state = GST_STATE_PAUSED;
 
 /* 		/\* Perform pending seek, 1st try.  Some formats can seek already */
 /* 		 * in PAUSED state. *\/ */
@@ -849,7 +850,6 @@ static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker
 #endif
 		}
 		worker->prerolling = FALSE;
-		worker->state = GST_STATE_PAUSED;
 	}
 	else if (newstate == GST_STATE_PLAYING)
 	{
@@ -907,6 +907,10 @@ static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker
 		worker->state = GST_STATE_READY;
 		worker->ready_timeout = 0;
 		_free_taglist(worker);
+	}
+	else {
+		/* Just keep track of the current state */
+		worker->state = newstate;
 	}
 }
 
