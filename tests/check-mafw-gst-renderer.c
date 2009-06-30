@@ -3727,6 +3727,37 @@ START_TEST(test_properties_management)
 	mafw_extension_set_property_boolean(MAFW_EXTENSION(g_gst_renderer),
 					    c.property_expected, TRUE);
 
+	p.expected = MAFW_PROPERTY_RENDERER_MUTE;
+
+#ifdef MAFW_GST_RENDERER_ENABLE_MUTE
+	if (!wait_for_property(&p, wait_tout_val)) {
+		fail("No property %s received", p.expected);
+	}
+
+	fail_if(p.received == NULL, "No property %s received",
+		p.expected);
+	fail_if(p.received != NULL &&
+		g_value_get_boolean(p.received) != TRUE,
+		"Property with value %d and %d expected",
+		g_value_get_boolean(p.received), TRUE);
+#else
+	if (wait_for_property(&p, wait_tout_val)) {
+		fail("Property %s received and it should not have been",
+		     p.expected);
+	}
+
+	fail_if(p.received != NULL,
+		"Property %s received and it should not have been",
+		p.expected);
+#endif
+
+	if (p.received != NULL) {
+		g_value_unset(p.received);
+		g_free(p.received);
+		p.received = NULL;
+	}
+	p.expected = NULL;
+
 	mafw_extension_get_property(MAFW_EXTENSION(g_gst_renderer),
 				    c.property_expected, get_property_cb, &c);
 
