@@ -46,6 +46,7 @@
 
 #include "mafw-gst-renderer.h"
 #include "mafw-mock-playlist.h"
+#include "mafw-mock-pulseaudio.h"
 
 #undef  G_LOG_DOMAIN
 #define G_LOG_DOMAIN "check-mafw-gstreamer-renderer"
@@ -3959,6 +3960,34 @@ START_TEST(test_properties_management)
 		g_value_get_uint(c.property_received) != 50,
 		"Property with value %d and %d expected",
 		g_value_get_uint(c.property_received), 50);
+
+	/* Test reconnection to pulse */
+
+	pa_context_disconnect(pa_context_get_instance());
+
+	/* Wait for the volume manager to be reinitialized */
+
+	/* Volume */
+
+	p.expected = MAFW_PROPERTY_RENDERER_VOLUME;
+
+	if (!wait_for_property(&p, wait_tout_val)) {
+		fail("No property %s received", p.expected);
+	}
+
+	fail_if(p.received == NULL, "No property %s received",
+		p.expected);
+	fail_if(p.received != NULL &&
+		g_value_get_uint(p.received) != 48,
+		"Property with value %d and %d expected",
+		g_value_get_uint(p.received), 48);
+
+	if (p.received != NULL) {
+		g_value_unset(p.received);
+		g_free(p.received);
+		p.received = NULL;
+	}
+	p.expected = NULL;
 
 	reset_callback_info(&c);
 }
