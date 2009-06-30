@@ -1784,7 +1784,7 @@ START_TEST(test_update_stats)
 	g_set_error(&get_md_err, MAFW_SOURCE_ERROR,
                     MAFW_SOURCE_ERROR_INVALID_OBJECT_ID,
                     "Wrong object id mocksource::test");
-	renderer->media->object_id = "mocksource::test";
+	renderer->media->object_id = g_strdup("mocksource::test");
 	mafw_gst_renderer_update_stats(renderer);
         g_error_free(get_md_err);
 	fail_if(set_mdata_called);
