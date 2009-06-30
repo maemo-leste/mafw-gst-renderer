@@ -3915,7 +3915,7 @@ START_TEST(test_properties_management)
 		"Property with value %d and %d expected",
 		g_value_get_boolean(c.property_received), TRUE);
 
-	/* --- volume stopped --- */
+	/* --- volume --- */
 
 	p.expected = MAFW_PROPERTY_RENDERER_VOLUME;
 
@@ -3960,115 +3960,7 @@ START_TEST(test_properties_management)
 		"Property with value %d and %d expected",
 		g_value_get_uint(c.property_received), 50);
 
-	/* --- Get initial status --- */
-
 	reset_callback_info(&c);
-
-	g_debug("get status...");
-	mafw_renderer_get_status(g_gst_renderer, status_cb, &s);
-
-	/* --- Play object --- */
-
-	reset_callback_info(&c);
-
-	p.expected = MAFW_PROPERTY_RENDERER_VOLUME;
-
-	gchar *objectid = get_sample_clip_objectid(SAMPLE_AUDIO_CLIP);
-	g_debug("play_object... %s", objectid);
-	mafw_renderer_play_object(g_gst_renderer, objectid, playback_cb, &c);
-
-	if (wait_for_callback(&c, wait_tout_val)) {
-		if (c.error)
-			fail(callback_err_msg, "playing an object", c.err_code,
-			     c.err_msg);
-	} else {
-		fail(no_callback_msg);
-	}
-
-	if (wait_for_state(&s, Transitioning, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play_object", "Transitioning",
-		     s.state);
-	}
-
-	if (wait_for_state(&s, Playing, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play_object", "Playing",
-		     s.state);
-	}
-
-	g_free(objectid);
-
-	if (wait_for_property(&p, wait_tout_val)) {
-		fail("Property %s received and it should not have been",
-		     p.expected);
-	}
-
-	if (p.received != NULL) {
-		g_value_unset(p.received);
-		g_free(p.received);
-		p.received = NULL;
-	}
-
-	/* --- volume playing --- */
-
-	mafw_extension_set_property_uint(MAFW_EXTENSION(g_gst_renderer),
-					 p.expected, 75);
-
-	if (!wait_for_property(&p, wait_tout_val)) {
-		fail("No property %s received", p.expected);
-	}
-
-	fail_if(p.received == NULL, "No property %s received",
-		p.expected);
-	fail_if(p.received != NULL &&
-		g_value_get_uint(p.received) != 75,
-		"Property with value %d and %d expected",
-		g_value_get_uint(p.received), 75);
-
-	if (p.received != NULL) {
-		g_value_unset(p.received);
-		g_free(p.received);
-		p.received = NULL;
-	}
-	p.expected = NULL;
-
-	c.property_expected = MAFW_PROPERTY_RENDERER_VOLUME;
-
-	mafw_extension_get_property(MAFW_EXTENSION(g_gst_renderer),
-				    c.property_expected, get_property_cb, &c);
-
-	if (wait_for_callback(&c, wait_tout_val)) {
-		if (c.error)
-			fail(callback_err_msg, "get_property", c.err_code,
-			     c.err_msg);
-	} else {
-		fail(no_callback_msg);
-	}
-
-	fail_if(c.property_received == NULL,
-		"No property %s received and expected", c.property_expected);
-	fail_if(c.property_received != NULL &&
-		g_value_get_uint(c.property_received) != 75,
-		"Property with value %d and %d expected",
-		g_value_get_uint(c.property_received), 75);
-
-	/* --- Stop --- */
-
-	reset_callback_info(&c);
-
-	g_debug("stop...");
-	mafw_renderer_stop(g_gst_renderer, playback_cb, &c);
-
-	if (wait_for_callback(&c, wait_tout_val)) {
-		if (c.error)
-			fail(callback_err_msg, "stopping", c.err_code,
-			     c.err_msg);
-	} else {
-		fail(no_callback_msg);
-	}
-
-	if (wait_for_state(&s, Stopped, wait_tout_val) == FALSE) {
-		fail(state_err_msg,"mafw_renderer_stop", "Stopped", s.state);
-	}
 }
 END_TEST
 
