@@ -2,9 +2,7 @@ mafw-gst-renderer (0.1.2009.27-1) unstable; urgency=low
 
   * MAFW gst renderer, pre-release 0.2009.27-1
   * Fixes: NB#123701 - mafw-dbus-wrapper-76CE-6-1218.rcore.lzo crashed
-  * Fixes: NB#118946 - Video playback is starting very slowly
   * Fixes: NB#116836 - Streaming stops after taping on Next button during paused state
-  * Fixes: NB#120862 - media playback doesnt stop immediately after removing mmc
   * Fixes: NB#123545 - mafw-gst-renderer get-position returns uninitialized value
   * Added function to remove the _set_timeout and used not to call it twice
     innecessarily.
