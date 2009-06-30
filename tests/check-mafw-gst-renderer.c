@@ -555,7 +555,15 @@ GstElement * gst_element_factory_make(const gchar * factoryname,
 	}
 
 	GST_LOG_OBJECT(factory, "found factory %p", factory);
-	element = gst_element_factory_create(factory, name);
+	if (g_ascii_strcasecmp(use_factoryname, "pulsesink") == 0) {
+		element = gst_element_factory_make("fakesink", "pulsesink");
+		g_object_set(G_OBJECT(element), "sync", TRUE, NULL);
+	} else if (g_ascii_strcasecmp(use_factoryname, "xvimagesink") == 0) {
+		element = gst_element_factory_make("fakesink", "xvimagesink");
+		g_object_set(G_OBJECT(element), "sync", TRUE, NULL);
+	} else {
+		element = gst_element_factory_create(factory, name);
+	}
 	gst_object_unref(factory);
 
 	if (element == NULL) {
