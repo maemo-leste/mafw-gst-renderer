@@ -296,6 +296,7 @@ void
 mafw_playlist_iterator_initialize(MafwPlaylistIterator *iterator,
 				   MafwPlaylist *playlist, GError **error)
 {
+	guint size;
 	gint index = -1;
 	gchar *objectid = NULL;
 	GError *new_error = NULL;
@@ -309,9 +310,14 @@ mafw_playlist_iterator_initialize(MafwPlaylistIterator *iterator,
 					  &new_error);
 
 	if (new_error == NULL) {
+		size = mafw_playlist_get_size(playlist, &new_error);
+	}
+
+	if (new_error == NULL) {
 		iterator->priv->playlist = g_object_ref(playlist);
 		iterator->priv->current_index = index;
 		iterator->priv->current_objectid = objectid;
+		iterator->priv->size = size;
 
 		g_signal_connect(playlist,
 				 "item-moved",
