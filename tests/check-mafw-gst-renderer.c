@@ -3714,10 +3714,17 @@ START_TEST(test_properties_management)
 
 	fail_if(c.property_received == NULL,
 		"No property %s received and expected", c.property_expected);
+#ifdef MAFW_GST_RENDERER_ENABLE_MUTE
 	fail_if(c.property_received != NULL &&
 		g_value_get_boolean(c.property_received) != TRUE,
 		"Property with value %d and %d expected",
 		g_value_get_boolean(c.property_received), TRUE);
+#else
+	fail_if(c.property_received != NULL &&
+		g_value_get_boolean(c.property_received) != FALSE,
+		"Property with value %d and %d expected",
+		g_value_get_boolean(c.property_received), FALSE);
+#endif
 
 	/* --- xid --- */
 
