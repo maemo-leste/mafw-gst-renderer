@@ -4137,7 +4137,7 @@ SRunner * configure_tests(void)
 	}
 
 	checkmore_wants_dbus();
-	mafw_log_init(NULL);
+	mafw_log_init(":error");
 	/* Create the suite */
 	s = suite_create("MafwGstRenderer");
 
