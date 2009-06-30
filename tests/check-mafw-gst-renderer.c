@@ -529,6 +529,8 @@ static void fx_teardown_dummy_gst_renderer(void)
   Mockups
   ----------------------------------------------------------------------------*/
 
+/* GStreamer mock */
+
 GstElement * gst_element_factory_make(const gchar * factoryname,
 				      const gchar * name)
 {
