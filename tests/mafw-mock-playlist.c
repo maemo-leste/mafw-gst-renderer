@@ -234,14 +234,9 @@ gboolean mafw_mock_playlist_insert_item(MafwPlaylist *self, guint index,
 					      const gchar *objectid,
 					      GError **error)
 {
-	gint size;
-
-	size = g_list_length(pl_list);
-
 	pl_list = g_list_insert(pl_list, g_strdup(objectid), index);
 
-	g_signal_emit_by_name(self, "contents-changed", index, 0,
-			      size == index ? 0 : 1);
+	g_signal_emit_by_name(self, "contents-changed", index, 0, 1);
 	
 	return TRUE;
 }
