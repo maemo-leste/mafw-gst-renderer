@@ -1045,7 +1045,8 @@ START_TEST(test_playlist_playback)
 	/* --- Reassigning playlist --- */
 
 	media_changed_called = FALSE;
-	if (!mafw_renderer_assign_playlist(g_gst_renderer, playlist, NULL))
+	if (!mafw_renderer_assign_playlist(g_gst_renderer,
+					   g_object_ref(playlist), NULL))
 	{
 		fail("Assign playlist failed");
 	}
