@@ -43,7 +43,8 @@ EXTRA_DIST			= media/test.wav media/test.avi media/testframe.png
 
 check_mafw_gst_renderer_SOURCES	= check-main.c \
 				  check-mafw-gst-renderer.c \
-				  mafw-mock-playlist.c mafw-mock-playlist.h
+				  mafw-mock-playlist.c mafw-mock-playlist.h \
+				  mafw-mock-pulseaudio.c mafw-mock-pulseaudio.h
 
 CLEANFILES			= $(TESTS) mafw.db *.gcno *.gcda
 MAINTAINERCLEANFILES		= Makefile.in
