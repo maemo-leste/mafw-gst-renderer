@@ -3694,6 +3694,30 @@ START_TEST(test_properties_management)
 			 G_CALLBACK(property_changed_cb),
 			 &p);
 
+	/* Wait for the volume manager to be initialized */
+
+	/* Volume */
+
+	p.expected = MAFW_PROPERTY_RENDERER_VOLUME;
+
+	if (!wait_for_property(&p, wait_tout_val)) {
+		fail("No property %s received", p.expected);
+	}
+
+	fail_if(p.received == NULL, "No property %s received",
+		p.expected);
+	fail_if(p.received != NULL &&
+		g_value_get_uint(p.received) != 48,
+		"Property with value %d and %d expected",
+		g_value_get_uint(p.received), 48);
+
+	if (p.received != NULL) {
+		g_value_unset(p.received);
+		g_free(p.received);
+		p.received = NULL;
+	}
+	p.expected = NULL;
+
 	/* --- mute --- */
 
 	reset_callback_info(&c);
