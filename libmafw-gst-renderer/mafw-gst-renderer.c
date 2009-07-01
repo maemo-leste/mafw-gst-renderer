@@ -2048,7 +2048,8 @@ static void mafw_gst_renderer_set_property(MafwExtension *self,
 
 	if (!strcmp(key, MAFW_PROPERTY_RENDERER_VOLUME)) {
 		guint volume = g_value_get_uint(value);
-		volume = CLAMP(volume, 0, 100);
+		if (volume > 100)
+			volume = 100;
                 mafw_gst_renderer_worker_set_volume(renderer->worker,
 							   volume);
                 /* Property-changed emision is done by worker */
