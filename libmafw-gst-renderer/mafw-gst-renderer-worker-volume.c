@@ -166,13 +166,12 @@ static InitCbClosure *_init_cb_closure_new(MafwGstRendererWorkerVolume *wvolume,
 	return closure;
 }
 
-static void _connect(MafwGstRendererWorkerVolume *wvolume,
-		     MafwGstRendererWorkerVolumeInitCb cb,
-		     gpointer user_data)
+static void _connect(gpointer user_data)
 {
 	gchar *name = NULL;
 	pa_mainloop_api *api = NULL;
-	InitCbClosure *closure;
+	InitCbClosure *closure = user_data;
+	MafwGstRendererWorkerVolume *wvolume = closure->wvolume;
 
 	name = _get_client_name();
 
@@ -180,11 +179,6 @@ static void _connect(MafwGstRendererWorkerVolume *wvolume,
 	api = pa_glib_mainloop_get_api(wvolume->mainloop);
 	wvolume->context = pa_context_new(api, name);
 	g_assert(wvolume->context != NULL);
-
-	closure = g_new(InitCbClosure, 1);
-	closure->wvolume = wvolume;
-	closure->cb = cb;
-	closure->user_data = user_data;
 
 	/* register some essential callbacks */
 	pa_context_set_state_callback(wvolume->context, _state_cb_init,
@@ -206,8 +200,7 @@ static gboolean _reconnect(gpointer user_data)
 
 	g_warning("got disconnected from pulse, reconnecting");
 	_destroy_context(wvolume);
-	_connect(wvolume, closure->cb, closure->user_data);
-	g_free(closure);
+	_connect(user_data);
 
 	return FALSE;
 }
@@ -452,6 +445,7 @@ void mafw_gst_renderer_worker_volume_init(GMainContext *main_context,
 					  mute_cb, gpointer mute_user_data)
 {
 	MafwGstRendererWorkerVolume *wvolume = NULL;
+	InitCbClosure *closure;
 
 	g_return_if_fail(cb != NULL);
 
@@ -472,7 +466,8 @@ void mafw_gst_renderer_worker_volume_init(GMainContext *main_context,
 	wvolume->mainloop = pa_glib_mainloop_new(main_context);
 	g_assert(wvolume->mainloop != NULL);
 
-	_connect(wvolume, cb, user_data);
+	closure = _init_cb_closure_new(wvolume, cb, user_data);
+	_connect(closure);
 }
 
 void mafw_gst_renderer_worker_volume_set(MafwGstRendererWorkerVolume *wvolume,
