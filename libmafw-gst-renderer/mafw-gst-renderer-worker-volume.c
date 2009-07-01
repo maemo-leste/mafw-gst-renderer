@@ -201,11 +201,13 @@ static void _connect(MafwGstRendererWorkerVolume *wvolume,
 
 static gboolean _reconnect(gpointer user_data)
 {
-	MafwGstRendererWorkerVolume *wvolume = user_data;
+	InitCbClosure *closure = user_data;
+	MafwGstRendererWorkerVolume *wvolume = closure->wvolume;
 
 	g_warning("got disconnected from pulse, reconnecting");
 	_destroy_context(wvolume);
-	_connect(wvolume, NULL, NULL);
+	_connect(wvolume, closure->cb, closure->user_data);
+	g_free(closure);
 
 	return FALSE;
 }
@@ -221,8 +223,13 @@ _state_cb(pa_context *c, void *data)
 	switch (state) {
 	case PA_CONTEXT_TERMINATED:
 	case PA_CONTEXT_FAILED:
-		g_idle_add(_reconnect, wvolume);
+	{
+		InitCbClosure *closure;
+
+		closure = _init_cb_closure_new(wvolume, NULL, NULL);
+		g_idle_add(_reconnect, closure);
 		break;
+	}
 	case PA_CONTEXT_READY: {
 		pa_operation *o;
 
@@ -314,8 +321,7 @@ _state_cb_init(pa_context *c, void *data)
 	case PA_CONTEXT_FAILED:
 		g_critical("Connection to pulse failed, reconnection in 1 "
 			   "second");
-		g_timeout_add_seconds(1, _reconnect, wvolume);
-		g_free(closure);
+		g_timeout_add_seconds(1, _reconnect, closure);
 		break;
 	case PA_CONTEXT_READY: {
 		pa_operation *o;
