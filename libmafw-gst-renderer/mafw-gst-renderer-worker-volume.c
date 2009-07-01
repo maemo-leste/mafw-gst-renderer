@@ -298,7 +298,10 @@ _state_cb_init(pa_context *c, void *data)
 	switch (state) {
 	case PA_CONTEXT_TERMINATED:
 	case PA_CONTEXT_FAILED:
-		g_error("Unexpected problem in volume management");
+		g_critical("Connection to pulse failed, reconnection in 1 "
+			   "second");
+		g_timeout_add_seconds(1, _reconnect, wvolume);
+		g_free(closure);
 		break;
 	case PA_CONTEXT_READY: {
 		pa_operation *o;
