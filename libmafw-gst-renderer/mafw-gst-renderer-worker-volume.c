@@ -265,6 +265,7 @@ static void _ext_stream_restore_read_cb_init(pa_context *c,
 		closure->wvolume->pulse_volume, i->mute, i->name, i->device);
 
 	if (closure->cb != NULL) {
+		g_debug("initialized: returning volume manager");
 		closure->cb(closure->wvolume, closure->user_data);
 	} else {
 		if (closure->wvolume->cb != NULL) {
