@@ -152,6 +152,20 @@ static void _destroy_context(MafwGstRendererWorkerVolume *wvolume)
 	pa_context_unref(wvolume->context);
 }
 
+static InitCbClosure *_init_cb_closure_new(MafwGstRendererWorkerVolume *wvolume,
+					   MafwGstRendererWorkerVolumeInitCb cb,
+					   gpointer user_data)
+{
+	InitCbClosure *closure;
+
+	closure = g_new(InitCbClosure, 1);
+	closure->wvolume = wvolume;
+	closure->cb = cb;
+	closure->user_data = user_data;
+
+	return closure;
+}
+
 static void _connect(MafwGstRendererWorkerVolume *wvolume,
 		     MafwGstRendererWorkerVolumeInitCb cb,
 		     gpointer user_data)
