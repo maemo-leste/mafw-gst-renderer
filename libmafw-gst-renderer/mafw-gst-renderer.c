@@ -1837,6 +1837,8 @@ gboolean mafw_gst_renderer_assign_playlist(MafwRenderer *self,
 		iterator = mafw_playlist_iterator_new();
 		mafw_playlist_iterator_initialize(iterator, playlist,
 						   &new_error);
+		
+		g_object_ref(playlist);
 
 		if (new_error == NULL) {
 
