@@ -1,15 +1,26 @@
+mafw-gst-renderer (0.1.2009.27-3) unstable; urgency=low
+
+  * MAFW gst renderer, pre-release 0.2009.27-3
+
+ -- Juha Kellokoski <veitikka6@gmail.com>  Tue, 30 Jun 2009 14:00:00 +0300
+
 mafw-gst-renderer (0.1.2009.27-2) unstable; urgency=low
 
   * MAFW gst renderer, pre-release 0.2009.27-2
+  * Fixes: NB#123701 - mafw-dbus-wrapper-76CE-6-1218.rcore.lzo crashed
+  * Fixes: NB#116836 - Streaming stops after taping on Next button during paused state
+  * Fixes: NB#123545 - mafw-gst-renderer get-position returns uninitialized value
+  * Fixes: NB#124469 - Device going to power saving mode after seek for video streams
+  * Fixes: NB#124116 - Position not progressing after seeking
+  * Fixes: NB#117860 - Inability to handle multiple resource of UPnP items
+  * Make sure we stay paused while buffering.
+  * Always keep worker->state up-to-date.
 
- -- Juha Kellokoski <veitikka6@gmail.com>  Thu, 25 Jun 2009 13:40:00 +0300
+ -- Juha Kellokoski <veitikka6@gmail.com>  Tue, 30 Jun 2009 14:00:00 +0300
 
 mafw-gst-renderer (0.1.2009.27-1) unstable; urgency=low
 
   * MAFW gst renderer, pre-release 0.2009.27-1
-  * Fixes: NB#123701 - mafw-dbus-wrapper-76CE-6-1218.rcore.lzo crashed
-  * Fixes: NB#116836 - Streaming stops after taping on Next button during paused state
-  * Fixes: NB#123545 - mafw-gst-renderer get-position returns uninitialized value
   * Added function to remove the _set_timeout and used not to call it twice
     innecessarily.
   * Changed the order of adding the timeout to set the volume to pulse and
