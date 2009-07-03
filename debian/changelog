@@ -1,8 +1,44 @@
-mafw-gst-renderer (0.1.2009.27-3) unstable; urgency=low
+mafw-gst-renderer (0.1.2009.28-2) unstable; urgency=low
 
-  * MAFW gst renderer, pre-release 0.2009.27-3
+  * MAFW gst renderer, pre-release 0.2009.28-2
 
- -- Juha Kellokoski <veitikka6@gmail.com>  Tue, 30 Jun 2009 14:00:00 +0300
+ -- Juha Kellokoski <veitikka6@gmail.com>  Fri, 03 Jul 2009 11:00:00 +0300
+
+mafw-gst-renderer (0.1.2009.28-1) unstable; urgency=low
+
+  * MAFW gst renderer, pre-release 0.2009.28-1
+  * Fixes: NB#123689 - mafw-dbus-wrapper-76CE-6-4559.rcore.lzo crashed
+  * Ref the assigned playlist
+  * Removing an unnecessary comparison.
+  * Added g_debug in volume manager to indicate that it is initialized and
+    return the instance
+  * Changed _connect function to get an InitCbCallback in volume manager
+  * Modified _reconnect function in volume manager to receive an
+    InitCbCallback and propertly return the volume manager if reconnection
+    happens before having connected a first time
+  * Written function to create the InitCbClosure in volume manager
+  * When [re-]connection to pulse fails, we log a critical and reconnect
+    after 1 second
+  * Modified log in renderer tests to log only errors
+  * Added tests for pulseaudio reconnection in renderer
+  * Removed volume tests in playing since it is not needed anymore as it
+    does not depend on the playing state.
+  * Added check for receiving mute when property is changed in renderer
+    tests
+  * In renderer tests, wait for the volume manager to be initialized when
+    testing properties
+  * Added pulseaudio mock to renderer tests
+  * Added small code comment in renderer tests
+  * Solved problem with mute not enable in renderer tests
+  * Fixed problem when adding elements to a mock playlist in renderer
+    tests
+  * Fixed problem with playlist size initialization in playlist iterator in
+    renderer that was causing problems in the tests
+  * Fixed a bug in the tests when testing the stats updating
+  * Fixed problem with playlist reference count in renderer tests.
+  * Replaced pulsesink and xvimagesink by fakesink in renderer tests
+
+ -- Juha Kellokoski <veitikka6@gmail.com>  Fri, 03 Jul 2009 11:00:00 +0300
 
 mafw-gst-renderer (0.1.2009.27-2) unstable; urgency=low
 
