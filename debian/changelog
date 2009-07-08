@@ -1,8 +1,15 @@
+mafw-gst-renderer (0.1.2009.28-3) unstable; urgency=low
+
+  * MAFW gst renderer, pre-release 0.2009.28-3
+
+ -- Juha Kellokoski <veitikka6@gmail.com>  Tue, 07 Jul 2009 14:00:00 +0300
+
 mafw-gst-renderer (0.1.2009.28-2) unstable; urgency=low
 
   * MAFW gst renderer, pre-release 0.2009.28-2
+  * Ref the assigned playlist
 
- -- Juha Kellokoski <veitikka6@gmail.com>  Fri, 03 Jul 2009 11:00:00 +0300
+ -- Juha Kellokoski <veitikka6@gmail.com>  Tue, 07 Jul 2009 14:00:00 +0300
 
 mafw-gst-renderer (0.1.2009.28-1) unstable; urgency=low
 
