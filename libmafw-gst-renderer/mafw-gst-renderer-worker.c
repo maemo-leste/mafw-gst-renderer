@@ -1192,6 +1192,8 @@ static void _handle_buffering(MafwGstRendererWorker *worker, GstMessage *msg)
         if (!worker->is_live) {
 		worker->buffering = TRUE;
 		if (worker->state == GST_STATE_PLAYING) {
+			g_debug("setting pipeline to PAUSED not to wolf the "
+				"buffer down");
 			worker->report_statechanges = FALSE;
 			/* We can't call _pause() here, since it sets
 			 * the "report_statechanges" to TRUE.  We don't
@@ -1214,6 +1216,8 @@ static void _handle_buffering(MafwGstRendererWorker *worker, GstMessage *msg)
                                 /* If buffering more than once, do this only the
                                    first time we are done with buffering */
                                 if (worker->prerolling) {
+					g_debug("buffering concluded during "
+						"prerolling");
 					_finalize_startup(worker);
 					_do_play(worker);
 					renderer->play_failed_count = 0;
@@ -1236,6 +1240,8 @@ static void _handle_buffering(MafwGstRendererWorker *worker, GstMessage *msg)
 						GST_CLOCK_TIME_NONE);
 				}
                         } else if (worker->state == GST_STATE_PLAYING) {
+				g_debug("buffering concluded, signalling "
+					"state change");
 				/* In this case we got a PLAY command while 
 				   buffering, likely because it was issued
 				   before we got the first buffering signal.
