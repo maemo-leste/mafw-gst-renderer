@@ -105,21 +105,37 @@ struct _MafwGstRendererWorker {
         gpointer owner;
 	GstElement *pipeline;
 	GstBus *bus;
+	/* GStreamer state we are considering right now */
 	GstState state;
 	MafwGstRendererWorkerVolume *wvolume;
 	gboolean is_stream;
 	gboolean muted;
+	/* we are handing eos or we did */
 	gboolean eos;
+	/* if we are handling (or handled) and error */
 	gboolean is_error;
+	/* pipeline is buffering */
 	gboolean buffering;
+	/* pipeline is prerolling */
 	gboolean prerolling;
+	/* stream is live and doesn't need prerolling */
 	gboolean is_live;
+	/* if we have to stay in paused though a do_play was
+	 * requested. Usually used when pausing in transitioning */
 	gboolean stay_paused;
+	/* this variable should be FALSE while we are hiding state
+	 * changed to the UI. This is that GStreamer can perform
+	 * state_changes without us requiring it, for example, then
+	 * seeking, buffering and so on and we have to hide those
+	 * changes */
 	gboolean report_statechanges;
 	guint async_bus_id;
 	gint seek_position;
 	guint ready_timeout;
 	guint duration_seek_timeout;
+	/* TRUE when a transition to GST_STATE_READY has been
+	 * requested or we are actually in GST_STATE_READY (requested
+	 * by us) */
 	gboolean in_ready;
 	GstElement *vsink;
 	GstElement *asink;
