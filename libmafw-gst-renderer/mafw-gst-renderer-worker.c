@@ -825,8 +825,7 @@ static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker
 		 * stay_paused is set if we were paused while transitioning
 		 * prerolling is not set if we were paused while playing
 		 */
-		if ((worker->prerolling && worker->stay_paused) ||
-		    !worker->prerolling) {
+		if (!worker->prerolling || worker->stay_paused) {
 			if (worker->notify_pause_handler)
 				worker->notify_pause_handler(worker, worker->owner);
 
