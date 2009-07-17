@@ -803,14 +803,6 @@ static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker
 	else if (newstate == GST_STATE_PAUSED &&
 		   worker->report_statechanges && !worker->in_ready)
 	{
-/* 		/\* Perform pending seek, 1st try.  Some formats can seek already */
-/* 		 * in PAUSED state. *\/ */
-/* 		if (worker->seek_position != -1) { */
-/* 			g_debug("trying to seek in PAUSED state"); */
-/* 			_do_seek(worker, GST_SEEK_TYPE_SET, */
-/* 				 worker->seek_position, NULL); */
-/* 		} */
-
 		/* PAUSED after pipeline has been constructed */
 		if (worker->prerolling) {
 			g_debug ("Prerolling done, finalizaing startup");
