@@ -1938,7 +1938,11 @@ static void _do_play(MafwGstRendererWorker *worker)
 	}
 	worker->report_statechanges = TRUE;
 
+	/* If we have to stay paused, we do and add the ready
+	 * timeout. Otherwise, we move the pipeline */
 	if (!worker->stay_paused) {
+		/* If pipeline is READY, we move it to PAUSED,
+		 * otherwise, to PLAYING */
 		if (worker->state == GST_STATE_READY) {
 			gst_element_set_state(worker->pipeline,
 					      GST_STATE_PAUSED);
