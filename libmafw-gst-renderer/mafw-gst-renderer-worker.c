@@ -816,38 +816,34 @@ static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker
 		return;
 	}
 
-	/* Woken up from READY, resume stream position and playback */
-	if (newstate == GST_STATE_PAUSED && worker->in_ready &&
-	    oldstate == GST_STATE_READY) {
-		g_debug("State changed to pause after ready");
-		_do_seek(worker, GST_SEEK_TYPE_SET, worker->seek_position,
-			 NULL);
-		_do_play(worker);
-	}
-	else if (newstate == GST_STATE_PAUSED &&
-		   worker->report_statechanges && !worker->in_ready)
-	{
-		/* PAUSED after pipeline has been constructed */
-		if (worker->prerolling) {
+	switch (GST_STATE_TRANSITION(oldstate, newstate)) {
+	case GST_STATE_CHANGE_READY_TO_PAUSED:
+		if (worker->in_ready) {
+			/* Woken up from READY, resume stream position
+			 * and playback */
+			g_debug("State changed to pause after ready");
+			_do_seek(worker, GST_SEEK_TYPE_SET,
+				 worker->seek_position, NULL);
+			_do_play(worker);
+		} else if (worker->prerolling && worker->report_statechanges) {
+			/* PAUSED after pipeline has been constructed */
 			g_debug ("Prerolling done, finalizaing startup");
 			_finalize_startup(worker);
 			_do_play(worker);
 			renderer->play_failed_count = 0;
-		} else {
-			_add_ready_timeout(worker);
-		}
 
-		/* PAUSED while in PLAYING/TRANSITIONING state
-		 * stay_paused is set if we were paused while transitioning
-		 * prerolling is not set if we were paused while playing
-		 */
-		if (!worker->prerolling || worker->stay_paused) {
+			if (worker->stay_paused) {
+				_do_pause_postprocessing(worker);
+			}
+			worker->prerolling = FALSE;
+		}
+		break;
+	case GST_STATE_CHANGE_PLAYING_TO_PAUSED:
+		if (worker->report_statechanges) {
 			_do_pause_postprocessing(worker);
 		}
-		worker->prerolling = FALSE;
-	}
-	else if (newstate == GST_STATE_PLAYING)
-	{
+		break;
+	case GST_STATE_CHANGE_PAUSED_TO_PLAYING:
 		/* if seek was called, at this point it is really ended */
 		worker->seek_position = -1;
                 worker->eos = FALSE;
@@ -895,11 +891,16 @@ static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker
 		/* Query duration and seekability. Useful for vbr
 		 * clips or streams. */
 		_add_duration_seek_query_timeout(worker);
-	}
-	else if (newstate == GST_STATE_READY && worker->in_ready) {
-		g_debug("changed to GST_STATE_READY");
-		worker->ready_timeout = 0;
-		_free_taglist(worker);
+		break;
+	case GST_STATE_CHANGE_PAUSED_TO_READY:
+		if (worker->in_ready) {
+			g_debug("changed to GST_STATE_READY");
+			worker->ready_timeout = 0;
+			_free_taglist(worker);
+		}
+		break;
+	default:
+		break;
 	}
 }
 
