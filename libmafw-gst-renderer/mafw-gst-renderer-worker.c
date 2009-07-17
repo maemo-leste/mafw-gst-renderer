@@ -753,6 +753,7 @@ static void _finalize_startup(MafwGstRendererWorker *worker)
 		return;
 	}
 
+	/* Check duration and seekability */
 	if (worker->duration_seek_timeout != 0) {
 		g_source_remove(worker->duration_seek_timeout);
 		worker->duration_seek_timeout = 0;
