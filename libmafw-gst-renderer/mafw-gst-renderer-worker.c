@@ -782,20 +782,20 @@ static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker
 
 	if (worker->state == newstate) {
 		return;
+	} else {
+		worker->state = newstate;
 	}
 
 	/* While buffering, we have to wait in PAUSED 
 	   until we reach 100% before doing anything */
 	if (worker->buffering) {
-		worker->state = newstate;
 		return;
 	}
 
 	/* Woken up from READY, resume stream position and playback */
 	if (newstate == GST_STATE_PAUSED && worker->in_ready &&
-	    worker->state == GST_STATE_READY) {
+	    oldstate == GST_STATE_READY) {
 		g_debug("State changed to pause after ready");
-		worker->state = GST_STATE_PAUSED;
 		_do_seek(worker, GST_SEEK_TYPE_SET, worker->seek_position,
 			 NULL);
 		_do_play(worker);
@@ -803,8 +803,6 @@ static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker
 	else if (newstate == GST_STATE_PAUSED &&
 		   worker->report_statechanges && !worker->in_ready)
 	{
-		worker->state = GST_STATE_PAUSED;
-
 /* 		/\* Perform pending seek, 1st try.  Some formats can seek already */
 /* 		 * in PAUSED state. *\/ */
 /* 		if (worker->seek_position != -1) { */
@@ -855,7 +853,6 @@ static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker
 	{
 		/* if seek was called, at this point it is really ended */
 		worker->seek_position = -1;
-                worker->state = GST_STATE_PLAYING;
                 worker->eos = FALSE;
 
 		if (worker->report_statechanges) {
@@ -904,13 +901,8 @@ static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker
 	}
 	else if (newstate == GST_STATE_READY && worker->in_ready) {
 		g_debug("changed to GST_STATE_READY");
-		worker->state = GST_STATE_READY;
 		worker->ready_timeout = 0;
 		_free_taglist(worker);
-	}
-	else {
-		/* Just keep track of the current state */
-		worker->state = newstate;
 	}
 }
 
