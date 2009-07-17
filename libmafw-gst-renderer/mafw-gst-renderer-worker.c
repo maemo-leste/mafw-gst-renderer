@@ -772,6 +772,30 @@ static void _add_duration_seek_query_timeout(MafwGstRendererWorker *worker)
 		worker);
 }
 
+static void _do_pause_postprocessing(MafwGstRendererWorker *worker)
+{
+	if (worker->notify_pause_handler) {
+		worker->notify_pause_handler(worker, worker->owner);
+	}
+
+#ifdef HAVE_GDKPIXBUF
+	if (worker->media.has_visual_content &&
+	    worker->current_frame_on_pause) {
+		GstBuffer *buffer = NULL;
+
+		g_object_get(worker->pipeline, "frame", &buffer, NULL);
+
+		if (buffer != NULL) {
+			_emit_gst_buffer_as_graphic_file(
+				worker, buffer,
+				MAFW_METADATA_KEY_PAUSED_THUMBNAIL_URI);
+		}
+	}
+#endif
+
+	_add_ready_timeout(worker);
+}
+
 static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker)
 {
 	GstState newstate, oldstate;
