@@ -821,11 +821,5 @@ void mafw_gst_renderer_state_do_notify_buffer_status(MafwGstRendererState *self,
 
         renderer = MAFW_GST_RENDERER_STATE(self)->renderer;
 
-        if (percent >= 100.0) {
-                renderer->buffering = FALSE;
-        } else if (!renderer->buffering) {
-                renderer->buffering = TRUE;
-        }
-
 	mafw_renderer_emit_buffering_info(MAFW_RENDERER(renderer), percent / 100.0);
 }

@@ -130,7 +130,6 @@ struct _MafwGstRendererClass {
  * current_state:     The renderer's current state
  * playlist:          The renderer's playlist
  * play_index:        A playlist index that is currently playing
- * buffering:         Buffering indicator
  * seek_pending:      Seek is pending or ongoing
  * seek_type_pending: Type of the pending seek
  * seeking_to:        The position of pending seek (milliseconds)
@@ -152,7 +151,6 @@ struct _MafwGstRenderer{
 	MafwPlayState current_state;
 	MafwPlaylist *playlist;
 	MafwPlaylistIterator *iterator;
-	gboolean buffering;
 	gboolean seek_pending;
 	GstSeekType seek_type_pending;
 	gint seeking_to;
