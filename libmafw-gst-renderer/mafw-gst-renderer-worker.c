@@ -805,6 +805,8 @@ static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker
 	gst_message_parse_state_changed(msg, &oldstate, &newstate, NULL);
 	g_debug ("State changed: %d: %d -> %d", worker->state, oldstate, newstate);
 
+	/* If the state is the same we do nothing, otherwise, we keep
+	 * it */
 	if (worker->state == newstate) {
 		return;
 	} else {
@@ -827,7 +829,12 @@ static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker
 				 worker->seek_position, NULL);
 			_do_play(worker);
 		} else if (worker->prerolling && worker->report_statechanges) {
-			/* PAUSED after pipeline has been constructed */
+			/* PAUSED after pipeline has been
+			 * constructed. We check caps, seek and
+			 * duration and if staying in pause is needed,
+			 * we perform operations for pausing, such as
+			 * current frame on pause and signalling state
+			 * change and adding the timeout to go to ready */
 			g_debug ("Prerolling done, finalizaing startup");
 			_finalize_startup(worker);
 			_do_play(worker);
@@ -840,6 +847,9 @@ static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker
 		}
 		break;
 	case GST_STATE_CHANGE_PLAYING_TO_PAUSED:
+		/* When pausing we do the stuff, like signalling
+		 * state, current frame on pause and timeout to go to
+		 * ready */
 		if (worker->report_statechanges) {
 			_do_pause_postprocessing(worker);
 		}
@@ -852,7 +862,8 @@ static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker
 		if (worker->report_statechanges) {
 			switch (worker->mode) {
 			case WORKER_MODE_SINGLE_PLAY:
-				/* Notify play */
+				/* Notify play if we are playing in
+				 * single mode */
 				if (worker->notify_play_handler)
 					worker->notify_play_handler(
 						worker,
@@ -874,9 +885,11 @@ static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker
 			default: break;
 			}
 		}
+		/* Prevent blanking if we are playing video */
                 if (worker->media.has_visual_content) {
                         blanking_prohibit();
                 }
+		/* Remove the ready timeout if we are playing [again] */
 		_remove_ready_timeout(worker);
                 /* If mode is redundant we are trying to play one of several
                  * candidates, so when we get a successful playback, we notify
@@ -888,12 +901,16 @@ static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker
                                 worker->media.location);
                 }
 
+		/* Emit metadata. We wait until we reach the playing
+		   state because this speeds up playback start time */
 		_emit_metadatas(worker);
 		/* Query duration and seekability. Useful for vbr
 		 * clips or streams. */
 		_add_duration_seek_query_timeout(worker);
 		break;
 	case GST_STATE_CHANGE_PAUSED_TO_READY:
+		/* If we went to READY, we free the taglist and
+		 * deassign the timout it */
 		if (worker->in_ready) {
 			g_debug("changed to GST_STATE_READY");
 			worker->ready_timeout = 0;
