@@ -1215,20 +1215,26 @@ static void _handle_buffering(MafwGstRendererWorker *worker, GstMessage *msg)
                                    first time we are done with buffering */
                                 if (worker->prerolling) {
 					_finalize_startup(worker);
-                                }
-                                _do_play(worker);
-                                renderer->play_failed_count = 0;
-                                /* Send the paused notification */
-                                if ((worker->prerolling &&
-                                     worker->stay_paused) ||
-                                    !worker->prerolling) {
-                                        if (worker->notify_pause_handler) {
-                                                worker->notify_pause_handler(
-                                                        worker,
-                                                        worker->owner);
-                                        }
-                                }
-                                worker->prerolling = FALSE;
+					_do_play(worker);
+					renderer->play_failed_count = 0;
+					/* Send the paused notification */
+					if (worker->stay_paused &&
+					    worker->notify_pause_handler) {
+						worker->notify_pause_handler(
+							worker,
+							worker->owner);
+					}
+					worker->prerolling = FALSE;
+                                } else if (!worker->stay_paused) {
+					g_debug("buffering concluded, setting "
+						"pipeline to PLAYING again");
+					gst_element_set_state(
+						worker->pipeline,
+						GST_STATE_PLAYING);
+					gst_element_get_state(
+						worker->pipeline, NULL, NULL,
+						GST_CLOCK_TIME_NONE);
+				}
                         } else if (worker->state == GST_STATE_PLAYING) {
 				/* In this case we got a PLAY command while 
 				   buffering, likely because it was issued
