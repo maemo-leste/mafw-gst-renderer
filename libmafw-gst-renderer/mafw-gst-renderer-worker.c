@@ -842,25 +842,7 @@ static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker
 		 * prerolling is not set if we were paused while playing
 		 */
 		if (!worker->prerolling || worker->stay_paused) {
-			if (worker->notify_pause_handler)
-				worker->notify_pause_handler(worker, worker->owner);
-
-#ifdef HAVE_GDKPIXBUF
-			if (worker->media.has_visual_content &&
-			    worker->current_frame_on_pause) {
-				GstBuffer *buffer = NULL;
-
-				g_object_get(worker->pipeline, "frame", &buffer,
-					     NULL);
-
-				if (buffer) {
-					_emit_gst_buffer_as_graphic_file(
-						worker,
-						buffer,
-						MAFW_METADATA_KEY_PAUSED_THUMBNAIL_URI);
-				}
-			}
-#endif
+			_do_pause_postprocessing(worker);
 		}
 		worker->prerolling = FALSE;
 	}
