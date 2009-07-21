@@ -2170,7 +2170,18 @@ void mafw_gst_renderer_worker_resume(MafwGstRendererWorker *worker)
 		   is resumed */
 		worker->pl.notify_play_pending = TRUE;
 	}
-	_do_play(worker);
+	if (worker->buffering && worker->state == GST_STATE_PAUSED &&
+	    !worker->prerolling) {
+		/* If we are buffering we cannot resume, but we know
+		 * that the pipeline will be moved to PLAYING as
+		 * stay_paused is FALSE, so we just activate realizing
+		 * the state_changes */
+		worker->report_statechanges = TRUE;
+		g_debug("Resumed while buffering, activating pipeline state "
+			"changes");
+	} else {
+		_do_play(worker);
+	}
 }
 
 static void _volume_init_cb(MafwGstRendererWorkerVolume *wvolume,
