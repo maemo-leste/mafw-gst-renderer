@@ -2152,14 +2152,27 @@ void mafw_gst_renderer_worker_stop(MafwGstRendererWorker *worker)
 void mafw_gst_renderer_worker_pause(MafwGstRendererWorker *worker)
 {
 	g_assert(worker != NULL);
-	worker->report_statechanges = TRUE;
 
-	/* FIXME: Check what happens if playbin is buffering? */
-	gst_element_set_state(worker->pipeline, GST_STATE_PAUSED);
-	/* XXX this blocks till statechange. */
-	gst_element_get_state(worker->pipeline, NULL, NULL,
-			      GST_CLOCK_TIME_NONE);
-	blanking_allow();
+	if (worker->buffering && worker->state == GST_STATE_PAUSED &&
+	    !worker->prerolling) {
+		/* If we are buffering and get a pause, we have to
+		 * signal state change and stay_paused */
+		g_debug("Pausing while buffering, signalling state change");
+		worker->stay_paused = TRUE;
+		if (worker->notify_pause_handler) {
+			worker->notify_pause_handler(
+				worker,
+				worker->owner);
+		}
+	} else {
+		worker->report_statechanges = TRUE;
+
+		gst_element_set_state(worker->pipeline, GST_STATE_PAUSED);
+		/* XXX this blocks till statechange. */
+		gst_element_get_state(worker->pipeline, NULL, NULL,
+				      GST_CLOCK_TIME_NONE);
+		blanking_allow();
+	}
 }
 
 void mafw_gst_renderer_worker_resume(MafwGstRendererWorker *worker)
