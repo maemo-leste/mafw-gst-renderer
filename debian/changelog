@@ -1,8 +1,25 @@
-mafw-gst-renderer (0.1.2009.28-3) unstable; urgency=low
+mafw-gst-renderer (0.1.2009.30-1) unstable; urgency=low
 
-  * MAFW gst renderer, pre-release 0.2009.28-3
+  * MAFW gst renderer, pre-release 0.2009.30-1
+  * Added more debug to the _handle_buffering function in renderer worker
+  * Just set pipeline to playing when finished buffering of a stream when
+    seeking to avoid signalling PAUSE.
+  * Added documentation in _handle_state_changed function in renderer worker
+  * Added comments in _do_play function in renderer worker
+  * Added comments in _finalize_startup funcion in renderer worker
+  * Reworked _handle_state_changed to use GST_STATE_TRANSITION in renderer 
+    worker.
+  * Reworked _handle_state_changed to use _do_pause in renderer worker
+  * Created _do_pause function to notify the state change and get the
+    current frame on pause if needed in renderer worker.
+  * Removed buffering info from renderer as it was being handled by worker
+  * Removed seek in pause comments as we are not using them in renderer worker
+  * Simplified if condition in state managegement in renderer worker.
+  * Removed state assignment because it could be done at one point in
+    _handle_state_changed in renderer worker.
+  * Added comments in field names in renderer worker to clarify their use
 
- -- Juha Kellokoski <veitikka6@gmail.com>  Tue, 07 Jul 2009 14:00:00 +0300
+ -- Juha Kellokoski <veitikka6@gmail.com>  Fri, 17 Jul 2009 14:00:00 +0300
 
 mafw-gst-renderer (0.1.2009.28-2) unstable; urgency=low
 
