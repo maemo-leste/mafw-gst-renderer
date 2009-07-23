@@ -1,3 +1,13 @@
+mafw-gst-renderer (0.1.2009.30-2) unstable; urgency=low
+
+  * MAFW gst renderer, pre-release 0.2009.30-2
+  * Fixes: NB#128479 - Seeking in UPnP signals pause and keeps on playing 
+  * Solved problem when pausing while buffering in renderer worker
+  * We activate state changes if we resume while buffering to report the
+    state change to playing in renderer worker
+
+ -- Juha Kellokoski <veitikka6@gmail.com>  Wed, 22 Jul 2009 14:00:00 +0300
+
 mafw-gst-renderer (0.1.2009.30-1) unstable; urgency=low
 
   * MAFW gst renderer, pre-release 0.2009.30-1
