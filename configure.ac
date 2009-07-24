@@ -6,7 +6,7 @@
 # Copyright (C) 2007, 2008, 2009 Nokia. All rights reserved.
 
 AC_PREREQ([2.53])
-AC_INIT([mafw-gst-renderer], [0.1.2009.30-2])
+AC_INIT([mafw-gst-renderer], [0.1.2009.30-3])
 
 AC_CONFIG_SRCDIR([libmafw-gst-renderer/mafw-gst-renderer.h])
 AC_CONFIG_HEADERS([config.h])
