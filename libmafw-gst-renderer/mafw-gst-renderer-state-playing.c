@@ -420,16 +420,26 @@ GValue* _get_property_value(MafwGstRendererState *self, const gchar *name)
 static void _handle_pre_unmount(MafwGstRendererState *self,
 				const gchar *mount_point)
 {
+	gchar *mount_uri;
+
 	/* If not playing anything, bail out */
 	if (!self->renderer->media->uri) {
 		return;
 	}
-
-	gchar *mount_uri = g_filename_to_uri(mount_point, NULL, NULL);
-
+	
+	/* Check if mount point is URI or path, we need URI */
+	if (!g_str_has_prefix(mount_point, "file://")) {
+		mount_uri = g_filename_to_uri(mount_point, NULL, NULL);
+	} else {
+		mount_uri = g_strdup(mount_point);
+	}
+	
+	/* Stop is playing from unmounted location */
 	if (g_str_has_prefix(self->renderer->media->uri, mount_uri)) {
 		mafw_gst_renderer_stop(MAFW_RENDERER(self->renderer),
 				       NULL,
 				       NULL);
 	}
+
+	g_free(mount_uri);
 }

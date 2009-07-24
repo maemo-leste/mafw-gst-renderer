@@ -29,6 +29,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <dbus/dbus.h>
+#include <libgnomevfs/gnome-vfs.h>
 
 #include <libmafw/mafw.h>
 #include "mafw-gst-renderer.h"
@@ -91,6 +92,14 @@ static void _battery_cover_open_cb(GConfClient *client,
 				   guint cnxn_id,
 				   GConfEntry *entry,
 				   MafwGstRenderer *renderer);
+
+/*----------------------------------------------------------------------------
+  Gnome VFS notifications
+  ----------------------------------------------------------------------------*/
+
+static void _volume_pre_unmount_cb(GnomeVFSVolumeMonitor *monitor,
+				   GnomeVFSVolume *volume,
+                                   MafwGstRenderer *renderer);
 
 /*----------------------------------------------------------------------------
   Playback
@@ -331,6 +340,14 @@ static void mafw_gst_renderer_init(MafwGstRenderer *self)
 	if (error) {
 		g_warning("%s", error->message);
 		g_error_free(error);
+	}
+
+	if (gnome_vfs_init()) {
+		GnomeVFSVolumeMonitor *monitor = gnome_vfs_get_volume_monitor();
+		g_signal_connect(monitor, "volume-pre-unmount", 
+				 G_CALLBACK(_volume_pre_unmount_cb), renderer);
+	} else {
+		g_warning("Failed to initialize gnome-vfs");
 	}
 }
 
@@ -774,6 +791,27 @@ static void _battery_cover_open_cb(GConfClient *client,
 				renderer->states[renderer->current_state]),
 			         emmc_path);
 	}
+}
+
+/*----------------------------------------------------------------------------
+  Gnome VFS notifications
+  ----------------------------------------------------------------------------*/
+
+static void _volume_pre_unmount_cb(GnomeVFSVolumeMonitor *monitor, 
+				   GnomeVFSVolume *volume,
+				   MafwGstRenderer *renderer)
+{
+	gchar *location = gnome_vfs_volume_get_activation_uri(volume);
+	if (!location) {
+		return;
+	}
+	
+	mafw_gst_renderer_state_handle_pre_unmount(
+		MAFW_GST_RENDERER_STATE(
+			renderer->states[renderer->current_state]),
+		location);
+	
+	g_free(location);
 }
 
 /*----------------------------------------------------------------------------
