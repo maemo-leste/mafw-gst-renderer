@@ -1,3 +1,9 @@
+mafw-gst-renderer (0.1.2009.32-1) unstable; urgency=low
+
+  * MAFW, pre-release 0.1.2009.32-1
+
+ -- Mika Tapojärvi <mika.tapojarvi@sse.fi>  Sun, 02 Aug 2009 22:32:27 +0300
+
 mafw-gst-renderer (0.1.2009.30-3) unstable; urgency=low
 
   * MAFW gst renderer, pre-release 0.2009.30-3
