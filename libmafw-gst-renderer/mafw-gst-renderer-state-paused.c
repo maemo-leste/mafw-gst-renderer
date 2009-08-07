@@ -87,6 +87,13 @@ static GValue* _get_property_value(MafwGstRendererState *self,
 				   const gchar *name);
 
 /*----------------------------------------------------------------------------
+  Memory card event handlers
+  ----------------------------------------------------------------------------*/
+
+static void _handle_pre_unmount(MafwGstRendererState *self,
+				const gchar *mount_point);
+
+/*----------------------------------------------------------------------------
   GObject initialization
   ----------------------------------------------------------------------------*/
 
@@ -141,6 +148,10 @@ static void mafw_gst_renderer_state_paused_class_init(
 	/* Property methods */
 
 	state_class->get_property_value = _get_property_value;
+
+        /* Memory card event handlers */
+
+	state_class->handle_pre_unmount = _handle_pre_unmount;
 }
 
 GObject *mafw_gst_renderer_state_paused_new(MafwGstRenderer *renderer)
@@ -333,4 +344,36 @@ GValue* _get_property_value(MafwGstRendererState *self, const gchar *name)
 	}
 
 	return value;
+}
+
+/*----------------------------------------------------------------------------
+  Memory card event handlers
+  ----------------------------------------------------------------------------*/
+
+static void _handle_pre_unmount(MafwGstRendererState *self,
+				const gchar *mount_point)
+{
+	gchar *mount_uri;
+
+	/* If not playing anything, bail out */
+	if (!self->renderer->media->uri) {
+		return;
+	}
+
+	/* Check if mount point is URI or path, we need URI */
+	if (!g_str_has_prefix(mount_point, "file://")) {
+		mount_uri = g_filename_to_uri(mount_point, NULL, NULL);
+	} else {
+		mount_uri = g_strdup(mount_point);
+	}
+
+	/* Stop if playing from unmounted location */
+	if (g_str_has_prefix(self->renderer->media->uri, mount_uri)) {
+                g_debug("PAUSED-STATE: stopping to mount card");
+		mafw_gst_renderer_stop(MAFW_RENDERER(self->renderer),
+				       NULL,
+				       NULL);
+	}
+
+	g_free(mount_uri);
 }

@@ -426,15 +426,15 @@ static void _handle_pre_unmount(MafwGstRendererState *self,
 	if (!self->renderer->media->uri) {
 		return;
 	}
-	
+
 	/* Check if mount point is URI or path, we need URI */
 	if (!g_str_has_prefix(mount_point, "file://")) {
 		mount_uri = g_filename_to_uri(mount_point, NULL, NULL);
 	} else {
 		mount_uri = g_strdup(mount_point);
 	}
-	
-	/* Stop is playing from unmounted location */
+
+	/* Stop if playing from unmounted location */
 	if (g_str_has_prefix(self->renderer->media->uri, mount_uri)) {
 		mafw_gst_renderer_stop(MAFW_RENDERER(self->renderer),
 				       NULL,
