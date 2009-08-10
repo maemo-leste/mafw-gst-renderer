@@ -1,3 +1,23 @@
+mafw-gst-renderer (0.1.2009.33-3) unstable; urgency=low
+
+  * Version increased.
+
+ -- Mika Tapojärvi <mika.tapojarvi@sse.fi>  Mon, 10 Aug 2009 23:01:01 +0300
+
+mafw-gst-renderer (0.1.2009.33-2) unstable; urgency=low
+
+  * Fixes: NB#128110 - Playback neither stopped nor internal mmc is mounted onto pc when connected in mass storage mode
+
+ -- Mika Tapojärvi <mika.tapojarvi@sse.fi>  Mon, 10 Aug 2009 12:27:43 +0300
+
+mafw-gst-renderer (0.1.2009.33-1) unstable; urgency=low
+
+  * MAFW gst renderer, pre-release 0.2009.33-1
+  * Fixes: NB#128110 - Playback neither stopped nor internal mmc is mounted onto pc when connected in mass storage mode
+  * New Build-Dependency libosso-gnomevfs2-dev added.
+
+ -- Mika Tapojärvi <mika.tapojarvi@sse.fi>  Wed, 05 Aug 2009 12:37:05 +0300
+
 mafw-gst-renderer (0.1.2009.32-1) unstable; urgency=low
 
   * MAFW, pre-release 0.1.2009.32-1
