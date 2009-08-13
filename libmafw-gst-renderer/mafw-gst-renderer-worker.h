@@ -133,9 +133,20 @@ struct _MafwGstRendererWorker {
 	gint seek_position;
 	guint ready_timeout;
 	guint duration_seek_timeout;
-	/* TRUE when a transition to GST_STATE_READY has been
-	 * requested or we are actually in GST_STATE_READY (requested
-	 * by us) */
+	/* After some time PAUSED, we set the pipeline to READY in order to
+	 * save resources. This field states if we are in this special
+	 * situation.
+	 * It is set to TRUE when the state change to READY is requested
+	 * and stays like that until we reach again PLAYING state (not PAUSED).
+	 * The reason for this is that when resuming streams, we have to 
+	 * move from READY to PAUSED, then seek to the position where the
+	 * stream had been paused, then wait for buffering to finish, and then
+	 * play (and notify the state change to PLAYING), and we have to
+	 * differentiate this case from the one in which we have entered PAUSED
+	 * silently (when we ran out of buffer while playing, because in that
+	 * case, when we are done buffering we want to resume playback silently
+	 * again.
+	 */
 	gboolean in_ready;
 	GstElement *vsink;
 	GstElement *asink;

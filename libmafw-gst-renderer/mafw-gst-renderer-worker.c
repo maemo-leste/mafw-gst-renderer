@@ -356,6 +356,7 @@ static gboolean _go_to_gst_ready(gpointer user_data)
 	g_debug("going to GST_STATE_READY");
 	gst_element_set_state(worker->pipeline, GST_STATE_READY);
 	worker->in_ready = TRUE;
+        worker->ready_timeout = 0;
 
 	return FALSE;
 }
@@ -813,6 +814,29 @@ static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker
 		worker->state = newstate;
 	}
 
+        if (GST_STATE_TRANSITION(oldstate, newstate) == GST_STATE_CHANGE_READY_TO_PAUSED &&
+            worker->in_ready) {
+                /* Woken up from READY, resume stream position and playback */
+                g_debug("State changed to pause after ready");
+                if (worker->seek_position > 0) {
+                        _check_seekability(worker);
+                        if (worker->media.seekable) {
+                                g_debug("performing a seek");
+                                _do_seek(worker, GST_SEEK_TYPE_SET,
+                                         worker->seek_position, NULL);
+                        } else {
+                                g_critical("media is not seekable (and should)");
+                        }
+                }
+
+                /* If playing a stream wait for buffering to finish before
+                   starting to play */
+                if (!worker->is_stream || worker->is_live) {
+                        _do_play(worker);
+                }
+                return;
+        }
+
 	/* While buffering, we have to wait in PAUSED 
 	   until we reach 100% before doing anything */
 	if (worker->buffering) {
@@ -821,14 +845,7 @@ static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker
 
 	switch (GST_STATE_TRANSITION(oldstate, newstate)) {
 	case GST_STATE_CHANGE_READY_TO_PAUSED:
-		if (worker->in_ready) {
-			/* Woken up from READY, resume stream position
-			 * and playback */
-			g_debug("State changed to pause after ready");
-			_do_seek(worker, GST_SEEK_TYPE_SET,
-				 worker->seek_position, NULL);
-			_do_play(worker);
-		} else if (worker->prerolling && worker->report_statechanges) {
+		if (worker->prerolling && worker->report_statechanges) {
 			/* PAUSED after pipeline has been
 			 * constructed. We check caps, seek and
 			 * duration and if staying in pause is needed,
@@ -913,7 +930,6 @@ static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker
 		 * deassign the timout it */
 		if (worker->in_ready) {
 			g_debug("changed to GST_STATE_READY");
-			worker->ready_timeout = 0;
 			_free_taglist(worker);
 		}
 		break;
@@ -1229,7 +1245,22 @@ static void _handle_buffering(MafwGstRendererWorker *worker, GstMessage *msg)
 							worker->owner);
 					}
 					worker->prerolling = FALSE;
+                                } else if (worker->in_ready) {
+					/* If we had been woken up from READY
+					   and we have finish our buffering,
+					   check if we have to play or stay
+					   paused and if we have to play,
+					   signal the state change. */
+                                        g_debug("buffering concluded, "
+                                                "continuing playing");
+                                        _do_play(worker);
                                 } else if (!worker->stay_paused) {
+					/* This means, that we were playing but
+					   ran out of buffer, so we silently
+					   paused waited for buffering to
+					   finish and now we continue silently
+					   (silently meaning we do not expose
+					   state changes) */
 					g_debug("buffering concluded, setting "
 						"pipeline to PLAYING again");
 					gst_element_set_state(
@@ -1793,14 +1824,26 @@ static void _do_seek(MafwGstRendererWorker *worker, GstSeekType seek_type,
 	spos = (gint64)position * GST_SECOND;
 	g_debug("seek: type = %d, offset = %lld", seek_type, spos);
 
-	ret = gst_element_seek(worker->pipeline, 1.0, GST_FORMAT_TIME,
-			       GST_SEEK_FLAG_FLUSH, seek_type, spos,
-			       GST_SEEK_TYPE_NONE, GST_CLOCK_TIME_NONE);
-	if (ret) {
-		/* Seeking is async, so seek_position should not be invalidated
-		here */
-		return;
+        /* If the pipeline has been set to READY by us, then wake it up by
+	   setting it to PAUSED (when we get the READY->PAUSED transition
+	   we will execute the seek). This way when we seek we disable the
+	   READY state (logical, since the player is not idle anymore)
+	   allowing the sink to render the destination frame in case of
+	   video playback */
+        if (worker->in_ready && worker->state == GST_STATE_READY) {
+                gst_element_set_state(worker->pipeline, GST_STATE_PAUSED);
+        } else {
+                ret = gst_element_seek(worker->pipeline, 1.0, GST_FORMAT_TIME,
+                                       GST_SEEK_FLAG_FLUSH, seek_type, spos,
+                                       GST_SEEK_TYPE_NONE, GST_CLOCK_TIME_NONE);
+                if (!ret) {
+                        /* Seeking is async, so seek_position should not be
+                           invalidated here */
+                        goto err;
+                }
 	}
+        return;
+
 err:    g_set_error(error,
 		    MAFW_RENDERER_ERROR,
 		    MAFW_RENDERER_ERROR_CANNOT_SET_POSITION,
@@ -1850,6 +1893,19 @@ void mafw_gst_renderer_worker_set_position(MafwGstRendererWorker *worker,
 					  GstSeekType seek_type,
 					  gint position, GError **error)
 {
+        /* If player is paused and we have a timeout for going to ready
+	 * restart it. This is logical, since the user is seeking and
+	 * thus, the player is not idle anymore. Also this prevents that
+	 * when seeking streams we enter buffering and in the middle of
+	 * the buffering process we set the pipeline to ready (which stops
+	 * the buffering before it reaches 100%, making the client think
+	 * buffering is still going on).
+	 */
+        if (worker->ready_timeout) {
+                _remove_ready_timeout(worker);
+                _add_ready_timeout(worker);
+        }
+
         _do_seek(worker, seek_type, position, error);
         if (worker->notify_seek_handler)
                 worker->notify_seek_handler(worker, worker->owner);
