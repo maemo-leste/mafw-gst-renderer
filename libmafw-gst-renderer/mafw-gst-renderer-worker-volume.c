@@ -376,7 +376,9 @@ _state_cb_destroy(pa_context *c, void *data)
 
 static void _success_cb(pa_context *c, int success, void *userdata)
 {
-	g_assert(success != 0);
+	if (success == 0) {
+		g_critical("Setting volume to pulse operation failed");
+	}
 }
 
 static void _remove_set_timeout(MafwGstRendererWorkerVolume *wvolume)
