@@ -1834,7 +1834,8 @@ static void _do_seek(MafwGstRendererWorker *worker, GstSeekType seek_type,
                 gst_element_set_state(worker->pipeline, GST_STATE_PAUSED);
         } else {
                 ret = gst_element_seek(worker->pipeline, 1.0, GST_FORMAT_TIME,
-                                       GST_SEEK_FLAG_FLUSH, seek_type, spos,
+                                       GST_SEEK_FLAG_FLUSH|GST_SEEK_FLAG_KEY_UNIT,
+                                       seek_type, spos,
                                        GST_SEEK_TYPE_NONE, GST_CLOCK_TIME_NONE);
                 if (!ret) {
                         /* Seeking is async, so seek_position should not be
