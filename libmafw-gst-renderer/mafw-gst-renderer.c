@@ -545,6 +545,23 @@ MafwGstRendererPlaybackMode mafw_gst_renderer_get_playback_mode(
   Set Media
   ----------------------------------------------------------------------------*/
 
+static MafwSource* _get_source(MafwGstRenderer *renderer,
+			       const gchar *object_id)
+{
+	MafwSource* source;
+	gchar* sourceid = NULL;
+
+	g_assert(object_id != NULL);
+
+	/* Attempt to find a source that provided the object ID */
+	mafw_source_split_objectid(object_id, &sourceid, NULL);
+	source = MAFW_SOURCE(mafw_registry_get_extension_by_uuid(
+				     renderer->registry, sourceid));
+	g_free(sourceid);
+
+	return source;
+}
+
 void mafw_gst_renderer_get_metadata(MafwGstRenderer* self,
 				  const gchar* objectid,
 				  GError **error)
