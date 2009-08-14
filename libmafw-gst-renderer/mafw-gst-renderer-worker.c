@@ -640,20 +640,26 @@ static void _check_duration(MafwGstRendererWorker *worker, gint64 value)
 						   &value);
 	}
 
-	if (right_query && value > 0 &&
-	    !_seconds_duration_equal(worker->media.length_nanos, value)) {
-		gint64 *duration = g_new0(gint64, 1);
-		*duration = value / GST_SECOND;
+	if (right_query && value > 0) {
+		gint duration_seconds = value / GST_SECOND;
 
-		/* Add the duration to the current metadata. */
-		_current_metadata_add(worker, MAFW_METADATA_KEY_DURATION,
-				      G_TYPE_INT64, (const gpointer) duration);
+		if (!_seconds_duration_equal(worker->media.length_nanos,
+					     value)) {
+			gint64 *duration = g_new0(gint64, 1);
+			*duration = duration_seconds;
 
-		/* Emit the duration. */
-		mafw_renderer_emit_metadata_int64(worker->owner,
-						  MAFW_METADATA_KEY_DURATION,
-						  *duration);
-		g_free(duration);
+			/* Add the duration to the current metadata. */
+			_current_metadata_add(worker,
+					      MAFW_METADATA_KEY_DURATION,
+					      G_TYPE_INT64,
+					      (const gpointer) duration);
+
+			/* Emit the duration. */
+			mafw_renderer_emit_metadata_int64(
+				worker->owner, MAFW_METADATA_KEY_DURATION,
+				*duration);
+			g_free(duration);
+		}
 	}
 
 	worker->media.length_nanos = value;
