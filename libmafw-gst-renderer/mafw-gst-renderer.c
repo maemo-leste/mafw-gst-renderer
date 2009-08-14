@@ -567,10 +567,8 @@ void mafw_gst_renderer_get_metadata(MafwGstRenderer* self,
 				  GError **error)
 {
 	MafwSource* source;
-	gchar* sourceid = NULL;
 
 	g_assert(self != NULL);
-	g_assert(objectid != NULL);
 
 	/*
 	 * Any error here is an error when trying to Play, so
@@ -583,11 +581,7 @@ void mafw_gst_renderer_get_metadata(MafwGstRenderer* self,
          * is not processed until we have moved to Transitioning state
 	 */
 
-	/* Attempt to find a source that provided the object ID */
-	mafw_source_split_objectid(self->media->object_id, &sourceid, NULL);
-	source = MAFW_SOURCE(mafw_registry_get_extension_by_uuid(self->registry,
-							    sourceid));
-	g_free(sourceid);
+	source = _get_source(self, objectid);
 	if (source != NULL)
 	{
 		/* List of metadata keys that we are interested in when going to
