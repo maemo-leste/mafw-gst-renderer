@@ -279,6 +279,9 @@ void mafw_gst_renderer_set_playback_mode(MafwGstRenderer *self,
 MafwGstRendererPlaybackMode mafw_gst_renderer_get_playback_mode(
 	MafwGstRenderer *self);
 
+void mafw_gst_renderer_update_source_duration(MafwGstRenderer *renderer,
+					      gint duration);
+
 G_END_DECLS
 
 #endif

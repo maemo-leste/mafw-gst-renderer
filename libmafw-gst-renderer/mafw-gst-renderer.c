@@ -1406,6 +1406,27 @@ gboolean mafw_gst_renderer_update_stats(gpointer data)
         return FALSE;
 }
 
+void mafw_gst_renderer_update_source_duration(MafwGstRenderer *renderer,
+					      gint duration)
+{
+	GHashTable *metadata;
+	MafwSource* source;
+
+	source = _get_source(renderer, renderer->media->object_id);
+	g_return_if_fail(source != NULL);
+
+	renderer->media->duration = duration;
+
+	g_debug("updated source duration to %d", duration);
+
+	metadata = mafw_metadata_new();
+	mafw_metadata_add_int(metadata, MAFW_METADATA_KEY_DURATION, duration);
+
+	mafw_source_set_metadata(source, renderer->media->object_id, metadata,
+				 _metadata_set_cb, NULL);
+	g_hash_table_unref(metadata);
+}
+
 /**
  * _notify_metadata:
  * @source:   The #MafwSource that sent the metadata results
