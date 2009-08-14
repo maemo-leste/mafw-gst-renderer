@@ -631,6 +631,7 @@ static gboolean _seconds_duration_equal(gint64 duration1, gint64 duration2)
 
 static void _check_duration(MafwGstRendererWorker *worker, gint64 value)
 {
+	MafwGstRenderer *renderer = worker->owner;
 	gboolean right_query = TRUE;
 
 	if (value == -1) {
@@ -659,6 +660,14 @@ static void _check_duration(MafwGstRendererWorker *worker, gint64 value)
 				worker->owner, MAFW_METADATA_KEY_DURATION,
 				*duration);
 			g_free(duration);
+		}
+
+		/* We compare this duration we just got with the
+		 * source one and update it in the source if needed */
+		if (duration_seconds != renderer->media->duration) {
+			mafw_gst_renderer_update_source_duration(
+				renderer,
+				duration_seconds);
 		}
 	}
 
