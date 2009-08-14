@@ -111,7 +111,7 @@ typedef struct {
 	gchar *artist;
 	gchar *album;
 
-	guint duration;
+	gint duration;
 	gint position;
 
 	/* Seekability coming from source */
