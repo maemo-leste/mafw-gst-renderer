@@ -1368,16 +1368,9 @@ static void mafw_gst_renderer_increase_playcount(MafwGstRenderer* self,
 					const gchar *object_id, GHashTable *mdat)
 {
 	MafwSource* source;
-	gchar* sourceid = NULL;
 
 	g_assert(self != NULL);
-	g_assert(object_id != NULL);
-
-	/* Attempt to find a source that provided the object ID */
-	mafw_source_split_objectid(object_id, &sourceid, NULL);
-	source = MAFW_SOURCE(mafw_registry_get_extension_by_uuid(self->registry,
-							    sourceid));
-	g_free(sourceid);
+	source = _get_source(self, object_id);
 	if (source != NULL)
 	{
 		static const gchar * const keys[] =
