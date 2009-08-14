@@ -312,6 +312,19 @@ static void _notify_metadata(MafwGstRendererState *self,
                         g_debug("_notify_metadata: source seekability unknown");
                 }
 
+		/* Check for source duration to keep it updated if needed */
+                mval = mafw_metadata_first(metadata,
+                                           MAFW_METADATA_KEY_DURATION);
+
+                if (mval != NULL) {
+                        renderer->media->duration = g_value_get_int(mval);
+                        g_debug("_notify_metadata: source duration %d",
+				renderer->media->duration);
+		} else {
+                        renderer->media->duration = -1;
+                        g_debug("_notify_metadata: source duration unknown");
+                }
+
                 /* Play the available uri(s) */
                 if (nuris == 1) {
 			mafw_gst_renderer_worker_play(renderer->worker, uri);

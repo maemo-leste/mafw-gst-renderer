@@ -578,6 +578,7 @@ void mafw_gst_renderer_get_metadata(MafwGstRenderer* self,
 		static const gchar * const keys[] =
 			{ MAFW_METADATA_KEY_URI,
 			  MAFW_METADATA_KEY_IS_SEEKABLE,
+			  MAFW_METADATA_KEY_DURATION,
 				NULL };
 
 		/* Source found, get metadata */
