@@ -1,8 +1,40 @@
+mafw-gst-renderer (0.1.2009.34-4) unstable; urgency=low
+
+  * Version increased
+
+ -- Mika Tapojärvi <mika.tapojarvi@sse.fi>  Mon, 17 Aug 2009 22:33:48 +0300
+
+mafw-gst-renderer (0.1.2009.34-3) unstable; urgency=low
+
+  * MAFW gst renderer, pre-release 0.2009.34-3
+  * Fixes: NB#128812 - Duration Mismatch for the attached mp3 clip in library view and now playing view
+  * Fixes: NB#132950 - Video seeking is slow most of the time
+  * Check if we get a different duration that the source one and update it
+    if needed in renderer
+  * Added function mafw_gst_renderer_update_source_duration
+  * Reworked mafw_gst_renderer_increase_playcount to use _get_source function
+  * Reworked mafw_gst_renderer_get_metadata to use _get_source function
+  * Created _get_source function in renderer
+  * Reworked _check_duration condition into two different ifs and extracted
+    duration in seconds calculation
+  * Added duration to the source metadata request and kept it in the
+    renderer metadata structure.
+  * Duration in renderer converted in gint instead of guint to hold
+    negative values
+  * flag GST_SEEK_FLAG_KEY_UNIT.
+  * Patch provided by Rene Stadler.
+
+ -- Mika Tapojärvi <mika.tapojarvi@sse.fi>  Mon, 17 Aug 2009 22:06:17 +0300
+
 mafw-gst-renderer (0.1.2009.33-3) unstable; urgency=low
 
-  * Version increased.
+  * Fixes: NB#131655 - UPnP: Playback starts from the first instead of playing from where we paused if left the device idle
+  * Fixes: NB#131609 - Mafw-dbus-wrapper crashes. Audio cannot be heard from device's loudspeaker.
+  * Replaced assertion with critical in volume manager for unsuccessful
+    setting volume in pulse operations.
 
- -- Mika Tapojärvi <mika.tapojarvi@sse.fi>  Mon, 10 Aug 2009 23:01:01 +0300
+ -- Mika Tapojärvi <mika.tapojarvi@sse.fi>  Thu, 13 Aug 2009 17:03:10 +0300
+
 
 mafw-gst-renderer (0.1.2009.33-2) unstable; urgency=low
 
