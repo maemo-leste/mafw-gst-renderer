@@ -73,6 +73,8 @@ typedef enum {
 	"current-frame-on-pause"
 #endif
 
+#define MAFW_PROPERTY_GST_RENDERER_TV_CONNECTED "tv-connected"
+
 /*----------------------------------------------------------------------------
   GObject type conversion macros
   ----------------------------------------------------------------------------*/
@@ -140,6 +142,7 @@ struct _MafwGstRendererClass {
  *                    is finished
  * states:            State array
  * error_policy:      error policy
+ * tv_connected:      if TV-out cable is connected
  */
 struct _MafwGstRenderer{
 	MafwRenderer parent;
@@ -162,6 +165,7 @@ struct _MafwGstRenderer{
 	gboolean resume_playlist;
  	MafwGstRendererState **states;
 	MafwRendererErrorPolicy error_policy;
+        gboolean tv_connected;
 
 #ifdef HAVE_CONIC
 	gboolean connected;
