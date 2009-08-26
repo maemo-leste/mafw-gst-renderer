@@ -1037,7 +1037,7 @@ static void _current_metadata_add(MafwGstRendererWorker *worker,
 		g_value_set_int64(new_gval, *((gint64 *) value));
 		break;
 	case G_TYPE_STRING:
-		g_value_set_string(new_gval, g_strdup((gchar *) value));
+		g_value_set_string(new_gval, (gchar *) value);
 		break;
 	case G_TYPE_DOUBLE:
 		g_value_set_double(new_gval, *((gdouble *) value));
