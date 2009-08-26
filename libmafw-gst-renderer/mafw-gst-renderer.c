@@ -904,11 +904,14 @@ static void _signal_transport_actions_property_changed(MafwGstRenderer * self)
 			self->states[self->current_state]),
 		MAFW_PROPERTY_RENDERER_TRANSPORT_ACTIONS);
 
-	mafw_extension_emit_property_changed(
-		MAFW_EXTENSION(self),
-		MAFW_PROPERTY_RENDERER_TRANSPORT_ACTIONS,
-		value);
-
+        if (value) {
+                mafw_extension_emit_property_changed(
+                        MAFW_EXTENSION(self),
+                        MAFW_PROPERTY_RENDERER_TRANSPORT_ACTIONS,
+                        value);
+                g_value_unset(value);
+                g_free(value);
+        }
 }
 
 
