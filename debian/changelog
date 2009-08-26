@@ -14,7 +14,6 @@ mafw-gst-renderer (0.1.2009.35-2) unstable; urgency=low
 mafw-gst-renderer (0.1.2009.35-1) unstable; urgency=low
 
   * Fixes: NB#129912 - Audio playback jarring while receiving a SMS while multiple browser/applications are open.
-  * Fixes: NB#128812 - Duration Mismatch for the attached mp3 clip in library view and now playing 
   * Increased the priority of the mafw-gst-renderer.
 
  -- Mika Tapojärvi <mika.tapojarvi@sse.fi>  Thu, 20 Aug 2009 17:34:03 +0300
@@ -22,7 +21,6 @@ mafw-gst-renderer (0.1.2009.35-1) unstable; urgency=low
 mafw-gst-renderer (0.1.2009.34-3) unstable; urgency=low
 
   * MAFW gst renderer, pre-release 0.2009.34-3
-  * Fixes: NB#128812 - Duration Mismatch for the attached mp3 clip in library view and now playing view
   * Fixes: NB#132950 - Video seeking is slow most of the time
   * Check if we get a different duration that the source one and update it
     if needed in renderer
