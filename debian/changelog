@@ -7,7 +7,6 @@ mafw-gst-renderer (0.1.2009.35-3) unstable; urgency=low
 mafw-gst-renderer (0.1.2009.35-2) unstable; urgency=low
 
   * First MAFW Sales RC.
-  * Fixes: NB#117860 - Inability to handle multiple resource of UPnP items
 
  -- Mika Tapojärvi <mika.tapojarvi@sse.fi>  Fri, 21 Aug 2009 16:38:27 +0300
 
