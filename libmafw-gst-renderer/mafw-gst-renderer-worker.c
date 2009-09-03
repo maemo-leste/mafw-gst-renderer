@@ -813,12 +813,44 @@ static void _do_pause_postprocessing(MafwGstRendererWorker *worker)
 	_add_ready_timeout(worker);
 }
 
+static void _report_playing_state(MafwGstRendererWorker * worker)
+{
+	if (worker->report_statechanges) {
+		switch (worker->mode) {
+		case WORKER_MODE_SINGLE_PLAY:
+			/* Notify play if we are playing in
+			 * single mode */
+			if (worker->notify_play_handler)
+				worker->notify_play_handler(
+					worker,
+					worker->owner);
+			break;
+		case WORKER_MODE_PLAYLIST:
+		case WORKER_MODE_REDUNDANT:
+			/* Only notify play when the "playlist"
+			   playback starts, don't notify play for each
+			   individual element of the playlist. */
+			if (worker->pl.notify_play_pending) {
+				if (worker->notify_play_handler)
+					worker->notify_play_handler(
+						worker,
+						worker->owner);
+				worker->pl.notify_play_pending = FALSE;
+			}
+			break;
+		default: break;
+		}
+	}
+}
+
 static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker)
 {
 	GstState newstate, oldstate;
+	GstStateChange statetrans;
 	MafwGstRenderer *renderer = (MafwGstRenderer*)worker->owner;
 
 	gst_message_parse_state_changed(msg, &oldstate, &newstate, NULL);
+	statetrans = GST_STATE_TRANSITION(oldstate, newstate);
 	g_debug ("State changed: %d: %d -> %d", worker->state, oldstate, newstate);
 
 	/* If the state is the same we do nothing, otherwise, we keep
@@ -829,7 +861,7 @@ static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker
 		worker->state = newstate;
 	}
 
-        if (GST_STATE_TRANSITION(oldstate, newstate) == GST_STATE_CHANGE_READY_TO_PAUSED &&
+        if (statetrans == GST_STATE_CHANGE_READY_TO_PAUSED &&
             worker->in_ready) {
                 /* Woken up from READY, resume stream position and playback */
                 g_debug("State changed to pause after ready");
@@ -855,10 +887,20 @@ static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker
 	/* While buffering, we have to wait in PAUSED 
 	   until we reach 100% before doing anything */
 	if (worker->buffering) {
+	        if (statetrans == GST_STATE_CHANGE_PAUSED_TO_PLAYING) {
+			/* Mmm... probably the client issued a seek on the
+			 * stream and then a play/resume command right away,
+			 * so the stream got into PLAYING state while
+			 * buffering. When the next buffering signal arrives,
+			 * the stream will be PAUSED silently and resumed when
+			 * buffering is done (silently too), so let's signal
+			 * the state change to PLAYING here. */
+			_report_playing_state(worker);			
+		}
 		return;
 	}
 
-	switch (GST_STATE_TRANSITION(oldstate, newstate)) {
+	switch (statetrans) {
 	case GST_STATE_CHANGE_READY_TO_PAUSED:
 		if (worker->prerolling && worker->report_statechanges) {
 			/* PAUSED after pipeline has been
@@ -891,32 +933,9 @@ static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker
 		worker->seek_position = -1;
                 worker->eos = FALSE;
 
-		if (worker->report_statechanges) {
-			switch (worker->mode) {
-			case WORKER_MODE_SINGLE_PLAY:
-				/* Notify play if we are playing in
-				 * single mode */
-				if (worker->notify_play_handler)
-					worker->notify_play_handler(
-						worker,
-						worker->owner);
-				break;
-			case WORKER_MODE_PLAYLIST:
-                        case WORKER_MODE_REDUNDANT:
-				/* Only notify play when the "playlist"
-				   playback starts, don't notify play for each
-				   individual element of the playlist. */
-				if (worker->pl.notify_play_pending) {
-					if (worker->notify_play_handler)
-						worker->notify_play_handler(
-							worker,
-							worker->owner);
-					worker->pl.notify_play_pending = FALSE;
-				}
-				break;
-			default: break;
-			}
-		}
+		/* Signal state change if needed */
+		_report_playing_state(worker);
+
 		/* Prevent blanking if we are playing video */
                 if (worker->media.has_visual_content) {
                         blanking_prohibit();
@@ -2259,11 +2278,26 @@ void mafw_gst_renderer_worker_resume(MafwGstRendererWorker *worker)
 	    !worker->prerolling) {
 		/* If we are buffering we cannot resume, but we know
 		 * that the pipeline will be moved to PLAYING as
-		 * stay_paused is FALSE, so we just activate realizing
-		 * the state_changes */
+		 * stay_paused is FALSE, so we just activate the state
+		 * change report, this way as soon as buffering is finished
+		 * the pipeline will be set to PLAYING and the state
+		 * change will be reported */
 		worker->report_statechanges = TRUE;
 		g_debug("Resumed while buffering, activating pipeline state "
 			"changes");
+		/* Notice though that we can receive the Resume before
+		   we get any buffering information. In that case
+		   we go with the "else" branch and set the pipeline to
+		   to PLAYING. However, it is possible that in this case
+		   we get the fist buffering signal before the
+		   PAUSED -> PLAYING state change. In that case, since we
+		   ignore state changes while buffering we never signal
+		   the state change to PLAYING. We can only fix this by
+		   checking, when we receive a PAUSED -> PLAYING transition
+		   if we are buffering, and in that case signal the state
+		   change (if we get that transition while buffering
+		   is on, it can only mean that the client resumed playback
+		   while buffering, and we must notify the state change) */
 	} else {
 		_do_play(worker);
 	}
