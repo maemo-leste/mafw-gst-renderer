@@ -1,8 +1,23 @@
-mafw-gst-renderer (0.1.2009.35-4) unstable; urgency=low
+mafw-gst-renderer (0.1.2009.37-1) unstable; urgency=low
 
-  * Version increased.
+  * MAFW gst renderer, pre-release 0.2009.37-1
+  * Fixes: NB#121136 - [Power Management]Device never goto power saving mode when video playback is connected to TV out
+  * Fixes: NB#134730 - [PR1.1 proposal] <MemLeak> mafw-gst-renderer.c
+  * Fixes: NB#134728 - [PR1.1 proposal] <MemLeak> mafw-gst-renderer-worker.c
+  * Fixes: NB#134495 - [PR1.1 proposal] State changed signal does not come sometimes when stream is played
+  * if for some reason client starts a resume operation
+    after a seek on a stream and by the time we get the resume command we
+    have not started buffering yet, make sure we signal the state change
+    to playing to the client.
 
- -- Mika Tapojärvi <ext-mika.tapojarvi@nokia.com>  Fri, 21 Aug 2009 20:32:50 +0300
+ -- Juha Kellokoski <veitikka6@gmail.com>  Fri, 04 Sep 2009 12:00:00 +0300
+
+mafw-gst-renderer (0.1.2009.35-3) unstable; urgency=low
+
+  * MAFW Sales RC4.
+  * Fixes: NB#129912 - Audio playback jarring while receiving a SMS while multiple browser/applications are open.
+
+ -- Juha Kellokoski <veitikka6@gmail.com>  Tue, 25 Aug 2009 14:15:34 +0300
 
 mafw-gst-renderer (0.1.2009.35-2) unstable; urgency=low
 
