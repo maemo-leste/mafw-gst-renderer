@@ -56,6 +56,9 @@ struct _MafwGstRendererWorkerVolume {
 	gpointer mute_user_data;
 	gdouble current_volume;
 	gboolean current_mute;
+	gboolean pending_operation;
+	gdouble pending_operation_volume;
+	gboolean pending_operation_mute;
 	guint change_request_id;
 	pa_operation *pa_operation;
 };
@@ -97,6 +100,8 @@ static void _ext_stream_restore_read_cb(pa_context *c,
 					void *userdata)
 {
 	MafwGstRendererWorkerVolume *wvolume = userdata;
+	gdouble volume;
+	gboolean mute;
 
 	if (eol < 0) {
 		g_critical("eol parameter should not be < 1. "
@@ -104,24 +109,31 @@ static void _ext_stream_restore_read_cb(pa_context *c,
 		return;
 	}
 
-	if (_pa_operation_running(wvolume)) {
+	if (i == NULL ||
+	    strcmp(i->name, MAFW_GST_RENDERER_WORKER_VOLUME_ROLE_PREFIX
+		   MAFW_GST_RENDERER_WORKER_VOLUME_ROLE) != 0) {
+		return;
+	}
+
+	volume = _pa_volume_to_per_one(pa_cvolume_max(&i->volume));
+	mute = i->mute != 0 ? TRUE : FALSE;
+
+	if (_pa_operation_running(wvolume) ||
+	    (wvolume->pending_operation &&
+	     (wvolume->pending_operation_volume != volume ||
+	      wvolume->pending_operation_mute != mute))) {
 		g_debug("volume notification, but operation running, ignoring");
 		return;
 	}
 
-	if (i == NULL ||
-	    strcmp(i->name, MAFW_GST_RENDERER_WORKER_VOLUME_ROLE_PREFIX
-		   MAFW_GST_RENDERER_WORKER_VOLUME_ROLE) != 0)
-		return;
-
-	wvolume->pulse_volume =
-		_pa_volume_to_per_one(pa_cvolume_max(&i->volume));
-	wvolume->pulse_mute = i->mute != 0 ? TRUE : FALSE;
+	wvolume->pulse_volume = volume;
+	wvolume->pulse_mute = mute;
 
 	/* EMIT VOLUME */
 	g_debug("ext stream volume is %lf (mute: %d) for role %s in device %s",
 		wvolume->pulse_volume, wvolume->pulse_mute, i->name, i->device);
-	if (wvolume->pulse_volume != wvolume->current_volume) {
+	if (!wvolume->pending_operation &&
+	    wvolume->pulse_volume != wvolume->current_volume) {
 		wvolume->current_volume = wvolume->pulse_volume;
 		if (wvolume->cb != NULL) {
 			g_debug("signalling volume");
@@ -129,7 +141,8 @@ static void _ext_stream_restore_read_cb(pa_context *c,
 				    wvolume->user_data);
 		}
 	}
-	if (wvolume->pulse_mute != wvolume->current_mute) {
+	if (!wvolume->pending_operation &&
+	    wvolume->pulse_mute != wvolume->current_mute) {
 		wvolume->current_mute = wvolume->pulse_mute;
 		if (wvolume->mute_cb != NULL) {
 			g_debug("signalling mute");
@@ -137,6 +150,8 @@ static void _ext_stream_restore_read_cb(pa_context *c,
 					 wvolume->mute_user_data);
 		}
 	}
+
+	wvolume->pending_operation = FALSE;
 }
 
 static void _destroy_context(MafwGstRendererWorkerVolume *wvolume)
@@ -395,8 +410,12 @@ static gboolean _set_timeout(gpointer data)
         pa_ext_stream_restore2_info *infos[1];
 	MafwGstRendererWorkerVolume *wvolume = data;
 
-	if (wvolume->pulse_mute != wvolume->current_mute ||
-	    wvolume->pulse_volume != wvolume->current_volume) {
+	if (wvolume->pending_operation) {
+		g_debug("setting volume ignored as there is still a pending "
+			"operation. Waiting till next iteration");
+	} else if (wvolume->pulse_mute != wvolume->current_mute ||
+		   wvolume->pulse_volume != wvolume->current_volume) {
+
 		info.name = MAFW_GST_RENDERER_WORKER_VOLUME_ROLE_PREFIX
 			MAFW_GST_RENDERER_WORKER_VOLUME_ROLE;
 		info.channel_map.channels = 1;
@@ -417,6 +436,10 @@ static gboolean _set_timeout(gpointer data)
 		if (wvolume->pa_operation != NULL) {
 			pa_operation_unref(wvolume->pa_operation);
 		}
+
+		wvolume->pending_operation = TRUE;
+		wvolume->pending_operation_volume = wvolume->current_volume;
+		wvolume->pending_operation_mute = wvolume->current_mute;
 
 		wvolume->pa_operation = pa_ext_stream_restore2_write(
 			wvolume->context,
