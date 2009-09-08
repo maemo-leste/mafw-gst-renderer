@@ -706,7 +706,7 @@ START_TEST(test_basic_playback)
 	fail_if(bus == NULL, "No GstBus");
 
 	message = gst_message_new_duration(NULL, GST_FORMAT_TIME,
-					   3 * GST_SECOND);
+					   5 * GST_SECOND);
 	gst_bus_post(bus, message);
 
 	if (wait_for_metadata(&m, wait_tout_val) == FALSE) {

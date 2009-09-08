@@ -58,6 +58,10 @@
 #define MAFW_GST_BUFFER_TIME  600000L
 #define MAFW_GST_LATENCY_TIME (MAFW_GST_BUFFER_TIME / 2)
 
+#define NSECONDS_TO_SECONDS(ns) ((ns)%1000000000 < 500000000?\
+                                 GST_TIME_AS_SECONDS((ns)):\
+                                 GST_TIME_AS_SECONDS((ns))+1)
+
 /* Private variables. */
 /* Global reference to worker instance, needed for Xerror handler */
 static MafwGstRendererWorker *Global_worker = NULL;
@@ -623,8 +627,8 @@ static gboolean _seconds_duration_equal(gint64 duration1, gint64 duration2)
 {
 	gint64 duration1_seconds, duration2_seconds;
 
-	duration1_seconds = duration1 / GST_SECOND;
-	duration2_seconds = duration2 / GST_SECOND;
+	duration1_seconds = NSECONDS_TO_SECONDS(duration1);
+	duration2_seconds = NSECONDS_TO_SECONDS(duration2);
 
 	return duration1_seconds == duration2_seconds;
 }
@@ -642,7 +646,7 @@ static void _check_duration(MafwGstRendererWorker *worker, gint64 value)
 	}
 
 	if (right_query && value > 0) {
-		gint duration_seconds = value / GST_SECOND;
+		gint duration_seconds = NSECONDS_TO_SECONDS(value);
 
 		if (!_seconds_duration_equal(worker->media.length_nanos,
 					     value)) {
@@ -1967,7 +1971,7 @@ gint mafw_gst_renderer_worker_get_position(MafwGstRendererWorker *worker)
 	if (worker->pipeline &&
             gst_element_query_position(worker->pipeline, &format, &time))
 	{
-		return (gint)(time / GST_SECOND);
+		return (gint)(NSECONDS_TO_SECONDS(time));
 	}
 	return -1;
 }
