@@ -168,6 +168,17 @@ fi
 AM_CONDITIONAL(ENABLE_TESTS,
                [test "x$enable_tests" = xyes && test -n "$CHECKMORE_LIBS"])
 
+dnl Volume handling
+if test "x${SBOX_DPKG_INST_ARCH}" = "xi386"; then
+   DISABLED_BY_DEFAULT([pulse-volume], [enable volume handling with pulse])
+else
+   ENABLED_BY_DEFAULT([pulse-volume], [enable volume handling with pulse])
+fi
+if test "x$enable_pulse_volume" = xno; then
+	AC_DEFINE([MAFW_GST_RENDERER_DISABLE_PULSE_VOLUME], [1], [Disables volume handling with pulse.])
+fi
+
+
 dnl Mute
 DISABLED_BY_DEFAULT([mute], [enable mute handling])
 if test "x$enable_mute" = xyes; then
