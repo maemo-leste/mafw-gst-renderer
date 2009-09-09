@@ -25,6 +25,8 @@
 #include "config.h"
 #endif
 
+#ifndef MAFW_GST_RENDERER_DISABLE_PULSE_VOLUME
+
 #include <pulse/pulseaudio.h>
 #include <pulse/glib-mainloop.h>
 #include <pulse/ext-stream-restore.h>
@@ -569,3 +571,109 @@ void mafw_gst_renderer_worker_volume_destroy(
 				      wvolume);
 	pa_context_disconnect(wvolume->context);
 }
+
+
+
+#else
+
+
+#include "mafw-gst-renderer-worker-volume.h"
+
+#undef  G_LOG_DOMAIN
+#define G_LOG_DOMAIN "mafw-gst-renderer-worker-volume-fake"
+
+struct _MafwGstRendererWorkerVolume {
+	MafwGstRendererWorkerVolumeChangedCb cb;
+	gpointer user_data;
+	MafwGstRendererWorkerVolumeMuteCb mute_cb;
+	gpointer mute_user_data;
+	gdouble current_volume;
+	gboolean current_mute;
+};
+
+void mafw_gst_renderer_worker_volume_init(GMainContext *main_context,
+					  MafwGstRendererWorkerVolumeInitCb cb,
+					  gpointer user_data,
+					  MafwGstRendererWorkerVolumeChangedCb
+					  changed_cb,
+					  gpointer changed_user_data,
+					  MafwGstRendererWorkerVolumeMuteCb
+					  mute_cb, gpointer mute_user_data)
+{
+	MafwGstRendererWorkerVolume *wvolume = NULL;
+
+	g_return_if_fail(cb != NULL);
+
+	g_debug("initializing volume manager");
+
+	wvolume = g_new0(MafwGstRendererWorkerVolume, 1);
+
+	wvolume->cb = changed_cb;
+	wvolume->user_data = changed_user_data;
+	wvolume->mute_cb = mute_cb;
+	wvolume->mute_user_data = mute_user_data;
+	wvolume->current_volume = 1.0;
+
+	cb(wvolume, user_data);
+}
+
+void mafw_gst_renderer_worker_volume_set(MafwGstRendererWorkerVolume *wvolume,
+					 gdouble volume, gboolean mute)
+{
+	gboolean signal_volume, signal_mute;
+
+	g_return_if_fail(wvolume != NULL);
+
+#ifndef MAFW_GST_RENDERER_ENABLE_MUTE
+	mute = FALSE;
+#endif
+
+	signal_volume = wvolume->current_volume != volume &&
+		wvolume->cb != NULL;
+	signal_mute = wvolume->current_mute != mute && wvolume->mute_cb != NULL;
+
+	wvolume->current_volume = volume;
+	wvolume->current_mute = mute;
+
+	g_debug("volume set: %lf (mute %d)", volume, mute);
+
+	if (signal_volume) {
+		g_debug("signalling volume");
+		wvolume->cb(wvolume, volume, wvolume->user_data);
+	}
+
+	if (signal_mute) {
+		g_debug("signalling mute");
+		wvolume->mute_cb(wvolume, mute, wvolume->mute_user_data);
+	}
+}
+
+gdouble mafw_gst_renderer_worker_volume_get(
+	MafwGstRendererWorkerVolume *wvolume)
+{
+	g_return_val_if_fail(wvolume != NULL, 0.0);
+
+	g_debug("getting volume; %lf", wvolume->current_volume);
+
+	return wvolume->current_volume;
+}
+
+gboolean mafw_gst_renderer_worker_volume_is_muted(
+	MafwGstRendererWorkerVolume *wvolume)
+{
+	g_return_val_if_fail(wvolume != NULL, FALSE);
+
+	g_debug("getting mute; %d", wvolume->current_mute);
+
+	return wvolume->current_mute;
+}
+
+void mafw_gst_renderer_worker_volume_destroy(
+	MafwGstRendererWorkerVolume *wvolume)
+{
+	g_return_if_fail(wvolume != NULL);
+
+	g_free(wvolume);
+}
+
+#endif
