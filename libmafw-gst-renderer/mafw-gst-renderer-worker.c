@@ -1769,7 +1769,6 @@ static void _construct_pipeline(MafwGstRendererWorker *worker)
 		g_assert_not_reached();
 	}
 
-	g_object_set(worker->pipeline, "flags", 99, NULL);
 
 	worker->bus = gst_pipeline_get_bus(GST_PIPELINE(worker->pipeline));
 	gst_bus_set_sync_handler(worker->bus,
@@ -1783,6 +1782,9 @@ static void _construct_pipeline(MafwGstRendererWorker *worker)
 	 * video window. */
 	g_signal_connect(worker->pipeline, "notify::stream-info",
 			 G_CALLBACK(_stream_info_cb), worker);
+
+#ifndef MAFW_GST_RENDERER_DISABLE_PULSE_VOLUME
+	g_object_set(worker->pipeline, "flags", 99, NULL);
 
 	/* Set audio and video sinks ourselves. We create and configure
 	   them only once. */
@@ -1803,6 +1805,8 @@ static void _construct_pipeline(MafwGstRendererWorker *worker)
 		g_object_set(worker->asink, "latency-time", 
 			     (gint64) MAFW_GST_LATENCY_TIME, NULL);
 	}
+	g_object_set(worker->pipeline, "audio-sink", worker->asink, NULL);
+#endif
 
 	if (!worker->vsink) {
 		worker->vsink = gst_element_factory_make("xvimagesink", NULL);
@@ -1821,8 +1825,6 @@ static void _construct_pipeline(MafwGstRendererWorker *worker)
 		g_object_set(worker->vsink, "force-aspect-ratio",
 			     TRUE, NULL);
 	}
-
-	g_object_set(worker->pipeline, "audio-sink", worker->asink, NULL);		
 	g_object_set(worker->pipeline, "video-sink", worker->vsink, NULL);
 }
 
