@@ -23,11 +23,11 @@ mafw_gst_renderer_la_SOURCES	= $(BUILT_SOURCES) \
 				  mafw-gst-renderer-state-transitioning.c mafw-gst-renderer-state-transitioning.h \
 				  mafw-playlist-iterator.c mafw-playlist-iterator.h
 
-mafw_gst_renderer_la_CPPFLAGS	= $(DEPS_CFLAGS) -DPREFIX=\"$(prefix)\" \
-				  $(_CFLAGS)
+mafw_gst_renderer_la_CPPFLAGS	= $(DEPS_CFLAGS) $(VOLUME_CFLAGS) \
+				  -DPREFIX=\"$(prefix)\" $(_CFLAGS)
 mafw_gst_renderer_la_LDFLAGS	= -avoid-version -module $(_LDFLAGS)
-mafw_gst_renderer_la_LIBADD	= $(DEPS_LIBS) -lgstinterfaces-0.10 \
-				  -lgstpbutils-0.10
+mafw_gst_renderer_la_LIBADD	= $(DEPS_LIBS) $(VOLUME_LIBS) \
+				  -lgstinterfaces-0.10 -lgstpbutils-0.10
 
 if HAVE_GDKPIXBUF
 mafw_gst_renderer_la_SOURCES += gstscreenshot.c gstscreenshot.h

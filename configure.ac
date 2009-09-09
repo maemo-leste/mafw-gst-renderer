@@ -57,7 +57,6 @@ PKG_CHECK_MODULES(DEPS,
 		  x11
 		  hal
 		  totem-plparser
-                  libpulse-mainloop-glib >= 0.9.15
                   gconf-2.0 >= 2.0
 		  gnome-vfs-2.0
 )
@@ -176,6 +175,8 @@ else
 fi
 if test "x$enable_pulse_volume" = xno; then
 	AC_DEFINE([MAFW_GST_RENDERER_DISABLE_PULSE_VOLUME], [1], [Disables volume handling with pulse.])
+else
+        PKG_CHECK_MODULES(VOLUME, libpulse-mainloop-glib >= 0.9.15)
 fi
 
 
