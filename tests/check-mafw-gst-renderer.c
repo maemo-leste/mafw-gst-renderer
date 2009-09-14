@@ -3961,6 +3961,7 @@ START_TEST(test_properties_management)
 		"Property with value %d and %d expected",
 		g_value_get_uint(c.property_received), 50);
 
+#ifndef MAFW_GST_RENDERER_DISABLE_PULSE_VOLUME
 	/* Test reconnection to pulse */
 
 	pa_context_disconnect(pa_context_get_instance());
@@ -3990,6 +3991,7 @@ START_TEST(test_properties_management)
 	p.expected = NULL;
 
 	reset_callback_info(&c);
+#endif
 }
 END_TEST
 
