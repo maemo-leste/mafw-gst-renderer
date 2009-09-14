@@ -631,7 +631,7 @@ void mafw_gst_renderer_worker_volume_init(GMainContext *main_context,
 	wvolume->user_data = changed_user_data;
 	wvolume->mute_cb = mute_cb;
 	wvolume->mute_user_data = mute_user_data;
-	wvolume->current_volume = 1.0;
+	wvolume->current_volume = 0.485;
 
 	closure = g_new0(InitCbClosure, 1);
 	closure->wvolume = wvolume;
