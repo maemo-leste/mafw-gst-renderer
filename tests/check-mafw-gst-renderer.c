@@ -177,11 +177,7 @@ static void metadata_changed_cb(MafwRenderer *self, const gchar *key,
 	{
 		GValue *original;
 
-		if (G_IS_VALUE(value)) {
-			original = (GValue *) value;
-		} else {
-			original = g_value_array_get_nth(value, 0);
-		}
+		original = g_value_array_get_nth(value, 0);
 
 		m->value = g_new0(GValue, 1);
 		g_value_init(m->value, G_VALUE_TYPE(original));

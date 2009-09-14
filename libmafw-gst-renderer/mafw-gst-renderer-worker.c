@@ -1021,59 +1021,12 @@ static void _current_metadata_add(MafwGstRendererWorker *worker,
 				  const gchar *key, GType type,
 				  const gpointer value)
 {
-	GValue *new_gval;
-
 	g_return_if_fail(value != NULL);
 
 	if (!worker->current_metadata)
 		worker->current_metadata = mafw_metadata_new();
 
-	if (type == G_TYPE_VALUE_ARRAY) {
-		GValueArray *values = (GValueArray *) value;
-
-		if (values->n_values == 1) {
-			GValue *gval = g_value_array_get_nth(values, 0);
-			new_gval = g_new0(GValue, 1);
-			g_value_init(new_gval, G_VALUE_TYPE(gval));
-			g_value_copy(gval, new_gval);
-
-			g_hash_table_insert(worker->current_metadata,
-					    g_strdup(key), new_gval);
-		} else {
-			GValueArray *new_gvalues = g_value_array_copy(values);
-
-			g_hash_table_insert(worker->current_metadata,
-					    g_strdup(key), new_gvalues);
-		}
-
-		return;
-	}
-
-	new_gval = g_new0(GValue, 1);
-	g_value_init(new_gval, type);
-
-	switch (type) {
-	case G_TYPE_INT:
-		g_value_set_int(new_gval, *((gint *) value));
-		break;
-	case G_TYPE_INT64:
-		g_value_set_int64(new_gval, *((gint64 *) value));
-		break;
-	case G_TYPE_STRING:
-		g_value_set_string(new_gval, (gchar *) value);
-		break;
-	case G_TYPE_DOUBLE:
-		g_value_set_double(new_gval, *((gdouble *) value));
-		break;
-	case G_TYPE_BOOLEAN:
-		g_value_set_boolean(new_gval, *((gboolean *) value));
-		break;
-	default:
-		g_warning("Metadata type: %i is not being handled", type);
-		return;
-	}
-
-	g_hash_table_insert(worker->current_metadata, g_strdup(key), new_gval);
+	mafw_metadata_add_something(worker->current_metadata, key, type, 1, value);
 }
 
 static GHashTable* _build_tagmap(void)
@@ -1162,6 +1115,8 @@ static void _emit_tag(const GstTagList *list, const gchar *tag,
 
 				g_value_init(&utf8gval, G_TYPE_STRING);
 				g_value_take_string(&utf8gval, utf8);
+				_current_metadata_add(worker, mafwtag, G_TYPE_VALUE,
+					(const gpointer) &utf8gval);
 				g_value_array_append(values, &utf8gval);
 				g_value_unset(&utf8gval);
 			}
@@ -1171,16 +1126,16 @@ static void _emit_tag(const GstTagList *list, const gchar *tag,
 
 			g_value_init(&intgval, G_TYPE_INT);
 			g_value_transform(v, &intgval);
+			_current_metadata_add(worker, mafwtag, G_TYPE_VALUE,
+					(const gpointer) &intgval);
 			g_value_array_append(values, &intgval);
 			g_value_unset(&intgval);
 		} else {
+			_current_metadata_add(worker, mafwtag, G_TYPE_VALUE,
+					(const gpointer) v);
 			g_value_array_append(values, v);
 		}
 	}
-
-	/* Add the info to the current metadata. */
-	_current_metadata_add(worker, mafwtag, G_TYPE_VALUE_ARRAY,
-			      (const gpointer) values);
 
 	/* Emit the metadata. */
 	g_signal_emit_by_name(worker->owner, "metadata-changed", mafwtag,
