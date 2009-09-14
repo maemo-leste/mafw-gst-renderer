@@ -591,6 +591,24 @@ struct _MafwGstRendererWorkerVolume {
 	gboolean current_mute;
 };
 
+typedef struct {
+	MafwGstRendererWorkerVolume *wvolume;
+	MafwGstRendererWorkerVolumeInitCb cb;
+	gpointer user_data;
+} InitCbClosure;
+
+static gboolean _init_cb_closure(gpointer user_data)
+{
+	InitCbClosure *closure = user_data;
+
+	if (closure->cb != NULL) {
+		closure->cb(closure->wvolume, closure->user_data);
+	}
+	g_free(closure);
+
+	return FALSE;
+}
+
 void mafw_gst_renderer_worker_volume_init(GMainContext *main_context,
 					  MafwGstRendererWorkerVolumeInitCb cb,
 					  gpointer user_data,
@@ -601,6 +619,7 @@ void mafw_gst_renderer_worker_volume_init(GMainContext *main_context,
 					  mute_cb, gpointer mute_user_data)
 {
 	MafwGstRendererWorkerVolume *wvolume = NULL;
+	InitCbClosure *closure;
 
 	g_return_if_fail(cb != NULL);
 
@@ -614,7 +633,11 @@ void mafw_gst_renderer_worker_volume_init(GMainContext *main_context,
 	wvolume->mute_user_data = mute_user_data;
 	wvolume->current_volume = 1.0;
 
-	cb(wvolume, user_data);
+	closure = g_new0(InitCbClosure, 1);
+	closure->wvolume = wvolume;
+	closure->cb = cb;
+	closure->user_data = user_data;
+	g_idle_add(_init_cb_closure, closure);
 }
 
 void mafw_gst_renderer_worker_volume_set(MafwGstRendererWorkerVolume *wvolume,
