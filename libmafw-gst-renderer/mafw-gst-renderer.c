@@ -56,6 +56,8 @@
 
 #define GCONF_OSSO_AF "/system/osso/af"
 #define GCONF_BATTERY_COVER_OPEN "/system/osso/af/mmc-cover-open"
+#define HAL_VIDEOOUT_UDI "/org/freedesktop/Hal/devices" \
+        "/platform_soc_audio_logicaldev_input"
 
 /*----------------------------------------------------------------------------
   Static variable definitions
@@ -386,6 +388,9 @@ static void mafw_gst_renderer_dispose(GObject *object)
 	}
 
 	if (renderer->hal_ctx != NULL) {
+                libhal_device_remove_property_watch(renderer->hal_ctx,
+                                                    HAL_VIDEOOUT_UDI,
+                                                    NULL);
 		libhal_ctx_shutdown(renderer->hal_ctx, NULL);
 		libhal_ctx_free(renderer->hal_ctx);
 	}
@@ -476,12 +481,11 @@ GObject *mafw_gst_renderer_new(MafwRegistry* registry)
 		goto err2;
 	}
 
-	/* TODO, should watch only specific messages, also check if watch
-	 * should be removed on dispose() */
-	libhal_device_property_watch_all(ctx, &err);
+	libhal_device_add_property_watch(ctx, HAL_VIDEOOUT_UDI, &err);
 
 	if (dbus_error_is_set(&err)) {
-		g_warning("Could not start watching usb device: %s", err.message);
+		g_warning("Could not start watching usb device: %s",
+                          err.message);
 		dbus_error_free(&err);
 
 		goto err3;
@@ -783,26 +787,21 @@ static void _property_modified(LibHalContext *ctx, const char *udi,
         gboolean connected;
         GValue value = { 0 };
 
-        /* Check if the property changed affects the jack */
-        if (strcmp(key, "input.jack.type") == 0) {
-                g_debug("HAL property modified! jack changed\n");
-                connected = _tv_out_is_connected(ctx, udi);
-                renderer = MAFW_GST_RENDERER(libhal_ctx_get_user_data(ctx));
-                if (renderer->tv_connected != connected) {
-                        /* Notify the change */
-                        renderer->tv_connected = connected;
-                        g_value_init(&value, G_TYPE_BOOLEAN);
-                        g_value_set_boolean(&value, renderer->tv_connected);
-                        mafw_extension_emit_property_changed(
-                                MAFW_EXTENSION(renderer),
-                                MAFW_PROPERTY_GST_RENDERER_TV_CONNECTED,
-                                &value);
-                        g_value_unset(&value);
-                }
-                blanking_control(connected == FALSE);
-        } else {
-                g_debug("HAL propertiy modified, but not a jack\n");
+        g_debug("HAL property modified! jack changed\n");
+        connected = _tv_out_is_connected(ctx, udi);
+        renderer = MAFW_GST_RENDERER(libhal_ctx_get_user_data(ctx));
+        if (renderer->tv_connected != connected) {
+                /* Notify the change */
+                renderer->tv_connected = connected;
+                g_value_init(&value, G_TYPE_BOOLEAN);
+                g_value_set_boolean(&value, renderer->tv_connected);
+                mafw_extension_emit_property_changed(
+                        MAFW_EXTENSION(renderer),
+                        MAFW_PROPERTY_GST_RENDERER_TV_CONNECTED,
+                        &value);
+                g_value_unset(&value);
         }
+        blanking_control(connected == FALSE);
 }
 
 /*----------------------------------------------------------------------------
