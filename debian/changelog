@@ -1,3 +1,26 @@
+mafw-gst-renderer (0.1.2009.39-1) unstable; urgency=low
+
+  * MAFW gst renderer, pre-release 0.2009.39-1
+  * Check for changes only in device having the video-out property.
+  * Disabled test of pulse reconnection as it is not needed with fake volume
+    manager to fix volume test
+  * Changed default fake volume initialization to 0.485 instead of 1 to fix 
+    volume tests
+  * Added return of initialized fake volume manager in an idle call to fix
+    volume tests
+  * Added function to reset volume to pulse pipeline in case pulse volume
+    management is disabled
+  * Added fake volume manager and disabled normal handling with pulse when
+    pulse volume is disabled in compilation.
+  * We avoid setting audiosink to the pipeline and native flags when pulse
+    volume is disabled.
+  * Moved checking for pulse dependency to its conditional compilation
+  * Added support for conditional compilation regarding to volume in
+    renderer
+  * Adds a macro to round values when converting from nanoseconds to seconds.
+
+ -- Juha Kellokoski <veitikka6@gmail.com>  Fri, 18 Sep 2009 14:21:32 +0300
+
 mafw-gst-renderer (0.1.2009.37-1) unstable; urgency=low
 
   * MAFW gst renderer, pre-release 0.2009.37-1
