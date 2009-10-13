@@ -1561,6 +1561,8 @@ static void _volume_cb(MafwGstRendererWorkerVolume *wvolume, gdouble volume,
 					     &value);
 }
 
+#ifdef MAFW_GST_RENDERER_ENABLE_MUTE
+
 static void _mute_cb(MafwGstRendererWorkerVolume *wvolume, gboolean mute,
 		     gpointer data)
 {
@@ -1575,6 +1577,8 @@ static void _mute_cb(MafwGstRendererWorkerVolume *wvolume, gboolean mute,
 					     MAFW_PROPERTY_RENDERER_MUTE,
 					     &value);
 }
+
+#endif
 
 /* TODO: I think it's not enought to act on error, we need to handle
  * DestroyNotify on the given window ourselves, because for example helixbin
@@ -2301,7 +2305,9 @@ static void _volume_init_cb(MafwGstRendererWorkerVolume *wvolume,
 	volume = mafw_gst_renderer_worker_volume_get(wvolume);
 	mute = mafw_gst_renderer_worker_volume_is_muted(wvolume);
 	_volume_cb(wvolume, volume, worker);
+#ifdef MAFW_GST_RENDERER_ENABLE_MUTE
 	_mute_cb(wvolume, mute, worker);
+#endif
 }
 
 MafwGstRendererWorker *mafw_gst_renderer_worker_new(gpointer owner)
@@ -2344,7 +2350,12 @@ MafwGstRendererWorker *mafw_gst_renderer_worker_new(gpointer owner)
 	mafw_gst_renderer_worker_volume_init(main_context,
 					     _volume_init_cb, worker,
 					     _volume_cb, worker,
-					     _mute_cb, worker);
+#ifdef MAFW_GST_RENDERER_ENABLE_MUTE
+					     _mute_cb,
+#else
+					     NULL,
+#endif
+					     worker);
 	blanking_init();
 	_construct_pipeline(worker);
 

@@ -122,8 +122,11 @@ static void _ext_stream_restore_read_cb(pa_context *c,
 
 	if (_pa_operation_running(wvolume) ||
 	    (wvolume->pending_operation &&
-	     (wvolume->pending_operation_volume != volume ||
-	      wvolume->pending_operation_mute != mute))) {
+	     (wvolume->pending_operation_volume != volume
+#ifdef MAFW_GST_RENDERER_ENABLE_MUTE
+		|| wvolume->pending_operation_mute != mute
+#endif
+	))) {
 		g_debug("volume notification, but operation running, ignoring");
 		return;
 	}
@@ -143,6 +146,7 @@ static void _ext_stream_restore_read_cb(pa_context *c,
 				    wvolume->user_data);
 		}
 	}
+#ifdef MAFW_GST_RENDERER_ENABLE_MUTE
 	if (!wvolume->pending_operation &&
 	    wvolume->pulse_mute != wvolume->current_mute) {
 		wvolume->current_mute = wvolume->pulse_mute;
@@ -152,6 +156,7 @@ static void _ext_stream_restore_read_cb(pa_context *c,
 					 wvolume->mute_user_data);
 		}
 	}
+#endif
 
 	wvolume->pending_operation = FALSE;
 }
@@ -415,8 +420,11 @@ static gboolean _set_timeout(gpointer data)
 	if (wvolume->pending_operation) {
 		g_debug("setting volume ignored as there is still a pending "
 			"operation. Waiting till next iteration");
-	} else if (wvolume->pulse_mute != wvolume->current_mute ||
-		   wvolume->pulse_volume != wvolume->current_volume) {
+	} else if (wvolume->pulse_volume != wvolume->current_volume
+#ifdef MAFW_GST_RENDERER_ENABLE_MUTE
+			|| wvolume->pulse_mute != wvolume->current_mute
+#endif
+			) {
 
 		info.name = MAFW_GST_RENDERER_WORKER_VOLUME_ROLE_PREFIX
 			MAFW_GST_RENDERER_WORKER_VOLUME_ROLE;

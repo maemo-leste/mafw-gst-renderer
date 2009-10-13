@@ -273,7 +273,9 @@ static void mafw_gst_renderer_init(MafwGstRenderer *self)
 	g_return_if_fail(renderer != NULL);
 
 	mafw_extension_add_property(MAFW_EXTENSION(self), "volume", G_TYPE_UINT);
+#ifdef MAFW_GST_RENDERER_ENABLE_MUTE
 	mafw_extension_add_property(MAFW_EXTENSION(self), "mute", G_TYPE_BOOLEAN);
+#endif
 	mafw_extension_add_property(MAFW_EXTENSION(self), "xid", G_TYPE_UINT);
 	mafw_extension_add_property(MAFW_EXTENSION(self), "error-policy", G_TYPE_UINT);
 	MAFW_EXTENSION_SUPPORTS_AUTOPAINT(self);
