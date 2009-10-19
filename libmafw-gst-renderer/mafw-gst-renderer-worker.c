@@ -62,6 +62,14 @@
                                  GST_TIME_AS_SECONDS((ns)):\
                                  GST_TIME_AS_SECONDS((ns))+1)
 
+#define _current_metadata_add(worker, key, type, value)	\
+		do { \
+			if (!worker->current_metadata) \
+				worker->current_metadata = mafw_metadata_new(); \
+			mafw_metadata_add_something(worker->current_metadata, \
+					key, type, 1, value); \
+		} while (0)
+
 /* Private variables. */
 /* Global reference to worker instance, needed for Xerror handler */
 static MafwGstRendererWorker *Global_worker = NULL;
@@ -73,10 +81,6 @@ static void _do_seek(MafwGstRendererWorker *worker, GstSeekType seek_type,
 static void _play_pl_next(MafwGstRendererWorker *worker);
 
 static void _emit_metadatas(MafwGstRendererWorker *worker);
-
-static void _current_metadata_add(MafwGstRendererWorker *worker,
-				  const gchar *key, GType type,
-				  const gpointer value);
 
 /*
  * Sends @error to MafwGstRenderer.  Only call this from the glib main thread, or
@@ -211,7 +215,7 @@ static void _emit_gst_buffer_as_graphic_file_cb(GstBuffer *new_buffer,
 			/* Add the info to the current metadata. */
 			_current_metadata_add(sgd->worker, sgd->metadata_key,
 					      G_TYPE_STRING,
-					      (const gpointer) filename);
+					      (gchar*)filename);
 
 			/* Emit the metadata. */
 			mafw_renderer_emit_metadata_string(sgd->worker->owner,
@@ -460,12 +464,12 @@ static gboolean _handle_video_info(MafwGstRendererWorker *worker,
 	*p_width = width;* p_height = height; *p_fps = fps;
 
 	_current_metadata_add(worker, MAFW_METADATA_KEY_RES_X, G_TYPE_INT,
-			      (const gpointer) p_width);
+			      p_width);
 	_current_metadata_add(worker, MAFW_METADATA_KEY_RES_Y, G_TYPE_INT,
-			      (const gpointer) p_height);
+			      p_height);
 	_current_metadata_add(worker, MAFW_METADATA_KEY_VIDEO_FRAMERATE,
 			      G_TYPE_DOUBLE,
-			      (const gpointer) p_fps);
+			      p_fps);
 
 	g_free(p_width); g_free(p_height); g_free(p_fps);
 
@@ -649,21 +653,15 @@ static void _check_duration(MafwGstRendererWorker *worker, gint64 value)
 		gint duration_seconds = NSECONDS_TO_SECONDS(value);
 
 		if (!_seconds_duration_equal(worker->media.length_nanos,
-					     value)) {
-			gint64 *duration = g_new0(gint64, 1);
-			*duration = duration_seconds;
-
+					     value)) {			
 			/* Add the duration to the current metadata. */
-			_current_metadata_add(worker,
-					      MAFW_METADATA_KEY_DURATION,
-					      G_TYPE_INT64,
-					      (const gpointer) duration);
-
+			_current_metadata_add(worker, MAFW_METADATA_KEY_DURATION,
+						G_TYPE_INT64,
+						(gint64)duration_seconds);
 			/* Emit the duration. */
 			mafw_renderer_emit_metadata_int64(
 				worker->owner, MAFW_METADATA_KEY_DURATION,
-				*duration);
-			g_free(duration);
+				(gint64)duration_seconds);
 		}
 
 		/* We compare this duration we just got with the
@@ -715,7 +713,7 @@ static void _check_seekability(MafwGstRendererWorker *worker)
 
 		/* Add the seekability to the current metadata. */
 		_current_metadata_add(worker, MAFW_METADATA_KEY_IS_SEEKABLE,
-			G_TYPE_BOOLEAN, (const gpointer) is_seekable);
+			G_TYPE_BOOLEAN, is_seekable);
 
 		/* Emit. */
 		mafw_renderer_emit_metadata_boolean(
@@ -1015,20 +1013,6 @@ static void _emit_renderer_art(MafwGstRendererWorker *worker,
 }
 #endif
 
-
-
-static void _current_metadata_add(MafwGstRendererWorker *worker,
-				  const gchar *key, GType type,
-				  const gpointer value)
-{
-	g_return_if_fail(value != NULL);
-
-	if (!worker->current_metadata)
-		worker->current_metadata = mafw_metadata_new();
-
-	mafw_metadata_add_something(worker->current_metadata, key, type, 1, value);
-}
-
 static GHashTable* _build_tagmap(void)
 {
 	GHashTable *hash_table = NULL;
@@ -1115,24 +1099,26 @@ static void _emit_tag(const GstTagList *list, const gchar *tag,
 
 				g_value_init(&utf8gval, G_TYPE_STRING);
 				g_value_take_string(&utf8gval, utf8);
-				_current_metadata_add(worker, mafwtag, G_TYPE_VALUE,
-					(const gpointer) &utf8gval);
+				_current_metadata_add(worker, mafwtag, G_TYPE_STRING,
+							utf8);
 				g_value_array_append(values, &utf8gval);
 				g_value_unset(&utf8gval);
 			}
 			g_free(orig);
 		} else if (type == G_TYPE_UINT) {
 			GValue intgval = {0};
+			gint intval;
 
 			g_value_init(&intgval, G_TYPE_INT);
 			g_value_transform(v, &intgval);
-			_current_metadata_add(worker, mafwtag, G_TYPE_VALUE,
-					(const gpointer) &intgval);
+			intval = g_value_get_int(&intgval);
+			_current_metadata_add(worker, mafwtag, G_TYPE_INT,
+						intval);
 			g_value_array_append(values, &intgval);
 			g_value_unset(&intgval);
 		} else {
 			_current_metadata_add(worker, mafwtag, G_TYPE_VALUE,
-					(const gpointer) v);
+						v);
 			g_value_array_append(values, v);
 		}
 	}
