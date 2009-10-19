@@ -457,11 +457,11 @@ static gboolean _handle_video_info(MafwGstRendererWorker *worker,
 	worker->media.fps = fps;
 
 	/* Add the info to the current metadata. */
-	gint *p_width = g_new0(gint, 1);
-	gint *p_height = g_new0(gint, 1);
-	gdouble *p_fps = g_new0(gdouble, 1);
+	gint p_width, p_height, p_fps;
 
-	*p_width = width;* p_height = height; *p_fps = fps;
+	p_width = width;
+	p_height = height;
+	p_fps = fps;
 
 	_current_metadata_add(worker, MAFW_METADATA_KEY_RES_X, G_TYPE_INT,
 			      p_width);
@@ -470,8 +470,6 @@ static gboolean _handle_video_info(MafwGstRendererWorker *worker,
 	_current_metadata_add(worker, MAFW_METADATA_KEY_VIDEO_FRAMERATE,
 			      G_TYPE_DOUBLE,
 			      p_fps);
-
-	g_free(p_width); g_free(p_height); g_free(p_fps);
 
 	/* Emit the metadata.*/
 	g_idle_add((GSourceFunc)_emit_video_info, worker);
@@ -708,8 +706,7 @@ static void _check_seekability(MafwGstRendererWorker *worker)
 	}
 
 	if (worker->media.seekable != seekable) {
-		gboolean *is_seekable = g_new0(gboolean, 1);
-		*is_seekable = (seekable == SEEKABILITY_SEEKABLE) ? TRUE : FALSE;
+		gboolean is_seekable = (seekable == SEEKABILITY_SEEKABLE) ? TRUE : FALSE;
 
 		/* Add the seekability to the current metadata. */
 		_current_metadata_add(worker, MAFW_METADATA_KEY_IS_SEEKABLE,
@@ -718,9 +715,7 @@ static void _check_seekability(MafwGstRendererWorker *worker)
 		/* Emit. */
 		mafw_renderer_emit_metadata_boolean(
 			worker->owner, MAFW_METADATA_KEY_IS_SEEKABLE,
-			*is_seekable);
-
-		g_free(is_seekable);
+			is_seekable);
 	}
 
 	g_debug("media seekable: %d", seekable);
