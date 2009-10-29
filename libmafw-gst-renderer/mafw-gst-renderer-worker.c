@@ -1715,9 +1715,9 @@ static void _construct_pipeline(MafwGstRendererWorker *worker)
 
 			/* These need a modified version of playbin. */
 			g_object_set(G_OBJECT(worker->pipeline),
-				     "nw-queue", use_nw, NULL);
-			g_object_set(G_OBJECT(worker->pipeline),
-				     "no-video-transform", TRUE, NULL);
+				     "nw-queue", use_nw,
+				     "no-video-transform", TRUE,
+				     NULL);
 		}
 	}
 
@@ -1746,7 +1746,7 @@ static void _construct_pipeline(MafwGstRendererWorker *worker)
 			 G_CALLBACK(_stream_info_cb), worker);
 
 #ifndef MAFW_GST_RENDERER_DISABLE_PULSE_VOLUME
-	g_object_set(worker->pipeline, "flags", 99, NULL);
+	
 
 	/* Set audio and video sinks ourselves. We create and configure
 	   them only once. */
@@ -1762,10 +1762,10 @@ static void _construct_pipeline(MafwGstRendererWorker *worker)
 			g_assert_not_reached();
 		}
 		gst_object_ref(worker->asink);
-		g_object_set(worker->asink, "buffer-time", 
-			     (gint64) MAFW_GST_BUFFER_TIME, NULL);
-		g_object_set(worker->asink, "latency-time", 
-			     (gint64) MAFW_GST_LATENCY_TIME, NULL);
+		g_object_set(worker->asink,
+				"buffer-time", (gint64) MAFW_GST_BUFFER_TIME,
+				"latency-time", (gint64) MAFW_GST_LATENCY_TIME,
+				NULL);
 	}
 	g_object_set(worker->pipeline, "audio-sink", worker->asink, NULL);
 #endif
@@ -1782,12 +1782,16 @@ static void _construct_pipeline(MafwGstRendererWorker *worker)
 			g_assert_not_reached();
 		}
 		gst_object_ref(worker->vsink);
-		g_object_set(G_OBJECT(worker->vsink), "handle-events",
-			     TRUE, NULL);
-		g_object_set(worker->vsink, "force-aspect-ratio",
-			     TRUE, NULL);
+		g_object_set(G_OBJECT(worker->vsink),
+				"handle-events", TRUE,
+				"force-aspect-ratio", TRUE,
+				"show-preroll-frame", FALSE,
+				NULL);
 	}
-	g_object_set(worker->pipeline, "video-sink", worker->vsink, NULL);
+	g_object_set(worker->pipeline,
+			"video-sink", worker->vsink,
+			"flags", 99,
+			NULL);
 }
 
 /*
