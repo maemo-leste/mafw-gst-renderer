@@ -594,8 +594,13 @@ static GstBusSyncReply _sync_bus_handler(GstBus *bus, GstMessage *msg,
 		mafw_gst_renderer_worker_set_autopaint(
 			worker,
 			worker->autopaint);
-		g_object_get(worker->vsink,
-			     "colorkey", &worker->colorkey, NULL);
+		if (worker->colorkey == -1)
+			g_object_get(worker->vsink,
+			     	"colorkey", &worker->colorkey, NULL);
+		else
+			mafw_gst_renderer_worker_set_colorkey(
+			worker,
+			worker->colorkey);
 		/* Defer the signal emission to the thread running the
 		 * mainloop. */
 		if (worker->colorkey != -1) {
@@ -1979,13 +1984,22 @@ void mafw_gst_renderer_worker_set_autopaint(
 	worker->autopaint = autopaint;
 	if (worker->vsink)
 		g_object_set(worker->vsink, "autopaint-colorkey",
-			     autopaint, NULL);
+			     worker->autopaint, NULL);
 }
 
 gint mafw_gst_renderer_worker_get_colorkey(
 	MafwGstRendererWorker *worker)
 {
 	return worker->colorkey;
+}
+
+void mafw_gst_renderer_worker_set_colorkey(
+	MafwGstRendererWorker *worker, gint colorkey)
+{
+	worker->colorkey = colorkey;
+	if (worker->vsink)
+		g_object_set(worker->vsink, "colorkey",
+			     worker->colorkey, NULL);
 }
 
 gboolean mafw_gst_renderer_worker_get_seekable(MafwGstRendererWorker *worker)

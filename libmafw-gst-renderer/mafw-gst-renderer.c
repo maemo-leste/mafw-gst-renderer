@@ -2174,6 +2174,11 @@ static void mafw_gst_renderer_set_property(MafwExtension *self,
 			renderer->worker,
 			g_value_get_boolean(value));
 	}
+	else if (!strcmp(key, MAFW_PROPERTY_RENDERER_COLORKEY)) {
+		mafw_gst_renderer_worker_set_colorkey(
+			renderer->worker,
+			g_value_get_int(value));
+	}
 #ifdef HAVE_GDKPIXBUF
 	else if (!strcmp(key,
 			 MAFW_PROPERTY_GST_RENDERER_CURRENT_FRAME_ON_PAUSE)) {
