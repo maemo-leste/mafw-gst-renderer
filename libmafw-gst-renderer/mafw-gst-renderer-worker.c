@@ -82,6 +82,39 @@ static void _play_pl_next(MafwGstRendererWorker *worker);
 
 static void _emit_metadatas(MafwGstRendererWorker *worker);
 
+/* Playlist parsing */
+static void _on_pl_entry_parsed(TotemPlParser *parser, gchar *uri,
+				gpointer metadata, GSList **plitems)
+{
+	if (uri != NULL) {
+		*plitems = g_slist_append(*plitems, g_strdup(uri));
+	}
+}
+static GSList *_parse_playlist(const gchar *uri)
+{
+	static TotemPlParser *pl_parser = NULL;
+	GSList *plitems = NULL;
+	gulong handler_id;
+
+	/* Initialize the playlist parser */
+	if (!pl_parser)
+	{
+		pl_parser = totem_pl_parser_new ();
+		g_object_set(pl_parser, "recurse", TRUE, "disable-unsafe",
+		     TRUE, NULL);
+	}
+	handler_id = g_signal_connect(G_OBJECT(pl_parser), "entry-parsed",
+			 G_CALLBACK(_on_pl_entry_parsed), &plitems);
+	/* Parsing */
+	if (totem_pl_parser_parse(pl_parser, uri, FALSE) !=
+	    TOTEM_PL_PARSER_RESULT_SUCCESS) {
+		/* An error happens while parsing */
+		
+	}
+	g_signal_handler_disconnect(pl_parser, handler_id);
+	return plitems;
+}
+		
 /*
  * Sends @error to MafwGstRenderer.  Only call this from the glib main thread, or
  * face the consequences.  @err is free'd.
@@ -1440,6 +1473,20 @@ static gboolean _async_bus_handler(GstBus *bus, GstMessage *msg,
 			}
 
 			if (worker->mode == WORKER_MODE_SINGLE_PLAY) {
+				if (err->domain == GST_STREAM_ERROR &&
+					err->code == GST_STREAM_ERROR_WRONG_TYPE)
+				{/* Maybe it is a playlist? */
+					GSList *plitems = _parse_playlist(worker->media.location);
+					
+					if (plitems)
+					{/* Yes, it is a plitem */
+						g_error_free(err);
+						mafw_gst_renderer_worker_play(worker, NULL, plitems);
+						break;
+					}
+					
+					
+				}
 				_send_error(worker, err);
 			}
 		}
@@ -2023,17 +2070,6 @@ static void _play_pl_next(MafwGstRendererWorker *worker) {
 	_start_play(worker);
 }
 
-static void _on_pl_entry_parsed(TotemPlParser *parser, gchar *uri,
-				gpointer metadata, gpointer user_data)
-{
-	MafwGstRendererWorker *worker = user_data;
-
-	if (uri != NULL) {
-		worker->pl.items =
-			g_slist_append(worker->pl.items, g_strdup(uri));
-	}
-}
-
 static void _do_play(MafwGstRendererWorker *worker)
 {
 	g_assert(worker != NULL);
@@ -2067,46 +2103,33 @@ static void _do_play(MafwGstRendererWorker *worker)
 }
 
 void mafw_gst_renderer_worker_play(MafwGstRendererWorker *worker,
-				  const gchar *uri)
+				  const gchar *uri, GSList *plitems)
 {
-	g_assert(uri);
+	g_assert(uri || plitems);
 
 	mafw_gst_renderer_worker_stop(worker);
 	_reset_media_info(worker);
 	_reset_pl_info(worker);
 	/* Check if the item to play is a single item or a playlist. */
-	if (uri_is_playlist(uri)){
+	if (plitems || uri_is_playlist(uri)){
+		gchar *item;
 		/* In case of a playlist we parse it and start playing the first
 		   item of the playlist. */
-		TotemPlParser *pl_parser;
-		gchar *item;
-
-		/* Initialize the playlist parser */
-		pl_parser = totem_pl_parser_new ();
-		g_object_set(pl_parser, "recurse", TRUE, "disable-unsafe",
-			     TRUE, NULL);
-		g_signal_connect(G_OBJECT(pl_parser), "entry-parsed",
-				 G_CALLBACK(_on_pl_entry_parsed), worker);
-
-		/* Parsing */
-		if (totem_pl_parser_parse(pl_parser, uri, FALSE) !=
-		    TOTEM_PL_PARSER_RESULT_SUCCESS) {
-			/* An error happens while parsing */
-			_send_error(worker,
-				    g_error_new(MAFW_RENDERER_ERROR,
-						MAFW_RENDERER_ERROR_PLAYLIST_PARSING,
-						"Playlist parsing failed: %s",
-						uri));
-			return;
+		if (plitems)
+		{
+			worker->pl.items = plitems;
 		}
-
-		if (!worker->pl.items) {
-			/* The playlist is empty */
+		else
+		{
+			worker->pl.items = _parse_playlist(uri);
+		}
+		if (!worker->pl.items)
+		{
 			_send_error(worker,
-				    g_error_new(MAFW_RENDERER_ERROR,
-						MAFW_RENDERER_ERROR_PLAYLIST_PARSING,
-						"The playlist %s is empty.",
-						uri));
+			    g_error_new(MAFW_RENDERER_ERROR,
+					MAFW_RENDERER_ERROR_PLAYLIST_PARSING,
+					"Playlist parsing failed: %s",
+					uri));
 			return;
 		}
 
@@ -2118,9 +2141,6 @@ void mafw_gst_renderer_worker_play(MafwGstRendererWorker *worker,
 		worker->pl.current = 0;
 		item = (gchar *) g_slist_nth_data(worker->pl.items, 0);
 		worker->media.location = g_strdup(item);
-
-		/* Free the playlist parser */
-		g_object_unref(pl_parser);
 	} else {
 		/* Single item. Set the playback mode according to that */
 		worker->mode = WORKER_MODE_SINGLE_PLAY;

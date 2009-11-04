@@ -327,7 +327,7 @@ static void _notify_metadata(MafwGstRendererState *self,
 
                 /* Play the available uri(s) */
                 if (nuris == 1) {
-			mafw_gst_renderer_worker_play(renderer->worker, uri);
+			mafw_gst_renderer_worker_play(renderer->worker, uri, NULL);
 		} else {
                         mafw_gst_renderer_worker_play_alternatives(
                                 renderer->worker, uris);
