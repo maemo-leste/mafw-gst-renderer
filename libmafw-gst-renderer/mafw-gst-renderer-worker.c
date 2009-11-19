@@ -1244,12 +1244,15 @@ static void _handle_buffering(MafwGstRendererWorker *worker, GstMessage *msg)
 			 * want that, application doesn't need to know
 			 * that internally the state changed to
 			 * PAUSED. */
-			gst_element_set_state(worker->pipeline,
-					      GST_STATE_PAUSED);
-			/* XXX this blocks till statechange. */
-			gst_element_get_state(worker->pipeline, NULL,
+			if (gst_element_set_state(worker->pipeline,
+					      GST_STATE_PAUSED) ==
+		    			GST_STATE_CHANGE_ASYNC)
+			{
+				/* XXX this blocks at most 2 seconds. */
+				gst_element_get_state(worker->pipeline, NULL,
 					      NULL,
-					      GST_CLOCK_TIME_NONE);
+					      2 * GST_SECOND);
+			}
 		}
 
                 if (percent >= 100) {
@@ -1293,12 +1296,16 @@ static void _handle_buffering(MafwGstRendererWorker *worker, GstMessage *msg)
 						"pipeline to PLAYING again");
 					_reset_volume_and_mute_to_pipeline(
 						worker);
-					gst_element_set_state(
+					if (gst_element_set_state(
 						worker->pipeline,
-						GST_STATE_PLAYING);
-					gst_element_get_state(
-						worker->pipeline, NULL, NULL,
-						GST_CLOCK_TIME_NONE);
+						GST_STATE_PLAYING) ==
+		    					GST_STATE_CHANGE_ASYNC)
+					{
+						/* XXX this blocks at most 2 seconds. */
+						gst_element_get_state(
+							worker->pipeline, NULL, NULL,
+							2 * GST_SECOND);
+					}
 				}
                         } else if (worker->state == GST_STATE_PLAYING) {
 				g_debug("buffering concluded, signalling "
@@ -2265,10 +2272,13 @@ void mafw_gst_renderer_worker_pause(MafwGstRendererWorker *worker)
 	} else {
 		worker->report_statechanges = TRUE;
 
-		gst_element_set_state(worker->pipeline, GST_STATE_PAUSED);
-		/* XXX this blocks till statechange. */
-		gst_element_get_state(worker->pipeline, NULL, NULL,
-				      GST_CLOCK_TIME_NONE);
+		if (gst_element_set_state(worker->pipeline, GST_STATE_PAUSED) ==
+		    GST_STATE_CHANGE_ASYNC)
+		{
+			/* XXX this blocks at most 2 seconds. */
+			gst_element_get_state(worker->pipeline, NULL, NULL,
+				      2 * GST_SECOND);
+		}
 		blanking_allow();
 	}
 }
