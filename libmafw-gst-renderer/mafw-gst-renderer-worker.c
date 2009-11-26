@@ -66,6 +66,8 @@
 		do { \
 			if (!worker->current_metadata) \
 				worker->current_metadata = mafw_metadata_new(); \
+			/* At first remove old value */ \
+			g_hash_table_remove(worker->current_metadata, key); \
 			mafw_metadata_add_something(worker->current_metadata, \
 					key, type, 1, value); \
 		} while (0)
@@ -744,7 +746,7 @@ static void _check_seekability(MafwGstRendererWorker *worker)
 	}
 
 	if (worker->media.seekable != seekable) {
-		gboolean is_seekable = (seekable == SEEKABILITY_SEEKABLE) ? TRUE : FALSE;
+		gboolean is_seekable = (seekable == SEEKABILITY_SEEKABLE);
 
 		/* Add the seekability to the current metadata. */
 		_current_metadata_add(worker, MAFW_METADATA_KEY_IS_SEEKABLE,
