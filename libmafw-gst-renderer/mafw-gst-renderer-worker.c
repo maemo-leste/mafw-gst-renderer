@@ -1238,7 +1238,7 @@ static void _handle_buffering(MafwGstRendererWorker *worker, GstMessage *msg)
         /* No state management needed for live pipelines */
         if (!worker->is_live) {
 		worker->buffering = TRUE;
-		if (worker->state == GST_STATE_PLAYING) {
+		if (percent < 100 && worker->state == GST_STATE_PLAYING) {
 			g_debug("setting pipeline to PAUSED not to wolf the "
 				"buffer down");
 			worker->report_statechanges = FALSE;
@@ -1321,6 +1321,20 @@ static void _handle_buffering(MafwGstRendererWorker *worker, GstMessage *msg)
 				   the state change, since in 
 				   _handle_state_changed we do not do anything 
 				   if we are buffering  */
+
+				/* Set the pipeline to playing. This is an async
+				   handler, it could be, that the reported state
+				   is not the real-current state */
+				if (gst_element_set_state(
+						worker->pipeline,
+						GST_STATE_PLAYING) ==
+		    					GST_STATE_CHANGE_ASYNC)
+				{
+					/* XXX this blocks at most 2 seconds. */
+					gst_element_get_state(
+						worker->pipeline, NULL, NULL,
+						2 * GST_SECOND);
+				}
 				if (worker->report_statechanges &&
                 		    worker->notify_play_handler) {
 					worker->notify_play_handler(
