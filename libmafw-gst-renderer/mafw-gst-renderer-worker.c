@@ -381,6 +381,7 @@ static void _emit_gst_buffer_as_graphic_file(MafwGstRendererWorker *worker,
 						NULL, sgd);
 				}
 			}
+			g_object_unref(loader);
 		}
 	}
 }
