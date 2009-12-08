@@ -1,3 +1,40 @@
+mafw-gst-renderer (0.2.2009.50-2) unstable; urgency=low
+
+  * Version increased.
+
+ -- Mika Tapojärvi <ext-mika.tapojarvi@nokia.com>  Tue, 08 Dec 2009 10:01:36 +0200
+
+mafw-gst-renderer (0.2.2009.50-1) unstable; urgency=low
+
+  * Version and changelog updated for pre-release 0.2009.50-1
+  * Fixes: NB#148080 - Rover UI becomes very slow after long time usage of Media Player
+
+ -- Mika Tapojärvi <ext-mika.tapojarvi@nokia.com>  Tue, 08 Dec 2009 09:21:47 +0200
+
+mafw-gst-renderer (0.2.2009.49-1) unstable; urgency=low
+
+  * Rebuild for 2009.49-1.
+
+ -- Mika Tapojärvi <mika.tapojarvi@sse.fi>  Tue, 01 Dec 2009 19:27:31 +0200
+
+mafw-gst-renderer (0.2.2009.48-2) unstable; urgency=low
+
+  * Pre-release PR 1.2 2009.48-2 tag.
+
+ -- Tuomas Kämäräinen <tuomas.kamarainen@nokia.com>  Fri, 27 Nov 2009 11:56:14 +0200
+
+mafw-gst-renderer (0.2.2009.48-1) unstable; urgency=low
+
+  * Pre-release PR 1.2 2009.48-1 tag.
+
+ -- Mika Tapojärvi <mika.tapojarvi@sse.fi>  Tue, 24 Nov 2009 21:57:59 +0200
+
+mafw-gst-renderer (0.1.2009.47-2) unstable; urgency=low
+
+  * Version increased.
+
+ -- Tuomas Kamarainen <tuomas.kamarainen@nokia.com>  Fri, 20 Nov 2009 13:26:19 +0300
+
 mafw-gst-renderer (0.1.2009.42-2) unstable; urgency=low
 
   * Version increased.
