@@ -1,15 +1,14 @@
 mafw-gst-renderer (0.2.2009.50-2) unstable; urgency=low
 
-  * Version increased.
+  * Fixes: NB#148080 - Rover UI becomes very slow after long time usage of Media Player
 
- -- Mika Tapojärvi <ext-mika.tapojarvi@nokia.com>  Tue, 08 Dec 2009 10:01:36 +0200
+ -- Mika Tapojärvi <mika.tapojarvi@sse.fi>  Thu, 10 Dec 2009 19:07:45 +0200
 
 mafw-gst-renderer (0.2.2009.50-1) unstable; urgency=low
 
   * Version and changelog updated for pre-release 0.2009.50-1
-  * Fixes: NB#148080 - Rover UI becomes very slow after long time usage of Media Player
 
- -- Mika Tapojärvi <ext-mika.tapojarvi@nokia.com>  Tue, 08 Dec 2009 09:21:47 +0200
+ -- Mika Tapojärvi <mika.tapojarvi@sse.fi>  Tue, 08 Dec 2009 09:21:47 +0200
 
 mafw-gst-renderer (0.2.2009.49-1) unstable; urgency=low
 
