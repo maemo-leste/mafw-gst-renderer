@@ -1864,7 +1864,6 @@ static void _construct_pipeline(MafwGstRendererWorker *worker)
 		g_object_set(G_OBJECT(worker->vsink),
 				"handle-events", TRUE,
 				"force-aspect-ratio", TRUE,
-				"show-preroll-frame", FALSE,
 				NULL);
 	}
 	g_object_set(worker->pipeline,
