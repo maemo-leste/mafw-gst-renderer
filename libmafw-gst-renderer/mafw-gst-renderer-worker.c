@@ -426,8 +426,8 @@ static void _add_ready_timeout(MafwGstRendererWorker *worker)
 
 static void _remove_ready_timeout(MafwGstRendererWorker *worker)
 {
-	g_debug("removing timeout for READY");
 	if (worker->ready_timeout != 0) {
+		g_debug("removing timeout for READY");
 		g_source_remove(worker->ready_timeout);
 		worker->ready_timeout = 0;
 	}
@@ -617,6 +617,7 @@ static GstBusSyncReply _sync_bus_handler(GstBus *bus, GstMessage *msg,
 					    MAFW_RENDERER_ERROR,
 					    MAFW_RENDERER_ERROR_PLAYBACK,
 					    "No video window XID set"));
+			gst_message_unref (msg);
 			return GST_BUS_DROP;
 		} else {
 			g_debug ("Video window to use is: %x", 
@@ -645,8 +646,10 @@ static GstBusSyncReply _sync_bus_handler(GstBus *bus, GstMessage *msg,
 					     GST_OBJECT(worker->vsink),
 					     gst_structure_empty_new("ckey")));
 		}
+		gst_message_unref (msg);
 		return GST_BUS_DROP;
 	}
+	/* do not unref message when returning PASS */
 	return GST_BUS_PASS;
 }
 
