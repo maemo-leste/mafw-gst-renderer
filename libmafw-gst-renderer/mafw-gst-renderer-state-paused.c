@@ -253,7 +253,7 @@ static void _do_goto_index(MafwGstRendererState *self, guint index,
 			   GError **error)
 {
         g_return_if_fail(MAFW_IS_GST_RENDERER_STATE_PAUSED(self));
-	self->renderer->worker->stay_paused = FALSE;
+	self->renderer->worker->stay_paused = TRUE;
 	mafw_gst_renderer_state_do_goto_index(self, index, error);
 }
 
