@@ -708,7 +708,8 @@ static void _check_duration(MafwGstRendererWorker *worker, gint64 value)
 
 		/* We compare this duration we just got with the
 		 * source one and update it in the source if needed */
-		if (duration_seconds != renderer->media->duration) {
+		if (duration_seconds > 0 &&
+			duration_seconds != renderer->media->duration) {
 			mafw_gst_renderer_update_source_duration(
 				renderer,
 				duration_seconds);
