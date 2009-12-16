@@ -1,3 +1,10 @@
+mafw-gst-renderer (0.2.2009.51-1) unstable; urgency=low
+
+  * Fixes: NB#149945 - mafw-gst-renderer leaks some GStreamer messages
+  * Thanks to Mueller Tim for the patch.
+
+ -- Mika Tapojärvi <mika.tapojarvi@sse.fi>  Wed, 16 Dec 2009 08:49:36 +0200
+
 mafw-gst-renderer (0.2.2009.50-2) unstable; urgency=low
 
   * Fixes: NB#148080 - Rover UI becomes very slow after long time usage of Media Player
