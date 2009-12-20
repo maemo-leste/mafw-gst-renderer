@@ -7,7 +7,7 @@ mafw-gst-renderer (0.2.2009.52-1) unstable; urgency=low
 
 mafw-gst-renderer (0.2.2009.50-2) unstable; urgency=low
 
-  * Fixes: NB#148080 - Rover UI becomes very slow after long time usage of Media Player
+  * Fixes: NB#148080 - Device UI becomes very slow after long time usage of Media Player
 
  -- Mika Tapojärvi <mika.tapojarvi@sse.fi>  Thu, 10 Dec 2009 19:07:45 +0200
 
