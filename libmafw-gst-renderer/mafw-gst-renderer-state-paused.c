@@ -315,6 +315,7 @@ static void _playlist_contents_changed(MafwGstRendererState *self,
 	   played if that's been suggested with renderer->resume_playlist */
 	mode = mafw_gst_renderer_get_playback_mode(self->renderer);
 	if (clip_changed && mode == MAFW_GST_RENDERER_MODE_PLAYLIST) {
+		self->renderer->worker->stay_paused = TRUE;
 		mafw_gst_renderer_state_do_play(self, error);
 	}
 }
