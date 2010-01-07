@@ -1,7 +1,7 @@
 Source: mafw-gst-renderer
 Section: misc
 Priority: optional
-Maintainer: Juha Kellokoski <veitikka6@gmail.com>
+Maintainer: Mika Tapojarvi <mika.tapojarvi@sse.fi>
 Build-Depends: debhelper (>= 4.0.0), libglib2.0-dev,
                libgstreamer0.10-dev (>= 0.10.20-0maemo3),
                libgstreamer-plugins-base0.10-dev (>= 0.10.20-0maemo5),

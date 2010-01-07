@@ -1,3 +1,10 @@
+mafw-gst-renderer (0.2.2010.01-1) unstable; urgency=low
+
+  * Version number increased in trunk.
+  * A forbidden word removed from debian/changelog.
+
+ -- Mika Tapojärvi <mika.tapojarvi@sse.fi>  Thu, 07 Jan 2010 19:36:53 +0200
+
 mafw-gst-renderer (0.2.2009.52-2) unstable; urgency=low
 
   * Version number increased.
