@@ -1,3 +1,9 @@
+mafw-gst-renderer (0.2.2010.06-1) unstable; urgency=low
+
+  * Fixes: NB#150064 - NP-Video:Frames not changing while performing seek operation when the video is in paused state
+
+ -- Mika Tapojärvi <mika.tapojarvi@sse.fi>  Wed, 10 Feb 2010 21:43:22 +0200
+
 mafw-gst-renderer (0.2.2010.01-1) unstable; urgency=low
 
   * Version number increased in trunk.
