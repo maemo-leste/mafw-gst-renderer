@@ -59,6 +59,8 @@ PKG_CHECK_MODULES(DEPS,
 		  totem-plparser
                   gconf-2.0 >= 2.0
 		  gnome-vfs-2.0
+		  mce
+		  dbus-1
 )
 
 dnl Check for GdkPixbuf, needed for dumping current frame

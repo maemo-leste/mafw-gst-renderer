@@ -9,7 +9,8 @@ Build-Depends: debhelper (>= 4.0.0), libglib2.0-dev,
                checkmore, gstreamer0.10-plugins-base,
                gstreamer0.10-plugins-good,
                libhal-dev, libtotem-plparser-dev, libpulse-dev (>= 0.9.15-1),
-               libgconf2-dev, libosso-gnomevfs2-dev
+               libgconf2-dev, libosso-gnomevfs2-dev mce-dev
+	       libdbus-1-dev
 Standards-Version: 3.7.2
 
 Package: mafw-gst-renderer

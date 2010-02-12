@@ -45,6 +45,7 @@
 #include "mafw-gst-renderer-worker.h"
 #include "mafw-gst-renderer-utils.h"
 #include "blanking.h"
+#include "keypad.h"
 
 #undef  G_LOG_DOMAIN
 #define G_LOG_DOMAIN "mafw-gst-renderer-worker"
@@ -982,6 +983,7 @@ static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker
                 if (worker->media.has_visual_content) {
                         blanking_prohibit();
                 }
+		keypadlocking_prohibit();
 		/* Remove the ready timeout if we are playing [again] */
 		_remove_ready_timeout(worker);
                 /* If mode is redundant we are trying to play one of several
@@ -2269,6 +2271,7 @@ void mafw_gst_renderer_worker_stop(MafwGstRendererWorker *worker)
 
 	/* We are not playing, so we can let the screen blank */
 	blanking_allow();
+	keypadlocking_allow();
 
 	/* And now get a fresh pipeline ready */
 	_construct_pipeline(worker);
@@ -2300,6 +2303,7 @@ void mafw_gst_renderer_worker_pause(MafwGstRendererWorker *worker)
 				      2 * GST_SECOND);
 		}
 		blanking_allow();
+		keypadlocking_allow();
 	}
 }
 
