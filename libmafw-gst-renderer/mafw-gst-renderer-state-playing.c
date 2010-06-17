@@ -341,27 +341,47 @@ static void _notify_eos(MafwGstRendererState *self, GError **error)
 		if (renderer->resume_playlist) {
 			mafw_gst_renderer_state_play(self, error);
 		}
-	} else {
-		/* Move to next in playlist */
-		move_type =
-			mafw_gst_renderer_move(renderer,
-					      MAFW_GST_RENDERER_MOVE_TYPE_NEXT,
-					      0, error);
-
-		switch (move_type) {
-		case MAFW_GST_RENDERER_MOVE_RESULT_OK:
-			mafw_gst_renderer_state_play(self, error);
-			break;
-		case MAFW_GST_RENDERER_MOVE_RESULT_PLAYLIST_LIMIT:
-		case MAFW_GST_RENDERER_MOVE_RESULT_NO_PLAYLIST:
+	} 
+    else 
+    {
+        gboolean is_stream  = uri_is_stream(self->renderer->worker->media.location);
+        if (is_stream 
+            && self->renderer->error_policy == MAFW_RENDERER_ERROR_POLICY_STOP 
+            && self->renderer->worker->media.length_nanos == -1 
+            && self->renderer->worker->media.seekable == SEEKABILITY_NO_SEEKABLE
+            && self->renderer->worker->media.has_visual_content == FALSE)
+        {
+            /* Endless Radio stream. Stream has no length, it is not seekable or it is not video. */
 			mafw_gst_renderer_worker_stop(self->renderer->worker);
 			mafw_gst_renderer_set_state(self->renderer, Stopped);
-			break;
-		case MAFW_GST_RENDERER_MOVE_RESULT_ERROR:
-			break;
-		default:
-			g_critical("Movement not controlled");
-		}
+			g_signal_emit_by_name(MAFW_EXTENSION(self->renderer), "error",
+					      MAFW_RENDERER_ERROR, MAFW_RENDERER_ERROR_STREAM_DISCONNECTED,
+					      "EOS FOR ENDLESS STREAM");
+        }
+        else
+        {
+		    /* Move to next in playlist */
+		    move_type =
+			    mafw_gst_renderer_move(renderer,
+					          MAFW_GST_RENDERER_MOVE_TYPE_NEXT,
+					          0, error);
+
+		    switch (move_type) 
+            {
+		        case MAFW_GST_RENDERER_MOVE_RESULT_OK:
+			        mafw_gst_renderer_state_play(self, error);
+			        break;
+		        case MAFW_GST_RENDERER_MOVE_RESULT_PLAYLIST_LIMIT:
+		        case MAFW_GST_RENDERER_MOVE_RESULT_NO_PLAYLIST:
+			        mafw_gst_renderer_worker_stop(self->renderer->worker);
+			        mafw_gst_renderer_set_state(self->renderer, Stopped);
+			        break;
+		        case MAFW_GST_RENDERER_MOVE_RESULT_ERROR:
+			        break;
+		        default:
+			        g_critical("Movement not controlled");
+		    }
+        }
 	}
 }
 
