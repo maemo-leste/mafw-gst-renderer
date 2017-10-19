@@ -1,3 +1,9 @@
+mafw-gst-renderer (0.3.2010.24-2) unstable; urgency=low
+
+  * Bump version number so its not the same as the stock package
+
+ -- Pekka Rönkkö <ext-pekka.1.ronkko@nokia.com>  Wed, 18 Oct 2017 20:22:03 -0400
+
 mafw-gst-renderer (0.3.2010.24-1) unstable; urgency=low
 
   * Fixes: NB#161636 - Playbin sends EOS for endless stream 
