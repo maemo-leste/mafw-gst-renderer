@@ -1977,20 +1977,19 @@ MafwGstRendererMovementResult mafw_gst_renderer_move(MafwGstRenderer *renderer,
 
 		switch (type) {
 		case MAFW_GST_RENDERER_MOVE_TYPE_INDEX:
-			result =
-				mafw_playlist_iterator_move_to_index(renderer->iterator,
-								      index,
-								      error);
+			result = mafw_playlist_iterator_move_to_index(
+					 renderer->iterator, index, error);
 			break;
 		case MAFW_GST_RENDERER_MOVE_TYPE_PREV:
-			result =
-				mafw_playlist_iterator_move_to_prev(renderer->iterator,
-								     error);
+			result = mafw_playlist_iterator_move_to_prev(
+					 renderer->iterator, error);
 			break;
 		case MAFW_GST_RENDERER_MOVE_TYPE_NEXT:
-			result =
-				mafw_playlist_iterator_move_to_next(renderer->iterator,
-								     error);
+			result = mafw_playlist_iterator_move_to_next(
+					 renderer->iterator, error);
+			break;
+		default:
+			result = MAFW_PLAYLIST_ITERATOR_MOVE_RESULT_INVALID;
 			break;
 		}
 
