@@ -1370,21 +1370,14 @@ set_data:
 static GHashTable *mafw_gst_renderer_add_lastplayed(GHashTable *mdata)
 {
 	GHashTable *metadata;
-	GTimeVal timeval;
 
-	
 	if (!mdata)
 		metadata = mafw_metadata_new();
 	else
 		metadata = mdata;
-	
-		
 
-	g_get_current_time(&timeval);
-		
-	mafw_metadata_add_long(metadata,
-					MAFW_METADATA_KEY_LAST_PLAYED,
-					timeval.tv_sec);
+	mafw_metadata_add_int64(metadata, MAFW_METADATA_KEY_LAST_PLAYED,
+				g_get_real_time() / 1000LL);
 	return metadata;
 }
 
