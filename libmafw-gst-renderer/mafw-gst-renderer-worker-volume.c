@@ -97,7 +97,7 @@ static gchar *_get_client_name(void) {
 }
 
 static void _ext_stream_restore_read_cb(pa_context *c,
-					const pa_ext_stream_restore2_info *i,
+					const pa_ext_stream_restore_info *i,
 					int eol,
 					void *userdata)
 {
@@ -248,7 +248,7 @@ _state_cb(pa_context *c, void *data)
 	case PA_CONTEXT_READY: {
 		pa_operation *o;
 
-		o = pa_ext_stream_restore2_read(c, _ext_stream_restore_read_cb,
+		o = pa_ext_stream_restore_read(c, _ext_stream_restore_read_cb,
 					       wvolume);
 		g_assert(o != NULL);
 		pa_operation_unref(o);
@@ -261,7 +261,7 @@ _state_cb(pa_context *c, void *data)
 }
 
 static void _ext_stream_restore_read_cb_init(pa_context *c,
-					     const pa_ext_stream_restore2_info *i,
+					     const pa_ext_stream_restore_info *i,
 					     int eol,
 					     void *userdata)
 {
@@ -316,7 +316,7 @@ static void _ext_stream_restore_subscribe_cb(pa_context *c, void *userdata)
 {
     pa_operation *o;
 
-    o = pa_ext_stream_restore2_read(c, _ext_stream_restore_read_cb, userdata);
+    o = pa_ext_stream_restore_read(c, _ext_stream_restore_read_cb, userdata);
     g_assert(o != NULL);
     pa_operation_unref(o);
 }
@@ -344,7 +344,7 @@ _state_cb_init(pa_context *c, void *data)
 
 		g_debug("PA_CONTEXT_READY");
 
-		o = pa_ext_stream_restore2_read(c,
+		o = pa_ext_stream_restore_read(c,
 					       _ext_stream_restore_read_cb_init,
 					       closure);
 		g_assert(o != NULL);
@@ -413,8 +413,7 @@ static void _remove_set_timeout(MafwGstRendererWorkerVolume *wvolume)
 
 static gboolean _set_timeout(gpointer data)
 {
-	pa_ext_stream_restore2_info info;
-        pa_ext_stream_restore2_info *infos[1];
+	pa_ext_stream_restore_info info;
 	MafwGstRendererWorkerVolume *wvolume = data;
 
 	if (wvolume->pending_operation) {
@@ -431,8 +430,6 @@ static gboolean _set_timeout(gpointer data)
 		info.channel_map.channels = 1;
 		info.channel_map.map[0] = PA_CHANNEL_POSITION_MONO;
 		info.device = NULL;
-		info.volume_is_absolute = TRUE;
-		infos[0] = &info;
 
 		info.mute = wvolume->current_mute;
 		pa_cvolume_init(&info.volume);
@@ -451,12 +448,10 @@ static gboolean _set_timeout(gpointer data)
 		wvolume->pending_operation_volume = wvolume->current_volume;
 		wvolume->pending_operation_mute = wvolume->current_mute;
 
-		wvolume->pa_operation = pa_ext_stream_restore2_write(
+		wvolume->pa_operation = pa_ext_stream_restore_write(
 			wvolume->context,
 			PA_UPDATE_REPLACE,
-			(const pa_ext_stream_restore2_info*
-			 const *)infos,
-			1, TRUE, _success_cb, wvolume);
+			&info, 1, TRUE, _success_cb, wvolume);
 
 		if (wvolume->pa_operation == NULL) {
 			g_critical("NULL operation when writing volume to "
