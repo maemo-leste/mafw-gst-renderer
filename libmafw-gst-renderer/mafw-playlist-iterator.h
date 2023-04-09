@@ -34,8 +34,6 @@ typedef struct _MafwPlaylistIteratorPrivate MafwPlaylistIteratorPrivate;
 
 typedef struct {
 	GObject g_object;
-
-	MafwPlaylistIteratorPrivate *priv;
 } MafwPlaylistIterator;
 
 typedef struct {

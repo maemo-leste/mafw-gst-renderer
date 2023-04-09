@@ -47,7 +47,13 @@ enum {
 
 static guint mafw_playlist_iterator_signals[LAST_SIGNAL];
 
-G_DEFINE_TYPE(MafwPlaylistIterator, mafw_playlist_iterator, G_TYPE_OBJECT);
+G_DEFINE_TYPE_WITH_PRIVATE(MafwPlaylistIterator, mafw_playlist_iterator,
+			   G_TYPE_OBJECT);
+
+#define PRIVATE(iterator) \
+	((MafwPlaylistIteratorPrivate *) \
+	(mafw_playlist_iterator_get_instance_private( \
+		(MafwPlaylistIterator *)(iterator))))
 
 static void
 mafw_playlist_iterator_dispose(GObject *object)
@@ -69,8 +75,6 @@ mafw_playlist_iterator_class_init(MafwPlaylistIteratorClass *klass)
 	gclass = G_OBJECT_CLASS(klass);
 	g_return_if_fail(gclass != NULL);
 
-	g_type_class_add_private(klass, sizeof(MafwPlaylistIteratorPrivate));
-
 	gclass->dispose = mafw_playlist_iterator_dispose;
 
 	mafw_playlist_iterator_signals[PLAYLIST_CHANGED] =
@@ -90,20 +94,20 @@ mafw_playlist_iterator_class_init(MafwPlaylistIteratorClass *klass)
 static void
 mafw_playlist_iterator_init(MafwPlaylistIterator *self)
 {
-	self->priv = G_TYPE_INSTANCE_GET_PRIVATE(self,
-						 MAFW_TYPE_PLAYLIST_ITERATOR,
-						 MafwPlaylistIteratorPrivate);
 }
 
 static void
 mafw_playlist_iterator_set_data(MafwPlaylistIterator *iterator, gint index,
 				 gchar *objectid)
 {
+	MafwPlaylistIteratorPrivate *priv;
+
 	g_assert(mafw_playlist_iterator_is_valid(iterator));
 
-	g_free(iterator->priv->current_objectid);
-	iterator->priv->current_index = index;
-	iterator->priv->current_objectid = objectid;
+	priv = PRIVATE(iterator);
+	g_free(priv->current_objectid);
+	priv->current_index = index;
+	priv->current_objectid = objectid;
 }
 
 static MafwPlaylistIteratorMovementResult
@@ -111,6 +115,7 @@ mafw_playlist_iterator_move_to_next_in_direction(MafwPlaylistIterator *iterator,
 						  movement_function get_next_in_direction,
 						  GError **error)
 {
+	MafwPlaylistIteratorPrivate *priv;
 	gint index;
 	gchar *objectid = NULL;
 	GError *new_error = NULL;
@@ -121,10 +126,12 @@ mafw_playlist_iterator_move_to_next_in_direction(MafwPlaylistIterator *iterator,
 	g_return_val_if_fail(mafw_playlist_iterator_is_valid(iterator),
 			     MAFW_PLAYLIST_ITERATOR_MOVE_RESULT_INVALID);
 
-	index = iterator->priv->current_index;
+	priv = PRIVATE(iterator);
+
+	index = priv->current_index;
 
 	playlist_movement_result =
-		get_next_in_direction (iterator->priv->playlist,
+		get_next_in_direction (priv->playlist,
 				       (guint *) &index,
 				       &objectid, &new_error);
 
@@ -153,22 +160,25 @@ mafw_playlist_iterator_playlist_contents_changed_handler(MafwPlaylist *playlist,
 	gboolean clip_changed = FALSE;
 	GError *error = NULL;
 	MafwPlaylistIterator *iterator = (MafwPlaylistIterator*) user_data;
+	MafwPlaylistIteratorPrivate *priv;
 
 	g_return_if_fail(MAFW_IS_PLAYLIST(playlist));
 	g_return_if_fail(MAFW_IS_PLAYLIST_ITERATOR(iterator));
 
-	if (iterator->priv->playlist == NULL) {
+	priv = PRIVATE(iterator);
+
+	if (priv->playlist == NULL) {
 		g_critical("Got playlist:contents-changed but renderer has no" \
 			   "playlist assigned!. Skipping...");
 		return;
 	}
 
-	play_index = iterator->priv->current_index;
-	iterator->priv->size += nreplace;
+	play_index = priv->current_index;
+	priv->size += nreplace;
 
 	if (nremove > 0) {
 		/* Items have been removed from the playlist */
-		iterator->priv->size -= nremove;
+		priv->size -= nremove;
 		if ((play_index >= from) &&
 		    (play_index < from + nremove)) {
 			/* The current index has been removed */
@@ -241,19 +251,22 @@ mafw_playlist_iterator_playlist_item_moved_handler(MafwPlaylist *playlist,
 						    gpointer user_data)
 {
 	MafwPlaylistIterator *iterator = (MafwPlaylistIterator *) user_data;
+	MafwPlaylistIteratorPrivate *priv;
 	gint play_index;
 	GError *error = NULL;
 
 	g_return_if_fail(MAFW_IS_PLAYLIST(playlist));
 	g_return_if_fail(MAFW_IS_PLAYLIST_ITERATOR(iterator));
 
-	if (iterator->priv->playlist == NULL) {
+	priv = PRIVATE(iterator);
+
+	if (priv->playlist == NULL) {
 		g_critical("Got playlist:item-moved but renderer has not a " \
 			  "playlist assigned! Skipping...");
 		return;
 	}
 
-	play_index = iterator->priv->current_index;
+	play_index = priv->current_index;
 
 	if (play_index == from) {
 		/* So the current item has been moved, let's update the
@@ -279,15 +292,18 @@ mafw_playlist_iterator_playlist_item_moved_handler(MafwPlaylist *playlist,
 MafwPlaylistIterator *
 mafw_playlist_iterator_new(void)
 {
+	MafwPlaylistIteratorPrivate *priv;
 	MafwPlaylistIterator *iterator = (MafwPlaylistIterator *)
 		g_object_new(MAFW_TYPE_PLAYLIST_ITERATOR, NULL);
 
 	g_assert(iterator != NULL);
 
-	iterator->priv->playlist = NULL;
-	iterator->priv->current_index = -1;
-	iterator->priv->current_objectid = NULL;
-	iterator->priv->size = -1;
+	priv = PRIVATE(iterator);
+
+	priv->playlist = NULL;
+	priv->current_index = -1;
+	priv->current_objectid = NULL;
+	priv->size = -1;
 
 	return iterator;
 }
@@ -296,15 +312,19 @@ void
 mafw_playlist_iterator_initialize(MafwPlaylistIterator *iterator,
 				   MafwPlaylist *playlist, GError **error)
 {
+	MafwPlaylistIteratorPrivate *priv;
 	guint size;
 	gint index = -1;
 	gchar *objectid = NULL;
 	GError *new_error = NULL;
 
 	g_return_if_fail(MAFW_IS_PLAYLIST_ITERATOR(iterator));
-	g_return_if_fail(iterator->priv->playlist == NULL);
 
-	iterator->priv->size = -1;
+	priv = PRIVATE(iterator);
+
+	g_return_if_fail(priv->playlist == NULL);
+
+	priv->size = -1;
 
 	mafw_playlist_get_starting_index(playlist, (guint *) &index, &objectid,
 					  &new_error);
@@ -314,10 +334,10 @@ mafw_playlist_iterator_initialize(MafwPlaylistIterator *iterator,
 	}
 
 	if (new_error == NULL) {
-		iterator->priv->playlist = g_object_ref(playlist);
-		iterator->priv->current_index = index;
-		iterator->priv->current_objectid = objectid;
-		iterator->priv->size = size;
+		priv->playlist = g_object_ref(playlist);
+		priv->current_index = index;
+		priv->current_objectid = objectid;
+		priv->size = size;
 
 		g_signal_connect(playlist,
 				 "item-moved",
@@ -336,27 +356,31 @@ mafw_playlist_iterator_initialize(MafwPlaylistIterator *iterator,
 void
 mafw_playlist_iterator_invalidate(MafwPlaylistIterator *iterator)
 {
+	MafwPlaylistIteratorPrivate *priv;
+
 	g_return_if_fail(MAFW_IS_PLAYLIST_ITERATOR(iterator));
 
-	if (iterator->priv->playlist != NULL) {
-		g_signal_handlers_disconnect_matched(iterator->priv->playlist,
+	priv = PRIVATE(iterator);
+
+	if (priv->playlist != NULL) {
+		g_signal_handlers_disconnect_matched(priv->playlist,
 						     (GSignalMatchType) G_SIGNAL_MATCH_FUNC,
 						     0, 0, NULL,
 						     mafw_playlist_iterator_playlist_item_moved_handler,
 						     NULL);
 
-		g_signal_handlers_disconnect_matched(iterator->priv->playlist,
+		g_signal_handlers_disconnect_matched(priv->playlist,
 						     (GSignalMatchType) G_SIGNAL_MATCH_FUNC,
 						     0, 0, NULL,
 						     mafw_playlist_iterator_playlist_contents_changed_handler,
 						     NULL);
 
-		g_object_unref(iterator->priv->playlist);
-		g_free(iterator->priv->current_objectid);
-		iterator->priv->playlist = NULL;
-		iterator->priv->current_index = -1;
-		iterator->priv->current_objectid = NULL;
-		iterator->priv->size = -1;
+		g_object_unref(priv->playlist);
+		g_free(priv->current_objectid);
+		priv->playlist = NULL;
+		priv->current_index = -1;
+		priv->current_objectid = NULL;
+		priv->size = -1;
 	}
 }
 
@@ -365,7 +389,7 @@ mafw_playlist_iterator_is_valid(MafwPlaylistIterator *iterator)
 {
 	g_return_val_if_fail(MAFW_IS_PLAYLIST_ITERATOR(iterator), FALSE);
 
-	return iterator->priv->playlist != NULL;
+	return PRIVATE(iterator)->playlist != NULL;
 }
 
 void
@@ -377,7 +401,7 @@ mafw_playlist_iterator_reset(MafwPlaylistIterator *iterator, GError **error)
 
 	g_return_if_fail(mafw_playlist_iterator_is_valid(iterator));
 
-	mafw_playlist_get_starting_index(iterator->priv->playlist,
+	mafw_playlist_get_starting_index(PRIVATE(iterator)->playlist,
 					  (guint *) &index,
 					  &objectid, &new_error);
 
@@ -399,7 +423,7 @@ mafw_playlist_iterator_move_to_last(MafwPlaylistIterator *iterator,
 
 	g_return_if_fail(mafw_playlist_iterator_is_valid(iterator));
 
-	mafw_playlist_get_last_index(iterator->priv->playlist,
+	mafw_playlist_get_last_index(PRIVATE(iterator)->playlist,
 				      (guint *) &index,
 				      &objectid, &new_error);
 
@@ -453,16 +477,17 @@ mafw_playlist_iterator_move_to_index(MafwPlaylistIterator *iterator,
 			MAFW_PLAYLIST_ITERATOR_MOVE_RESULT_LIMIT;
 	} else {
 		gchar *objectid =
-			mafw_playlist_get_item(iterator->priv->playlist,
-						index,
-						&new_error);
+			mafw_playlist_get_item(PRIVATE(iterator)->playlist,
+					       index,
+					       &new_error);
 
 		if (new_error != NULL) {
 			g_propagate_error(error, new_error);
 			iterator_movement_result =
 				MAFW_PLAYLIST_ITERATOR_MOVE_RESULT_ERROR;
 		} else {
-			mafw_playlist_iterator_set_data(iterator, index, objectid);
+			mafw_playlist_iterator_set_data(iterator, index,
+							objectid);
 		}
 	}
 
@@ -474,18 +499,17 @@ mafw_playlist_iterator_update(MafwPlaylistIterator *iterator, GError **error)
 {
 	GError *new_error = NULL;
 	gchar *objectid = NULL;
+	MafwPlaylistIteratorPrivate *priv = PRIVATE(iterator);
 
-	objectid =
-		mafw_playlist_get_item(iterator->priv->playlist,
-					iterator->priv->current_index,
-					&new_error);
+
+	objectid = mafw_playlist_get_item(priv->playlist, priv->current_index,
+					  &new_error);
 
 	if (new_error != NULL) {
 		g_propagate_error(error, new_error);
 	} else {
-		mafw_playlist_iterator_set_data(iterator,
-						 iterator->priv->current_index,
-						 objectid);
+		mafw_playlist_iterator_set_data(iterator, priv->current_index,
+						objectid);
 	}
 }
 
@@ -494,7 +518,7 @@ mafw_playlist_iterator_get_current_objectid(MafwPlaylistIterator *iterator)
 {
 	g_return_val_if_fail(mafw_playlist_iterator_is_valid(iterator), NULL);
 
-	return iterator->priv->current_objectid;
+	return PRIVATE(iterator)->current_objectid;
 }
 
 gint
@@ -502,20 +526,21 @@ mafw_playlist_iterator_get_current_index(MafwPlaylistIterator *iterator)
 {
 	g_return_val_if_fail(mafw_playlist_iterator_is_valid(iterator), 0);
 
-	return iterator->priv->current_index;
+	return PRIVATE(iterator)->current_index;
 }
 
 gint
 mafw_playlist_iterator_get_size(MafwPlaylistIterator *iterator,
 				 GError **error)
 {
+	MafwPlaylistIteratorPrivate *priv;
+
 	g_return_val_if_fail(mafw_playlist_iterator_is_valid(iterator), -1);
 
-	if (iterator->priv->size == -1) {
-		iterator->priv->size =
-			mafw_playlist_get_size(iterator->priv->playlist,
-						error);
-	}
+	priv = PRIVATE(iterator);
 
-	return iterator->priv->size;
+	if (priv->size == -1)
+		priv->size = mafw_playlist_get_size(priv->playlist, error);
+
+	return priv->size;
 }
