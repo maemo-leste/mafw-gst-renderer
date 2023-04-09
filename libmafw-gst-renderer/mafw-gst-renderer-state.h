@@ -27,6 +27,8 @@
 
 
 #include <glib-object.h>
+#include <gio/gio.h>
+
 #include "mafw-gst-renderer-worker.h"
 
 /* Solving the cyclic dependencies */
