@@ -173,6 +173,7 @@ struct _MafwGstRenderer{
 	ConIcConnection *connection;
 #endif
 	GConfClient *gconf_client;
+	GVolumeMonitor *volume_monitor;
 };
 
 typedef struct {

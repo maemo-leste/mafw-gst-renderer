@@ -26,6 +26,7 @@
 #endif
 
 #include <glib.h>
+#include <gio/gio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <dbus/dbus.h>
@@ -99,8 +100,8 @@ static void _battery_cover_open_cb(GConfClient *client,
   Gnome VFS notifications
   ----------------------------------------------------------------------------*/
 
-static void _volume_pre_unmount_cb(GnomeVFSVolumeMonitor *monitor,
-				   GnomeVFSVolume *volume,
+static void _volume_pre_unmount_cb(GVolumeMonitor *self,
+				   GMount *mount,
                                    MafwGstRenderer *renderer);
 
 /*----------------------------------------------------------------------------
@@ -348,13 +349,9 @@ static void mafw_gst_renderer_init(MafwGstRenderer *self)
 		g_error_free(error);
 	}
 
-	if (gnome_vfs_init()) {
-		GnomeVFSVolumeMonitor *monitor = gnome_vfs_get_volume_monitor();
-		g_signal_connect(monitor, "volume-pre-unmount", 
-				 G_CALLBACK(_volume_pre_unmount_cb), renderer);
-	} else {
-		g_warning("Failed to initialize gnome-vfs");
-	}
+	renderer->volume_monitor = g_volume_monitor_get();
+	g_signal_connect(renderer->volume_monitor, "mount-pre-unmount",
+			 G_CALLBACK(_volume_pre_unmount_cb), renderer);
 }
 
 static void mafw_gst_renderer_dispose(GObject *object)
@@ -407,6 +404,11 @@ static void mafw_gst_renderer_dispose(GObject *object)
 	if (renderer->gconf_client != NULL) {
 		g_object_unref(renderer->gconf_client);
 		renderer->gconf_client = NULL;
+	}
+
+	if (renderer->volume_monitor != NULL) {
+		g_object_unref(renderer->volume_monitor);
+		renderer->volume_monitor = NULL;
 	}
 
 	G_OBJECT_CLASS(mafw_gst_renderer_parent_class)->dispose(object);
@@ -825,12 +827,14 @@ static void _battery_cover_open_cb(GConfClient *client,
 
 	if (is_cover_open) {
 		/* External mmc could be removed!. */
-		const gchar *emmc_path = g_getenv("MMC_MOUNTPOINT");
+		GFile *emmc_path = g_file_new_for_path(
+					   g_getenv("MMC_MOUNTPOINT"));
 
-	   	mafw_gst_renderer_state_handle_pre_unmount(
+		mafw_gst_renderer_state_handle_pre_unmount(
 			MAFW_GST_RENDERER_STATE(
 				renderer->states[renderer->current_state]),
-			         emmc_path);
+				emmc_path);
+		g_object_unref(emmc_path);
 	}
 }
 
@@ -838,21 +842,17 @@ static void _battery_cover_open_cb(GConfClient *client,
   Gnome VFS notifications
   ----------------------------------------------------------------------------*/
 
-static void _volume_pre_unmount_cb(GnomeVFSVolumeMonitor *monitor, 
-				   GnomeVFSVolume *volume,
+static void _volume_pre_unmount_cb(GVolumeMonitor* self,
+				   GMount* mount,
 				   MafwGstRenderer *renderer)
 {
-	gchar *location = gnome_vfs_volume_get_activation_uri(volume);
-	if (!location) {
-		return;
-	}
+	GFile *mount_root = g_mount_get_root(mount);
 	
 	mafw_gst_renderer_state_handle_pre_unmount(
 		MAFW_GST_RENDERER_STATE(
-			renderer->states[renderer->current_state]),
-		location);
-	
-	g_free(location);
+			renderer->states[renderer->current_state]), mount_root);
+
+	g_object_unref(mount_root);
 }
 
 /*----------------------------------------------------------------------------

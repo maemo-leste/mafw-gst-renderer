@@ -117,7 +117,7 @@ struct _MafwGstRendererStateClass {
 	/* Memory card event handlers */
 
 	void (*handle_pre_unmount)(MafwGstRendererState *self,
-				   const gchar *mount_point);
+				   GFile *mount_root);
 };
 
 struct _MafwGstRendererState {
@@ -203,7 +203,7 @@ GValue* mafw_gst_renderer_state_get_property_value(MafwGstRendererState *self,
   ----------------------------------------------------------------------------*/
 
 void mafw_gst_renderer_state_handle_pre_unmount(MafwGstRendererState *self,
-						const gchar *mount_point);
+						GFile *mount_root);
 
 /*----------------------------------------------------------------------------
   Helpers

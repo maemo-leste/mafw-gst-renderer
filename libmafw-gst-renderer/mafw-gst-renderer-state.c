@@ -202,10 +202,14 @@ static GValue* _default_get_property_value(MafwGstRendererState *self,
   ----------------------------------------------------------------------------*/
 
 static void _default_handle_pre_unmount(MafwGstRendererState *self,
-					const gchar *mount_point)
+					GFile *mount_root)
 {
-	g_debug("pre-unmount signal received: %s in state %s", mount_point,
+	gchar *mount_uri = g_file_get_uri(mount_root);
+
+	g_debug("pre-unmount signal received: %s in state %s", mount_uri,
 		MAFW_GST_RENDERER_STATE_GET_CLASS(self)->name);
+
+	g_free(mount_uri);
 }
 
 /*----------------------------------------------------------------------------
@@ -418,10 +422,10 @@ GValue* mafw_gst_renderer_state_get_property_value(MafwGstRendererState *self,
   ----------------------------------------------------------------------------*/
 
 void mafw_gst_renderer_state_handle_pre_unmount(MafwGstRendererState *self,
-						const gchar *mount_point)
+						GFile *mount_root)
 {
 	MAFW_GST_RENDERER_STATE_GET_CLASS(self)->
-		handle_pre_unmount(self, mount_point);
+		handle_pre_unmount(self, mount_root);
 }
 
 /*----------------------------------------------------------------------------
