@@ -50,15 +50,13 @@ GSTREAMER_VERSION=0.10.20
 AM_PATH_GLIB_2_0(2.15.0, [], [], [glib])
 PKG_CHECK_MODULES(DEPS,
 		  gobject-2.0 >= 2.0
-		  gstreamer-0.10 >= $GSTREAMER_VERSION
-		  gstreamer-plugins-base-0.10 >= $GSTREAMER_VERSION
+		  gstreamer-1.0
 		  mafw >= 0.1
 		  libosso >= 2.0
 		  x11
-		  hal
 		  totem-plparser
-                  gconf-2.0 >= 2.0
-		  gnome-vfs-2.0
+		  gconf-2.0 >= 2.0
+		  gio-2.0
 		  mce
 		  dbus-1
 )
