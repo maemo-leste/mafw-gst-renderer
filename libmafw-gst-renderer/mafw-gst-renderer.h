@@ -29,7 +29,6 @@
 #include <libmafw/mafw-registry.h>
 #include <gst/gst.h>
 #include <gst/pbutils/pbutils.h>
-#include <libhal.h>
 #include <gconf/gconf-client.h>
 
 #include "mafw-gst-renderer-utils.h"
@@ -150,7 +149,9 @@ struct _MafwGstRenderer{
 	MafwGstRendererMedia *media;
 	MafwGstRendererWorker *worker;
 	MafwRegistry *registry;
+#if 0
 	LibHalContext *hal_ctx;
+#endif
 	MafwPlayState current_state;
 	MafwPlaylist *playlist;
 	MafwPlaylistIterator *iterator;

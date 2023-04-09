@@ -29,7 +29,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <dbus/dbus.h>
-#include <libgnomevfs/gnome-vfs.h>
 
 #include <libmafw/mafw.h>
 #include "mafw-gst-renderer.h"
@@ -81,11 +80,12 @@ static void mafw_gst_renderer_finalize(GObject *object);
 /*----------------------------------------------------------------------------
   Hal callbacks
   ----------------------------------------------------------------------------*/
+#if 0
 static void _property_modified(LibHalContext *ctx, const char *udi,
                                const char *key, dbus_bool_t is_removed,
                                dbus_bool_t is_added);
 static gboolean _tv_out_is_connected(LibHalContext *ctx, const char *udi);
-
+#endif
 /*----------------------------------------------------------------------------
   GConf notifications
   ----------------------------------------------------------------------------*/
@@ -387,7 +387,7 @@ static void mafw_gst_renderer_dispose(GObject *object)
 		g_free(renderer->states);
 		renderer->states = NULL;
 	}
-
+#if 0
 	if (renderer->hal_ctx != NULL) {
                 libhal_device_remove_property_watch(renderer->hal_ctx,
                                                     HAL_VIDEOOUT_UDI,
@@ -395,6 +395,7 @@ static void mafw_gst_renderer_dispose(GObject *object)
 		libhal_ctx_shutdown(renderer->hal_ctx, NULL);
 		libhal_ctx_free(renderer->hal_ctx);
 	}
+#endif
 
 #ifdef HAVE_CONIC
 	if (renderer->connection != NULL) {
@@ -437,12 +438,14 @@ static void mafw_gst_renderer_finalize(GObject *object)
 GObject *mafw_gst_renderer_new(MafwRegistry* registry)
 {
 	GObject* object;
+#if 0
 	LibHalContext *ctx;
+	char **jackets;
+	char **jack;
+	gint num_jacks;
 	DBusConnection *conn;
 	DBusError err;
-        char **jackets;
-        char **jack;
-        gint num_jacks;
+#endif
 
 	object = g_object_new(MAFW_TYPE_GST_RENDERER,
 			      "uuid", MAFW_GST_RENDERER_UUID,
@@ -457,6 +460,7 @@ GObject *mafw_gst_renderer_new(MafwRegistry* registry)
 		MAFW_RENDERER_ERROR_POLICY_CONTINUE;
 
         MAFW_GST_RENDERER(object)->tv_connected = FALSE;
+#if 0
 
 	/* Setup hal connection for reacting usb cable connected event */
 	dbus_error_init(&err);
@@ -483,7 +487,6 @@ GObject *mafw_gst_renderer_new(MafwRegistry* registry)
 	}
 
 	libhal_device_add_property_watch(ctx, HAL_VIDEOOUT_UDI, &err);
-
 	if (dbus_error_is_set(&err)) {
 		g_warning("Could not start watching usb device: %s",
                           err.message);
@@ -512,13 +515,13 @@ GObject *mafw_gst_renderer_new(MafwRegistry* registry)
         }
 
 	MAFW_GST_RENDERER(object)->hal_ctx = ctx;
-
 	return object;
 err3:
 	libhal_ctx_shutdown(ctx, NULL);
 err2:
 	libhal_ctx_free(ctx);
 err1:
+#endif
 	return object;
 }
 
@@ -747,7 +750,7 @@ _connection_init(MafwGstRenderer *renderer)
 /*----------------------------------------------------------------------------
   Hal callbacks
   ----------------------------------------------------------------------------*/
-
+#if 0
 static gboolean _tv_out_is_connected(LibHalContext *ctx, const char *udi)
 {
         gboolean is_tv_out_jack = FALSE;
@@ -804,7 +807,7 @@ static void _property_modified(LibHalContext *ctx, const char *udi,
         }
         blanking_control(connected == FALSE);
 }
-
+#endif
 /*----------------------------------------------------------------------------
   GConf notifications
   ----------------------------------------------------------------------------*/
