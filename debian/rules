@@ -2,7 +2,7 @@
 
 # Uncomment this to turn on verbose mode.
 
-#export DH_VERBOSE=1
+# export DH_VERBOSE=1
 
 ifneq (,$(findstring debug,$(DEB_BUILD_OPTIONS)))
 	CFLAGS += -O0 -ggdb3 -finstrument-functions
@@ -10,7 +10,7 @@ endif
 
 maybe_coverage := $(if $(filter lcov,$(DEB_BUILD_OPTIONS)),--enable-coverage,)
 
-DEB_CONFIGURE_EXTRA_FLAGS = --prefix=/usr $(maybe_coverage)
+DEB_CONFIGURE_EXTRA_FLAGS = --enable-tests --prefix=/usr $(maybe_coverage)
 
 # CFLAGS += -Werror
 
@@ -28,27 +28,4 @@ override_dh_auto_install:
 
 override_dh_install:
 	dh_install
-	dh_maemolauncher -p connui-conndlgs-cellular
-
-#ifeq ($(findstring nocheck,$(DEB_BUILD_OPTIONS)),)
-#	$(MAKE) check
-#endif
-
-
-
-# These are used for cross-compiling and for saving the configure script
-# from having to guess our platform (since we know it already)
-
-
-
-#install debian/mafw-gst-renderer.mafw.xsession \
-#	debian/mafw-gst-renderer/etc/X11/Xsession.post/32mafw-gst-renderer
-
-#distcheck: build
-#	dh_testdir
-#	$(MAKE) distcheck
-
-#vg:
-#	dh_testdir
-#	$(MAKE) -C "$(CURDIR)/tests" vg
-#
+	dh_installxsession -u 'post 32'

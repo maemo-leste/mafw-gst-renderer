@@ -28,7 +28,7 @@ mafw_gst_renderer_la_CPPFLAGS	= $(DEPS_CFLAGS) $(VOLUME_CFLAGS) \
 				  -DPREFIX=\"$(prefix)\" $(_CFLAGS)
 mafw_gst_renderer_la_LDFLAGS	= -avoid-version -module $(_LDFLAGS)
 mafw_gst_renderer_la_LIBADD	= $(DEPS_LIBS) $(VOLUME_LIBS) \
-				  -lgstpbutils-1.0
+				  -lgstpbutils-1.0 -lgstvideo-1.0
 
 if HAVE_GDKPIXBUF
 mafw_gst_renderer_la_SOURCES += gstscreenshot.c gstscreenshot.h
