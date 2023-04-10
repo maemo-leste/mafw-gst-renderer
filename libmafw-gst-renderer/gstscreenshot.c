@@ -29,7 +29,7 @@
 #include "gstscreenshot.h"
 
 typedef struct {
-	GstBuffer *result;
+	GstSample *result;
 	GstElement *src;
 	GstElement *sink;
 	GstElement *pipeline;
@@ -43,22 +43,19 @@ typedef struct {
 static void feed_fakesrc(GstElement *src, GstBuffer *buf, GstPad *pad,
 			 gpointer data)
 {
-	GstBuffer *in_buf = GST_BUFFER(data);
+	GstSample *sample = GST_SAMPLE(data);
+	GstBuffer *in_buf = gst_sample_get_buffer(sample);
 
-	g_assert(GST_BUFFER_SIZE(buf) >= GST_BUFFER_SIZE(in_buf));
-	g_assert(!GST_BUFFER_FLAG_IS_SET(buf, GST_BUFFER_FLAG_READONLY));
+	g_assert(gst_buffer_get_size(buf) >= gst_buffer_get_size(in_buf));
+	g_assert(gst_buffer_is_writable(buf));
 
-	gst_buffer_set_caps(buf, GST_BUFFER_CAPS(in_buf));
+	g_assert(gst_buffer_copy_into(buf, in_buf,
+				      GST_BUFFER_COPY_MEMORY, 0, -1));
 
-	memcpy(GST_BUFFER_DATA(buf), GST_BUFFER_DATA(in_buf),
-	       GST_BUFFER_SIZE(in_buf));
+	GST_DEBUG("feeding buffer %p, size %" G_GSIZE_FORMAT ", caps %" GST_PTR_FORMAT,
+		  buf, gst_buffer_get_size(buf), gst_sample_get_caps(sample));
 
-	GST_BUFFER_SIZE(buf) = GST_BUFFER_SIZE(in_buf);
-
-	GST_DEBUG("feeding buffer %p, size %u, caps %" GST_PTR_FORMAT,
-		  buf, GST_BUFFER_SIZE(buf), GST_BUFFER_CAPS(buf));
-
-	gst_buffer_unref(in_buf);
+	gst_sample_unref(sample);
 }
 
 static void save_result(GstElement *sink, GstBuffer *buf, GstPad *pad,
@@ -66,10 +63,11 @@ static void save_result(GstElement *sink, GstBuffer *buf, GstPad *pad,
 {
 	GstScreenshotData *gsd = data;
 
-	gsd->result = gst_buffer_ref(buf);
+	gsd->result = gst_sample_new(
+			      buf, gst_pad_get_current_caps(pad), NULL, NULL);
 
 	GST_DEBUG("received converted buffer %p with caps %" GST_PTR_FORMAT,
-		  gsd->result, GST_BUFFER_CAPS(gsd->result));
+		  gsd->result, gst_sample_get_caps(gsd->result));
 }
 
 static gboolean create_element(const gchar *factory_name, GstElement **element,
@@ -150,18 +148,18 @@ static gboolean async_bus_handler(GstBus *bus, GstMessage *msg,
 	return keep_watch;
 }
 
-/* takes ownership of the input buffer */
-gboolean bvw_frame_conv_convert(GstBuffer *buf, GstCaps *to_caps,
+/* takes ownership of the input sample */
+gboolean bvw_frame_conv_convert(GstSample *sample, GstCaps *to_caps,
 				BvwFrameConvCb cb, gpointer cb_data)
 {
 	static GstElement *src = NULL, *sink = NULL, *pipeline = NULL,
-		*filter1 = NULL, *filter2 = NULL;
+		*filter1 = NULL, *filter2 = NULL, *filter3 = NULL;
 	static GstBus *bus;
 	GError *error = NULL;
 	GstCaps *to_caps_no_par;
 	GstScreenshotData *gsd;
 
-	g_return_val_if_fail(GST_BUFFER_CAPS(buf) != NULL, FALSE);
+	g_return_val_if_fail(gst_sample_get_caps(sample) != NULL, FALSE);
 	g_return_val_if_fail(cb != NULL, FALSE);
 
 	if (pipeline == NULL) {
@@ -178,10 +176,11 @@ gboolean bvw_frame_conv_convert(GstBuffer *buf, GstCaps *to_caps,
 		 * pixel-aspect-ratio for us */
 		GST_DEBUG("creating elements");
 		if(!create_element("fakesrc", &src, &error) ||
-		   !create_element("ffmpegcolorspace", &csp, &error) ||
+		   !create_element("videoconvert", &csp, &error) ||
 		   !create_element("videoscale", &vscale, &error) ||
 		   !create_element("capsfilter", &filter1, &error) ||
 		   !create_element("capsfilter", &filter2, &error) ||
+		   !create_element("capsfilter", &filter3, &error) ||
 		   !create_element("fakesink", &sink, &error)) {
 			g_warning("Could not take screenshot: %s",
 				  error->message);
@@ -190,11 +189,10 @@ gboolean bvw_frame_conv_convert(GstBuffer *buf, GstCaps *to_caps,
 		}
 
 		GST_DEBUG("adding elements");
-		gst_bin_add_many(GST_BIN(pipeline), src, csp, filter1, vscale,
+		gst_bin_add_many(GST_BIN(pipeline), src, filter3, csp, filter1, vscale,
 				 filter2, sink, NULL);
 
-		g_object_set(sink, "preroll-queue-len", 1,
-			     "signal-handoffs", TRUE, NULL);
+		g_object_set(sink, "signal-handoffs", TRUE, NULL);
 
 		/* set to 'fixed' sizetype */
 		g_object_set(src, "sizetype", 2, "num-buffers", 1,
@@ -202,8 +200,12 @@ gboolean bvw_frame_conv_convert(GstBuffer *buf, GstCaps *to_caps,
 
 		/* FIXME: linking is still way too expensive, profile
 		 * this properly */
-		GST_DEBUG("linking src->csp");
-		if(!gst_element_link_pads(src, "src", csp, "sink"))
+		GST_DEBUG("linking src->filter3");
+		if(!gst_element_link_pads(src, "src", filter3, "sink"))
+			return FALSE;
+
+		GST_DEBUG("linking filter3->csp");
+		if(!gst_element_link_pads(filter3, "src", csp, "sink"))
 			return FALSE;
 
 		GST_DEBUG("linking csp->filter1");
@@ -235,6 +237,8 @@ gboolean bvw_frame_conv_convert(GstBuffer *buf, GstCaps *to_caps,
 	g_object_set(filter2, "caps", to_caps, NULL);
 	gst_caps_unref(to_caps);
 
+	g_object_set(filter3, "caps", gst_sample_get_caps(sample), NULL);
+
 	gsd = g_new0(GstScreenshotData, 1);
 
 	gsd->src = src;
@@ -245,12 +249,13 @@ gboolean bvw_frame_conv_convert(GstBuffer *buf, GstCaps *to_caps,
 
 	g_signal_connect(sink, "handoff", G_CALLBACK(save_result), gsd);
 
-	g_signal_connect(src, "handoff", G_CALLBACK(feed_fakesrc), buf);
+	g_signal_connect(src, "handoff", G_CALLBACK(feed_fakesrc), sample);
 
 	gst_bus_add_watch(bus, async_bus_handler, gsd);
 
 	/* set to 'fixed' sizetype */
-	g_object_set(src, "sizemax", GST_BUFFER_SIZE(buf), NULL);
+	g_object_set(src, "sizemax",
+		     gst_buffer_get_size(gst_sample_get_buffer(sample)), NULL);
 
 	GST_DEBUG("running conversion pipeline");
 	gst_element_set_state(pipeline, GST_STATE_PLAYING);

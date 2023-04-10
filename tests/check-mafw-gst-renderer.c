@@ -126,10 +126,10 @@ static void error_cb(MafwRenderer *s, GQuark domain, gint code, gchar *msg,
 
 	/* "MafwExtension::error" signal handler */	
 	if (user_data == NULL || !c->error_signal_expected) {
-		fail("Signal error received: (%d) %s", code, msg);
+		ck_abort_msg("Signal error received: (%d) %s", code, msg);
 	} else {
 		if (c->error_signal_received != NULL) {
-			fail("Error received already initialized");
+			ck_abort_msg("Error received already initialized");
 		} else {
 			c->error_signal_received =
 				g_error_new_literal(domain, code, msg);
@@ -165,7 +165,8 @@ static void playlist_changed_cb (MafwRenderer *self,
                                                         gpointer       user_data)
 {
 	g_debug("playlist changed");
-	fail_if(media_changed_called, "At first playlist-changed should be called");
+	ck_assert_msg(!media_changed_called,
+		      "At first playlist-changed should be called");
 }
 
 static void metadata_changed_cb(MafwRenderer *self, const gchar *key,
@@ -231,8 +232,8 @@ static void status_cb(MafwRenderer* renderer, MafwPlaylist* playlist, guint inde
 	g_assert(s != NULL);
 
 	if (error != NULL) {
-		fail("Error received while trying to get renderer status: (%d) %s",
-		     error->code, error->message);
+		ck_abort_msg("Error received while trying to get renderer status: (%d) %s",
+			     error->code, error->message);
 	} 
 	s->state = state;
 
@@ -298,10 +299,12 @@ static void get_property_cb(MafwExtension *self,
 	CallbackInfo* c = (CallbackInfo*) user_data;
 	gchar *value_string;
 
-	value_string = g_strdup_value_contents(value);
+	if (value) {
+		value_string = g_strdup_value_contents(value);
 
-	g_debug("get property cb: %s (%s)", name, value_string);
-	g_free(value_string);
+		g_debug("get property cb: %s (%s)", name, value_string);
+		g_free(value_string);
+	}
 
 	if (error != NULL) {
 		c->error = TRUE;
@@ -311,10 +314,11 @@ static void get_property_cb(MafwExtension *self,
 
 	if (c->property_expected != NULL &&
 	    strcmp(c->property_expected, name) == 0) {
-		c->property_received = g_new0(GValue, 1);
-		g_value_init(c->property_received, G_VALUE_TYPE(value));
-		g_value_copy(value, c->property_received);
-
+		if (value) {
+			c->property_received = g_new0(GValue, 1);
+			g_value_init(c->property_received, G_VALUE_TYPE(value));
+			g_value_copy(value, c->property_received);
+		}
 		c->called = TRUE;
 	}
 }
@@ -362,15 +366,13 @@ static gboolean stop_wait_timeout(gpointer user_data)
 
 static gboolean wait_until_timeout_finishes(guint millis)
 {
-	guint timeout = 0;
 	gboolean stop_wait = FALSE;
-	gboolean result = FALSE;
 
 	g_debug("Init wait_");
 	/* We'll wait a limitted ammount of time */
-	timeout = g_timeout_add(millis, stop_wait_timeout, &stop_wait);
+	g_timeout_add(millis, stop_wait_timeout, &stop_wait);
 	while(!stop_wait) {
-		result= g_main_context_iteration(NULL, TRUE);
+		g_main_context_iteration(NULL, TRUE);
 	}
 
 	g_debug("End wait_");
@@ -504,21 +506,20 @@ static void fx_setup_dummy_gst_renderer(void)
 {
 	MafwRegistry *registry;
 
-	/* Setup GLib */
-	g_type_init();
-
 	/* Create a gst renderer instance */
 	registry = MAFW_REGISTRY(mafw_registry_get_instance());
-	fail_if(registry == NULL,
-		"Error: cannot get MAFW registry");
+	ck_assert_msg(registry != NULL,
+		      "Error: cannot get MAFW registry");
 		
 	g_gst_renderer = MAFW_RENDERER(mafw_gst_renderer_new(registry));
-	fail_if(!MAFW_IS_GST_RENDERER(g_gst_renderer),
-		"Could not create gst renderer instance");
+	ck_assert_msg(MAFW_IS_GST_RENDERER(g_gst_renderer),
+		      "Could not create gst renderer instance");
 }
 
 static void fx_teardown_dummy_gst_renderer(void)
 {
+	while(g_main_context_iteration(NULL, FALSE))
+		;
 	g_object_unref(g_gst_renderer);
 }
 
@@ -537,8 +538,8 @@ GstElement * gst_element_factory_make(const gchar * factoryname,
 	
 	g_return_val_if_fail(factoryname != NULL, NULL);
 	
-        /* For testing, use playbin instead of playbin2 */
-        if (g_ascii_strcasecmp(factoryname, "playbin2") == 0)
+	/* For testing, use playbin instead of playbin3 */
+	if (g_ascii_strcasecmp(factoryname, "playbin3") == 0)
                 use_factoryname = "playbin";
         else
                 use_factoryname = factoryname;
@@ -603,9 +604,10 @@ START_TEST(test_basic_playback)
 	RendererInfo s;
 	CallbackInfo c;     
 	MetadataChangedInfo m;
+#if 0
 	GstBus *bus = NULL;
 	GstMessage *message = NULL;
-
+#endif
 	/* Initialize callback info */
     	c.err_msg = NULL;
 	c.error_signal_expected = FALSE;
@@ -646,9 +648,9 @@ START_TEST(test_basic_playback)
 	if (wait_for_callback(&c, wait_tout_val)) {
 		/* No media item has been set so, we should get an error */
 		if (c.error == FALSE)
-		       	fail("Play of unset media did not return an error");
+			ck_abort_msg("Play of unset media did not return an error");
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 	
 	/* --- Play object --- */
@@ -659,23 +661,22 @@ START_TEST(test_basic_playback)
 	g_debug("play_object... %s", objectid);
 	mafw_renderer_play_object(g_gst_renderer, objectid, playback_cb, &c);
 
-
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-		       	fail(callback_err_msg, "playing an object", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "playing an object", c.err_code,
+					     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	if (wait_for_state(&s, Transitioning, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play_object", "Transitioning",
-		     s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_play_object", "Transitioning",
+			     s.state);
 	}
         	
 	if (wait_for_state(&s, Playing, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play_object", "Playing",
-		     s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_play_object", "Playing",
+			     s.state);
 	}
 
 	g_free(objectid);
@@ -688,36 +689,37 @@ START_TEST(test_basic_playback)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "get_position", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "get_position", c.err_code,
+					     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	/* --- Duration emission --- */
-
+#if 0
+	/* Unfortunately we cannot push duration that way in gst 1.x */
 	m.expected_key = MAFW_METADATA_KEY_DURATION;
 
 	bus = MAFW_GST_RENDERER(g_gst_renderer)->worker->bus;
-	fail_if(bus == NULL, "No GstBus");
+	ck_assert_msg(bus != NULL, "No GstBus");
 
 	message = gst_message_new_duration(NULL, GST_FORMAT_TIME,
 					   5 * GST_SECOND);
 	gst_bus_post(bus, message);
 
 	if (wait_for_metadata(&m, wait_tout_val) == FALSE) {
-		fail("Expected " MAFW_METADATA_KEY_DURATION
-		     ", but not received");
+		ck_abort_msg("Expected " MAFW_METADATA_KEY_DURATION
+			     ", but not received");
 	}
 
-	fail_if(m.value == NULL, "Metadata " MAFW_METADATA_KEY_DURATION
-		" not received");
+	ck_assert_msg(m.value != NULL, "Metadata " MAFW_METADATA_KEY_DURATION
+		      " not received");
 
 	g_value_unset(m.value);
 	g_free(m.value);
 	m.value = NULL;
 	m.expected_key = NULL;
-
+#endif
 	/* --- Pause --- */
 
 	reset_callback_info(&c);
@@ -727,14 +729,14 @@ START_TEST(test_basic_playback)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "pausing", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "pausing", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	if (wait_for_state(&s, Paused, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_pause", "Paused", s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_pause", "Paused", s.state);
 	}
 
 	/* --- Resume --- */
@@ -746,14 +748,14 @@ START_TEST(test_basic_playback)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "resuming", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "resuming", c.err_code,
+					     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	if (wait_for_state(&s, Playing, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_resume", "Playing", s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_resume", "Playing", s.state);
 	}
 
 	/* --- Stop --- */
@@ -765,14 +767,14 @@ START_TEST(test_basic_playback)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "stopping", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "stopping", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	if (wait_for_state(&s, Stopped, wait_tout_val) == FALSE) {
-		fail(state_err_msg,"mafw_renderer_stop", "Stopped", s.state);
+		ck_abort_msg(state_err_msg,"mafw_renderer_stop", "Stopped", s.state);
 	}
 	
 }
@@ -826,7 +828,7 @@ START_TEST(test_playlist_playback)
 	media_changed_called = FALSE;
 	if (!mafw_renderer_assign_playlist(g_gst_renderer, playlist, NULL))
 	{
-		fail("Assign playlist failed");
+		ck_abort_msg("Assign playlist failed");
 	}
 
 	wait_for_state(&s, Stopped, wait_tout_val);
@@ -840,14 +842,14 @@ START_TEST(test_playlist_playback)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-		       	fail(callback_err_msg, "playing", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "playing", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	if (wait_for_state(&s, Playing, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play", "Playing", s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_play", "Playing", s.state);
 	}
 
 	/* --- Stop --- */
@@ -859,14 +861,14 @@ START_TEST(test_playlist_playback)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-		       	fail(callback_err_msg, "stopping", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "stopping", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	if (wait_for_state(&s, Stopped, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_stop", "Stopped", s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_stop", "Stopped", s.state);
 	}
 
 	/* --- Next --- */
@@ -884,14 +886,14 @@ START_TEST(test_playlist_playback)
 
 		if (wait_for_callback(&c, wait_tout_val)) {
 			if (c.error)
-				fail(callback_err_msg, "moving to next", c.err_code,
-				     c.err_msg);
+				ck_abort_msg(callback_err_msg, "moving to next", c.err_code,
+					     c.err_msg);
 		} else {
-			fail(no_callback_msg);
+			ck_abort_msg("%s", no_callback_msg);
 		}
 	
 		/* Check if the playlist index is correct */
-		fail_if(s.index != initial_index + (i+1), index_err_msg, s.index,
+		ck_assert_msg(s.index == initial_index + (i+1), index_err_msg, s.index,
 			initial_index + (i+1));        		
 	}
 
@@ -910,21 +912,21 @@ START_TEST(test_playlist_playback)
 
 		if (wait_for_callback(&c, wait_tout_val)) {
 			if (c.error)
-				fail(callback_err_msg, "moving to prev", c.err_code,
-				     c.err_msg);
+				ck_abort_msg(callback_err_msg, "moving to prev", c.err_code,
+					     c.err_msg);
 		} else {
-			fail(no_callback_msg);
+			ck_abort_msg("%s", no_callback_msg);
 		}		
 
 		/* Check if the playlist index is correct */
-		fail_if(s.index != initial_index - (i+1), index_err_msg, s.index,
+		ck_assert_msg(s.index == initial_index - (i+1), index_err_msg, s.index,
 			initial_index - (i+1));        		
 	}
 
 	/* Check if renderer remains in Stopped state after some Prev operations */
-	fail_if(s.state != Stopped, "Gst renderer didn't remain in Stopped state "
-		"after doing prev. The actual state is %s and must be %s",
-		s.state, "Stopped");
+	ck_assert_msg(s.state == Stopped, "Gst renderer didn't remain in Stopped state "
+		      "after doing prev. The actual state is %d and must be %s",
+		      s.state, "Stopped");
 
 	/* --- Stop --- */
 
@@ -935,14 +937,14 @@ START_TEST(test_playlist_playback)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "stopping playback",
+			ck_abort_msg(callback_err_msg, "stopping playback",
 			     c.err_code, c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 	
 	if (wait_for_state(&s, Stopped, wait_tout_val) == FALSE) {
-		fail(state_err_msg,"mafw_renderer_stop","Stopped", s.state);
+		ck_abort_msg(state_err_msg,"mafw_renderer_stop","Stopped", s.state);
 	}
 
 	/* --- Go to index in Stopped state --- */
@@ -954,19 +956,19 @@ START_TEST(test_playlist_playback)
 		
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "going to index 3", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "going to index 3", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 	
 	/* Check if the playlist index is correct */
-	fail_if(s.index != 3, index_err_msg, s.index, 3);
+	ck_assert_msg(s.index == 3, index_err_msg, s.index, 3);
 
 	/* Check if renderer remains in Stopped state after running go to index */
-	fail_if(s.state != Stopped, "Gst renderer didn't remain in Stopped state "
-		"after running go to index. The actual state is %s and must be"
-		" %s", s.state, "Stopped");
+	ck_assert_msg(s.state == Stopped, "Gst renderer didn't remain in Stopped state "
+		      "after running go to index. The actual state is %d and must be"
+		      " %s", s.state, "Stopped");
 
 	/* --- Play (playlist index is 3) --- */
 
@@ -977,18 +979,18 @@ START_TEST(test_playlist_playback)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "playing", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "playing", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	if (wait_for_state(&s, Transitioning, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play", "Transitioning", s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_play", "Transitioning", s.state);
 	}
 
 	if (wait_for_state(&s, Playing, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play", "Playing", s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_play", "Playing", s.state);
 	}
 	
 	/* --- Goto index in Playing state --- */
@@ -1000,24 +1002,24 @@ START_TEST(test_playlist_playback)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "going to index", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "going to index", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	if (wait_for_state(&s, Playing, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_goto_index", "Playing", s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_goto_index", "Playing", s.state);
 	}
 
 	/* Check if the index if correct */
-	fail_if(s.index != 5, index_err_msg, s.index, 5);
+	ck_assert_msg(s.index == 5, index_err_msg, s.index, 5);
 
 	/* Check if renderer remains in Playing state after running go to index */
 	if (wait_for_state(&s, Playing, wait_tout_val) == FALSE) {
-		fail("Gst renderer didn't remain in Playing state after running "
-		     "go to index. The actual state is %s and must be %s",
-		     s.state, "Playing");
+		ck_abort_msg("Gst renderer didn't remain in Playing state after running "
+			     "go to index. The actual state is %d and must be %s",
+			     s.state, "Playing");
 	}
 
 	/* --- Goto an invalid index --- */
@@ -1029,15 +1031,15 @@ START_TEST(test_playlist_playback)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error == FALSE)
-			fail("Error not received when we go to an incorrect" 
-			     "index");
+			ck_abort_msg("Error not received when we go to an incorrect"
+				     "index");
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	/* Check if the previous index (5) remains after an incorrect go to
 	   index request */
-	fail_if(s.index != 5, index_err_msg, 5, s.index);
+	ck_assert_msg(s.index == 5, index_err_msg, 5, s.index);
 	
 	reset_callback_info(&c);
 
@@ -1047,7 +1049,7 @@ START_TEST(test_playlist_playback)
 	if (!mafw_renderer_assign_playlist(g_gst_renderer,
 					   g_object_ref(playlist), NULL))
 	{
-		fail("Assign playlist failed");
+		ck_abort_msg("Assign playlist failed");
 	}
 
 	wait_for_state(&s, Stopped, wait_tout_val);
@@ -1061,20 +1063,20 @@ START_TEST(test_playlist_playback)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "going to index 9", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "going to index 9", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	/* Check if the playlist index is correct */
-	fail_if(s.index != 9, index_err_msg, s.index, 9);
+	ck_assert_msg(s.index == 9, index_err_msg, s.index, 9);
 
 	/* Check if renderer remains in Stopped state after running go
 	 * to index */
-	fail_if(s.state != Stopped, "Gst renderer didn't remain in Stopped "
-		"state after running go to index. The actual state is %d and "
-		"must be %s", s.state, "Stopped");
+	ck_assert_msg(s.state == Stopped, "Gst renderer didn't remain in Stopped "
+		      "state after running go to index. The actual state is %d and "
+		      "must be %s", s.state, "Stopped");
 
 	/* --- Play (playlist index is 9) --- */
 
@@ -1087,25 +1089,26 @@ START_TEST(test_playlist_playback)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "playing", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "playing", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	if (wait_for_state(&s, Transitioning, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play", "Transitioning",
+		ck_abort_msg(state_err_msg, "mafw_renderer_play", "Transitioning",
 		     s.state);
 	}
 
 	if (wait_for_state(&s, Playing, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play", "Playing", s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_play", "Playing", s.state);
 	}
 
-	fail_if(c.error_signal_received == NULL ||
-		!g_error_matches(c.error_signal_received, MAFW_RENDERER_ERROR,
-				 MAFW_RENDERER_ERROR_INVALID_URI),
-		"No error received or incorrect one");
+	ck_assert_msg(c.error_signal_received != NULL &&
+		      g_error_matches(c.error_signal_received,
+				      MAFW_RENDERER_ERROR,
+				      MAFW_RENDERER_ERROR_INVALID_URI),
+		      "No error received or incorrect one");
 
 	if (c.error_signal_received != NULL) {
 		g_error_free(c.error_signal_received);
@@ -1122,14 +1125,14 @@ START_TEST(test_playlist_playback)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "stopping playback",
+			ck_abort_msg(callback_err_msg, "stopping playback",
 			     c.err_code, c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	if (wait_for_state(&s, Stopped, wait_tout_val) == FALSE) {
-		fail(state_err_msg,"mafw_renderer_stop","Stopped", s.state);
+		ck_abort_msg(state_err_msg,"mafw_renderer_stop","Stopped", s.state);
 	}
 
 	/* --- Remove last media --- */
@@ -1145,20 +1148,20 @@ START_TEST(test_playlist_playback)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "going to index 9", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "going to index 9", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	/* Check if the playlist index is correct */
-	fail_if(s.index != 9, index_err_msg, s.index, 9);
+	ck_assert_msg(s.index == 9, index_err_msg, s.index, 9);
 
 	/* Check if renderer remains in Stopped state after running go
 	 * to index */
-	fail_if(s.state != Stopped, "Gst renderer didn't remain in Stopped "
-		"state after running go to index. The actual state is %d and "
-		"must be %s", s.state, "Stopped");
+	ck_assert_msg(s.state == Stopped, "Gst renderer didn't remain in Stopped "
+		      "state after running go to index. The actual state is %d and "
+		      "must be %s", s.state, "Stopped");
 
 	/* --- Play (playlist index is 9) --- */
 
@@ -1171,25 +1174,26 @@ START_TEST(test_playlist_playback)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "playing", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "playing", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	if (wait_for_state(&s, Transitioning, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play", "Transitioning",
+		ck_abort_msg(state_err_msg, "mafw_renderer_play", "Transitioning",
 		     s.state);
 	}
 
 	if (wait_for_state(&s, Stopped, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play", "Stopped", s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_play", "Stopped", s.state);
 	}
 
-	fail_if(c.error_signal_received == NULL ||
-		!g_error_matches(c.error_signal_received, MAFW_RENDERER_ERROR,
-				 MAFW_RENDERER_ERROR_INVALID_URI),
-		"No error received or incorrect one");
+	ck_assert_msg(c.error_signal_received != NULL ||
+		      g_error_matches(c.error_signal_received,
+				      MAFW_RENDERER_ERROR,
+				      MAFW_RENDERER_ERROR_INVALID_URI),
+		      "No error received or incorrect one");
 
 	if (c.error_signal_received != NULL) {
 		g_error_free(c.error_signal_received);
@@ -1209,27 +1213,28 @@ START_TEST(test_playlist_playback)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "playing an object", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "playing an object", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	if (wait_for_state(&s, Transitioning, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play_object",
+		ck_abort_msg(state_err_msg, "mafw_renderer_play_object",
 		     "Transitioning",
 		     s.state);
 	}
 
 	if (wait_for_state(&s, Stopped, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play_object", "Stopped",
+		ck_abort_msg(state_err_msg, "mafw_renderer_play_object", "Stopped",
 		     s.state);
 	}
 
-	fail_if(c.error_signal_received == NULL ||
-		!g_error_matches(c.error_signal_received, MAFW_RENDERER_ERROR,
-				 MAFW_RENDERER_ERROR_INVALID_URI),
-		"No error received or incorrect one");
+	ck_assert_msg(c.error_signal_received != NULL &&
+		      g_error_matches(c.error_signal_received,
+				      MAFW_RENDERER_ERROR,
+				      MAFW_RENDERER_ERROR_INVALID_URI),
+		      "No error received or incorrect one");
 
 	if (c.error_signal_received != NULL) {
 		g_error_free(c.error_signal_received);
@@ -1292,7 +1297,7 @@ START_TEST(test_repeat_mode_playback)
 	media_changed_called = FALSE;
 	if (!mafw_renderer_assign_playlist(g_gst_renderer, playlist, NULL))
 	{
-		fail("Assign playlist failed");
+		ck_abort_msg("Assign playlist failed");
 	}
 
 	wait_for_state(&s, Stopped, wait_tout_val);
@@ -1306,18 +1311,18 @@ START_TEST(test_repeat_mode_playback)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-		       	fail(callback_err_msg, "playing", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "playing", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	if (wait_for_state(&s, Transitioning, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play", "Transitioning", s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_play", "Transitioning", s.state);
 	}
 
 	if (wait_for_state(&s, Playing, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play", "Playing", s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_play", "Playing", s.state);
 	}
 
 	/* --- Go to index --- */
@@ -1330,14 +1335,14 @@ START_TEST(test_repeat_mode_playback)
 	
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-		       	fail(callback_err_msg, "going to index 9", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "going to index 9", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 	
 	/* check if the movement was successful */
-	fail_if(s.index != 9, index_err_msg, 9, s.index);
+	ck_assert_msg(s.index == 9, index_err_msg, 9, s.index);
 	
 	/* ---  Stop --- */
 
@@ -1348,14 +1353,14 @@ START_TEST(test_repeat_mode_playback)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-		       	fail(callback_err_msg, "stopping playback", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "stopping playback", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	if (wait_for_state(&s, Stopped, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_stop", "Stopped", s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_stop", "Stopped", s.state);
 	}
  
 	/* --- Next --- */
@@ -1368,19 +1373,19 @@ START_TEST(test_repeat_mode_playback)
 
        	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-		       	fail(callback_err_msg, "moving to next", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "moving to next", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	/* check if the movement was successful */
-	fail_if(s.index != 0, index_err_msg, s.index, 0);
+	ck_assert_msg(s.index == 0, index_err_msg, s.index, 0);
 
 	/* Check if renderer remains in Stopped state after moving to next */
-	fail_if(s.state != Stopped, "Gst renderer didn't remain in Stopped state "
-		"after doing next. The actual state is %s and must be %s",
-		s.state, "Stopped");
+	ck_assert_msg(s.state == Stopped, "Gst renderer didn't remain in Stopped state "
+		      "after doing next. The actual state is %d and must be %s",
+		      s.state, "Stopped");
 
 	/* --- Prev --- */
 
@@ -1392,19 +1397,19 @@ START_TEST(test_repeat_mode_playback)
 
   	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-		       	fail(callback_err_msg, "moving to prev", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "moving to prev", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	/* check if the movement was successful */
-	fail_if(s.index != 9, index_err_msg, s.index, 9);
+	ck_assert_msg(s.index == 9, index_err_msg, s.index, 9);
 
 	/* Check if renderer remains in Stopped state after moving to next */
-	fail_if(s.state != Stopped, "Gst renderer didn't remain in Stopped state "
-		"after doing next. The actual state is %s and must be %s",
-		s.state, "Stopped");
+	ck_assert_msg(s.state == Stopped, "Gst renderer didn't remain in Stopped state "
+		      "after doing next. The actual state is %d and must be %s",
+		      s.state, "Stopped");
 }
 END_TEST
 
@@ -1462,7 +1467,7 @@ START_TEST(test_gst_renderer_mode)
 	media_changed_called = FALSE;
 	if (!mafw_renderer_assign_playlist(g_gst_renderer, playlist, NULL))
 	{
-		fail("Assign playlist failed");
+		ck_abort_msg("Assign playlist failed");
 	}
 
 	wait_for_state(&s, Stopped, wait_tout_val);
@@ -1476,23 +1481,23 @@ START_TEST(test_gst_renderer_mode)
 	mafw_renderer_play(g_gst_renderer, playback_cb, &c);
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-		       	fail(callback_err_msg, "playing", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "playing", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	if (wait_for_state(&s, Transitioning, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play", "Transitioning", s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_play", "Transitioning", s.state);
 	}
 
 	/* Check that renderer is playing a playlist */
 	if (wait_for_state(&s, Playing, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play", "Playing", s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_play", "Playing", s.state);
 	}
 	play_mode =  mafw_gst_renderer_get_playback_mode(renderer);
-	fail_if(play_mode != MAFW_GST_RENDERER_MODE_PLAYLIST,
-		"Incorrect value of playback_mode: %s", modes[play_mode]);
+	ck_assert_msg(play_mode == MAFW_GST_RENDERER_MODE_PLAYLIST,
+		      "Incorrect value of playback_mode: %s", modes[play_mode]);
 
 	/* --- Play object --- */
 
@@ -1505,26 +1510,26 @@ START_TEST(test_gst_renderer_mode)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-		       	fail(callback_err_msg, "playing an object", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "playing an object", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	if (wait_for_state(&s, Transitioning, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play_object", "Transitioning",
+		ck_abort_msg(state_err_msg, "mafw_renderer_play_object", "Transitioning",
 		     s.state);
 	}
 
 	/* Check that renderer is playing an object */        	
 	if (wait_for_state(&s, Playing, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play_object", "Playing",
+		ck_abort_msg(state_err_msg, "mafw_renderer_play_object", "Playing",
 		     s.state);
 	}
 
 	play_mode =  mafw_gst_renderer_get_playback_mode(renderer);
-	fail_if(play_mode != MAFW_GST_RENDERER_MODE_STANDALONE,
-		"Incorrect value of playback_mode: %s", modes[play_mode]);
+	ck_assert_msg(play_mode == MAFW_GST_RENDERER_MODE_STANDALONE,
+		      "Incorrect value of playback_mode: %s", modes[play_mode]);
 
 	/* Wait EOS_TIMEOUT to ensure that the play_object has finished */
 	wait_until_timeout_finishes(EOS_TIMEOUT);
@@ -1532,10 +1537,10 @@ START_TEST(test_gst_renderer_mode)
 	/* Check that after playing the object, renderer returns to the playlist
 	 playback */
 	play_mode =  mafw_gst_renderer_get_playback_mode(renderer);
-	fail_if(play_mode != MAFW_GST_RENDERER_MODE_PLAYLIST,
+	ck_assert_msg(play_mode == MAFW_GST_RENDERER_MODE_PLAYLIST,
 		"Incorrect value of playback_mode: %s", modes[play_mode]);
 	if (wait_for_state(&s, Playing, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play_object", "Playing",
+		ck_abort_msg(state_err_msg, "mafw_renderer_play_object", "Playing",
 		     s.state);
 	}
 
@@ -1550,25 +1555,25 @@ START_TEST(test_gst_renderer_mode)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-		       	fail(callback_err_msg, "playing an object", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "playing an object", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	if (wait_for_state(&s, Transitioning, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play_object", "Transitioning",
+		ck_abort_msg(state_err_msg, "mafw_renderer_play_object", "Transitioning",
 		     s.state);
 	}
         	
 	/* Check that renderer is playing an object */
 	if (wait_for_state(&s, Playing, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play_object", "Playing",
+		ck_abort_msg(state_err_msg, "mafw_renderer_play_object", "Playing",
 		     s.state);
 	}
 	play_mode =  mafw_gst_renderer_get_playback_mode(renderer);
-	fail_if(play_mode != MAFW_GST_RENDERER_MODE_STANDALONE,
-		"Incorrect value of playback_mode: %s", modes[play_mode]);
+	ck_assert_msg(play_mode == MAFW_GST_RENDERER_MODE_STANDALONE,
+		      "Incorrect value of playback_mode: %s", modes[play_mode]);
 
 
  	/* --- Move to next when renderer is playing an object --- */
@@ -1580,21 +1585,21 @@ START_TEST(test_gst_renderer_mode)
 
        	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-		       	fail(callback_err_msg, "moving to next", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "moving to next", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	/* Check that "next" function finishes the object playback and returns
 	   to the playlist playback */
 	play_mode =  mafw_gst_renderer_get_playback_mode(renderer);
-	fail_if(play_mode != MAFW_GST_RENDERER_MODE_PLAYLIST,
-		"Incorrect value of playback_mode: %s", modes[play_mode]);
+	ck_assert_msg(play_mode == MAFW_GST_RENDERER_MODE_PLAYLIST,
+		      "Incorrect value of playback_mode: %s", modes[play_mode]);
 
 	/* Check that renderer is still in Playing state */
 	if (wait_for_state(&s, Playing, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play_object", "Playing",
+		ck_abort_msg(state_err_msg, "mafw_renderer_play_object", "Playing",
 		     s.state);
 	}
 
@@ -1607,14 +1612,14 @@ START_TEST(test_gst_renderer_mode)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "stopping", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "stopping", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	if (wait_for_state(&s, Stopped, wait_tout_val) == FALSE) {
-		fail(state_err_msg,"mafw_renderer_stop", "Stopped", s.state);
+		ck_abort_msg(state_err_msg,"mafw_renderer_stop", "Stopped", s.state);
 	}
 
 	/* --- Play object --- */
@@ -1627,25 +1632,25 @@ START_TEST(test_gst_renderer_mode)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-		       	fail(callback_err_msg, "playing an object", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "playing an object", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	if (wait_for_state(&s, Transitioning, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play_object", "Transitioning",
+		ck_abort_msg(state_err_msg, "mafw_renderer_play_object", "Transitioning",
 		     s.state);
 	}
 
 	/* Check that renderer is playing an object */        
 	if (wait_for_state(&s, Playing, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play_object", "Playing",
+		ck_abort_msg(state_err_msg, "mafw_renderer_play_object", "Playing",
 		     s.state);
 	}
 	play_mode =  mafw_gst_renderer_get_playback_mode(renderer);
-	fail_if(play_mode != MAFW_GST_RENDERER_MODE_STANDALONE,
-		"Incorrect value of playback_mode: %s", modes[play_mode]);
+	ck_assert_msg(play_mode == MAFW_GST_RENDERER_MODE_STANDALONE,
+		      "Incorrect value of playback_mode: %s", modes[play_mode]);
 	
 	/* Wait EOS_TIMEOUT to ensure that object playback finishes */
 	wait_until_timeout_finishes(EOS_TIMEOUT);
@@ -1653,11 +1658,11 @@ START_TEST(test_gst_renderer_mode)
 	/* Check if renderer is in playlist mode and the renderer state is the state before
 	   playing the object */
 	if (wait_for_state(&s, Stopped, wait_tout_val) == FALSE) {
-		fail(state_err_msg,"mafw_renderer_stop", "Stopped", s.state);
+		ck_abort_msg(state_err_msg,"mafw_renderer_stop", "Stopped", s.state);
 	}
 	play_mode =  mafw_gst_renderer_get_playback_mode(renderer);
-	fail_if(play_mode != MAFW_GST_RENDERER_MODE_PLAYLIST,
-		"Incorrect value of playback_mode: %s", modes[play_mode]);
+	ck_assert_msg(play_mode == MAFW_GST_RENDERER_MODE_PLAYLIST,
+		      "Incorrect value of playback_mode: %s", modes[play_mode]);
 
 	g_free(objectid);
 }
@@ -1698,7 +1703,7 @@ static void get_metadata(MafwSource *self,
 			     gpointer user_data)
 {
 	get_mdata_called = TRUE;
-	fail_if(strcmp(object_id, "mocksource::test"));
+	ck_assert(!strcmp(object_id, "mocksource::test"));
 	callback(self, object_id, get_md_ht, user_data, get_md_err);
 }
 
@@ -1714,22 +1719,24 @@ static void set_metadata(MafwSource *self, const gchar *object_id,
 		htsize++;
 	if (set_for_lastplayed)
 		htsize++;
-	fail_if(strcmp(object_id, "mocksource::test"));
-	fail_if(!metadata);
-	fail_if(g_hash_table_size(metadata) != htsize, "Hash table size: %d vs %d", g_hash_table_size(metadata), htsize);
+	ck_assert(!strcmp(object_id, "mocksource::test"));
+	ck_assert(metadata);
+	ck_assert_msg(g_hash_table_size(metadata) == htsize,
+		      "Hash table size: %d vs %d",
+		      g_hash_table_size(metadata), htsize);
 	if (set_for_playcount)
 	{
 		curval = mafw_metadata_first(metadata,
 				MAFW_METADATA_KEY_PLAY_COUNT);
-		fail_if(!curval);
-		fail_if(g_value_get_int(curval) != reference_pcount);
+		ck_assert(curval);
+		ck_assert(g_value_get_int(curval) == reference_pcount);
 	}
 	if (set_for_lastplayed)
 	{
 		curval = mafw_metadata_first(metadata,
 				MAFW_METADATA_KEY_LAST_PLAYED);
-		fail_if(!curval);
-		fail_if(!G_VALUE_HOLDS(curval, G_TYPE_LONG));
+		ck_assert(curval);
+		ck_assert(G_VALUE_HOLDS(curval, G_TYPE_INT64));
 	}
 	set_mdata_called = TRUE;
 }
@@ -1767,8 +1774,8 @@ START_TEST(test_update_stats)
 	MafwRegistry *registry;
 
 	registry = MAFW_REGISTRY(mafw_registry_get_instance());
-	fail_if(registry == NULL,
-		"Error: cannot get MAFW registry");
+	ck_assert_msg(registry != NULL,
+		      "Error: cannot get MAFW registry");
 		
 
 	renderer = MAFW_GST_RENDERER(g_gst_renderer);
@@ -1786,8 +1793,8 @@ START_TEST(test_update_stats)
 	renderer->media->object_id = g_strdup("mocksource::test");
 	mafw_gst_renderer_update_stats(renderer);
         g_error_free(get_md_err);
-	fail_if(set_mdata_called);
-	fail_if(!get_mdata_called);
+	ck_assert(!set_mdata_called);
+	ck_assert(get_mdata_called);
 
 	/* get_mdata ok, but HashTable is NULL */
 	reference_pcount = 1;
@@ -1796,8 +1803,8 @@ START_TEST(test_update_stats)
 	set_for_playcount = TRUE;
 	get_md_err = NULL;
 	mafw_gst_renderer_update_stats(renderer);
-	fail_if(!set_mdata_called);
-	fail_if(!get_mdata_called);
+	ck_assert(set_mdata_called);
+	ck_assert(get_mdata_called);
 	
 	/* get_mdata ok, but HashTable is empty */
 	get_mdata_called = FALSE;
@@ -1806,8 +1813,8 @@ START_TEST(test_update_stats)
 	set_for_playcount = TRUE;
 	get_md_ht = mafw_metadata_new();
 	mafw_gst_renderer_update_stats(renderer);
-	fail_if(!set_mdata_called);
-	fail_if(!get_mdata_called);
+	ck_assert(set_mdata_called);
+	ck_assert(get_mdata_called);
 	
 	/* get_mdata ok, but HashTable has valid value */
 	get_mdata_called = FALSE;
@@ -1819,8 +1826,8 @@ START_TEST(test_update_stats)
 						1);
 	reference_pcount = 2;
 	mafw_gst_renderer_update_stats(renderer);
-	fail_if(!set_mdata_called);
-	fail_if(!get_mdata_called);
+	ck_assert(set_mdata_called);
+	ck_assert(get_mdata_called);
 }
 END_TEST
 
@@ -1872,25 +1879,25 @@ START_TEST(test_play_state)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "playing an object", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "playing an object", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	if (wait_for_state(&s, Transitioning, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play_object",
-		     "Transitioning", s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_play_object",
+			     "Transitioning", s.state);
 	}
 
 	if (wait_for_state(&s, Playing, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play_object", "Playing",
-		     s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_play_object", "Playing",
+			     s.state);
 	}
 
 	if (wait_for_state(&s, Stopped, 3000) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play_object", "Stop",
-		     s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_play_object", "Stop",
+			     s.state);
 	}
 
 	g_free(objectid);
@@ -1913,7 +1920,7 @@ START_TEST(test_play_state)
 	if (!mafw_renderer_assign_playlist(g_gst_renderer, playlist,
 					    NULL))
 	{
-		fail("Assign playlist failed");
+		ck_abort_msg("Assign playlist failed");
 	}
 
 	wait_for_state(&s, Stopped, wait_tout_val);
@@ -1927,19 +1934,19 @@ START_TEST(test_play_state)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail("Play after assigning playlist failed");
+			ck_abort_msg("Play after assigning playlist failed");
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	if (wait_for_state(&s, Transitioning, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play",
-		     "Transitioning", s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_play",
+			     "Transitioning", s.state);
 	}
 
 	if (wait_for_state(&s, Playing, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play", "Playing",
-		     s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_play", "Playing",
+			     s.state);
 	}
 
 	/* --- Prev --- */
@@ -1951,42 +1958,42 @@ START_TEST(test_play_state)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "moving to prev", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "moving to prev", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
-	fail_if(s.index != 9, index_err_msg, s.index, 9);
+	ck_assert_msg(s.index == 9, index_err_msg, s.index, 9);
 
 	if (wait_for_state(&s, Transitioning, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_prev",
-		     "Transitioning", s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_prev",
+			     "Transitioning", s.state);
 	}
 
 	if (wait_for_state(&s, Playing, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_prev", "Playing",
-		     s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_prev", "Playing",
+			     s.state);
 	}
 
 	/* Removing last element */
 
 	g_debug("removing last element...");
-	fail_if(mafw_playlist_get_size(playlist, NULL) != 10,
-		"Playlist should have 10 elements");
+	ck_assert_msg(mafw_playlist_get_size(playlist, NULL) == 10,
+		      "Playlist should have 10 elements");
 	mafw_playlist_remove_item(playlist, 9, NULL);
-	fail_if(mafw_playlist_get_size(playlist, NULL) != 9,
-		"Playlist should have 9 elements");
-	fail_if(s.index != 8, index_err_msg, s.index, 8);
+	ck_assert_msg(mafw_playlist_get_size(playlist, NULL) == 9,
+		      "Playlist should have 9 elements");
+	ck_assert_msg(s.index == 8, index_err_msg, s.index, 8);
 
 	if (wait_for_state(&s, Transitioning, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_playlist_remove_element",
-		     "Transitioning", s.state);
+		ck_abort_msg(state_err_msg, "mafw_playlist_remove_element",
+			     "Transitioning", s.state);
 	}
 
 	if (wait_for_state(&s, Playing, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_playlist_remove_element", "Playing",
-		     s.state);
+		ck_abort_msg(state_err_msg, "mafw_playlist_remove_element", "Playing",
+			     s.state);
 	}
 
 	/* --- Next --- */
@@ -1998,22 +2005,22 @@ START_TEST(test_play_state)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "moving to next", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "moving to next", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
-	fail_if(s.index != 0, index_err_msg, s.index, 0);
+	ck_assert_msg(s.index == 0, index_err_msg, s.index, 0);
 
 	if (wait_for_state(&s, Transitioning, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_next",
-		     "Transitioning", s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_next",
+			     "Transitioning", s.state);
 	}
 
 	if (wait_for_state(&s, Playing, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_next", "Playing",
-		     s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_next", "Playing",
+			     s.state);
 	}
 
 	/* --- Go to index --- */
@@ -2025,22 +2032,22 @@ START_TEST(test_play_state)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "going to index 8", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "going to index 8", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
-	fail_if(s.index != 8, index_err_msg, s.index, 8);
+	ck_assert_msg(s.index == 8, index_err_msg, s.index, 8);
 
 	if (wait_for_state(&s, Transitioning, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_goto_index",
-		     "Transitioning", s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_goto_index",
+			     "Transitioning", s.state);
 	}
 
 	if (wait_for_state(&s, Playing, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_goto_index", "Playing",
-		     s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_goto_index", "Playing",
+			     s.state);
 	}
 
 	/* --- Seeking --- */
@@ -2053,20 +2060,20 @@ START_TEST(test_play_state)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "seeking failed", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "seeking failed", c.err_code,
+				     c.err_msg);
 		if (c.seek_position != 1) {
-			fail("seeking failed");
+			ck_abort_msg("seeking failed");
 		}
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	/* --- Waiting EOS --- */
 
 	if (wait_for_state(&s, Stopped, 2000) == FALSE) {
-		fail(state_err_msg, "EOS", "Stop",
-		     s.state);
+		ck_abort_msg(state_err_msg, "EOS", "Stop",
+			     s.state);
 	}
 }
 END_TEST
@@ -2125,7 +2132,7 @@ START_TEST(test_pause_state)
 	if (!mafw_renderer_assign_playlist(g_gst_renderer, playlist,
 					    NULL))
 	{
-		fail("Assign playlist failed");
+		ck_abort_msg("Assign playlist failed");
 	}
 
 	wait_for_state(&s, Stopped, wait_tout_val);
@@ -2139,14 +2146,14 @@ START_TEST(test_pause_state)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail("Play failed");
+			ck_abort_msg("Play failed");
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	if (wait_for_state(&s, Transitioning, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play",
-		     "Transitioning", s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_play",
+			     "Transitioning", s.state);
 	}
 
 	/* Testing pause in transitioning */
@@ -2158,10 +2165,10 @@ START_TEST(test_pause_state)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "pausing", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "pausing", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	/* Testing resume in transitioning */
@@ -2173,10 +2180,10 @@ START_TEST(test_pause_state)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "resuming", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "resuming", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	reset_callback_info(&c);
@@ -2190,10 +2197,10 @@ START_TEST(test_pause_state)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (!c.error)
-			fail(callback_no_err_msg, "resuming", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_no_err_msg, "resuming", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	reset_callback_info(&c);
@@ -2203,14 +2210,14 @@ START_TEST(test_pause_state)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "pausing", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "pausing", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	if (wait_for_state(&s, Paused, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_pause", "Paused",
+		ck_abort_msg(state_err_msg, "mafw_renderer_pause", "Paused",
 		     s.state);
 	}
 
@@ -2225,20 +2232,20 @@ START_TEST(test_pause_state)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "playing an object", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "playing an object", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	if (wait_for_state(&s, Transitioning, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play_object",
-		     "Transitioning", s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_play_object",
+			     "Transitioning", s.state);
 	}
 
 	if (wait_for_state(&s, Playing, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play_object", "Playing",
-		     s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_play_object", "Playing",
+			     s.state);
 	}
 
 	reset_callback_info(&c);
@@ -2248,15 +2255,15 @@ START_TEST(test_pause_state)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "pausing", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "pausing", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	if (wait_for_state(&s, Paused, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_pause", "Paused",
-		     s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_pause", "Paused",
+			     s.state);
 	}
 
 	g_free(objectid);
@@ -2270,14 +2277,14 @@ START_TEST(test_pause_state)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail("Play failed");
+			ck_abort_msg("Play failed");
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	if (wait_for_state(&s, Transitioning, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play",
-		     "Transitioning", s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_play",
+			     "Transitioning", s.state);
 	}
 
 	reset_callback_info(&c);
@@ -2287,15 +2294,15 @@ START_TEST(test_pause_state)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "pausing", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "pausing", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	if (wait_for_state(&s, Paused, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_pause", "Paused",
-		     s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_pause", "Paused",
+			     s.state);
 	}
 
 	/* --- Prev --- */
@@ -2307,18 +2314,18 @@ START_TEST(test_pause_state)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "moving to prev", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "moving to prev", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	/* Check if the playlist index is correct */
-	fail_if(s.index != 9, index_err_msg, s.index, 9);
+	ck_assert_msg(s.index == 9, index_err_msg, s.index, 9);
 
 	if (wait_for_state(&s, Transitioning, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_prev",
-		     "Transitioning", s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_prev",
+			     "Transitioning", s.state);
 	}
 
 	reset_callback_info(&c);
@@ -2328,35 +2335,35 @@ START_TEST(test_pause_state)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "pausing", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "pausing", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	if (wait_for_state(&s, Paused, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_prev", "Playing",
-		     s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_prev", "Playing",
+			     s.state);
 	}
 
 	/* Removing last element */
 
 	g_debug("removing last element...");
-	fail_if(mafw_playlist_get_size(playlist, NULL) != 10,
-		"Playlist should have 10 elements");
+	ck_assert_msg(mafw_playlist_get_size(playlist, NULL) == 10,
+		      "Playlist should have 10 elements");
 	mafw_playlist_remove_item(playlist, 9, NULL);
-	fail_if(mafw_playlist_get_size(playlist, NULL) != 9,
-		"Playlist should have 9 elements");
-	fail_if(s.index != 8, index_err_msg, s.index, 8);
+	ck_assert_msg(mafw_playlist_get_size(playlist, NULL) == 9,
+		      "Playlist should have 9 elements");
+	ck_assert_msg(s.index == 8, index_err_msg, s.index, 8);
 
 	if (wait_for_state(&s, Transitioning, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_playlist_remove_item",
-		     "Transitioning", s.state);
+		ck_abort_msg(state_err_msg, "mafw_playlist_remove_item",
+			     "Transitioning", s.state);
 	}
 
 	if (wait_for_state(&s, Playing, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_playlist_remove_item", "Playing",
-		     s.state);
+		ck_abort_msg(state_err_msg, "mafw_playlist_remove_item", "Playing",
+			     s.state);
 	}
 
 	reset_callback_info(&c);
@@ -2366,14 +2373,14 @@ START_TEST(test_pause_state)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "pausing", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "pausing", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	if (wait_for_state(&s, Paused, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_playlist_remove_item", "Playing",
+		ck_abort_msg(state_err_msg, "mafw_playlist_remove_item", "Playing",
 		     s.state);
 	}
 
@@ -2386,17 +2393,17 @@ START_TEST(test_pause_state)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "moving to next", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "moving to next", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	/* Check if the playlist index is correct */
-	fail_if(s.index != 0, index_err_msg, s.index, 0);
+	ck_assert_msg(s.index == 0, index_err_msg, s.index, 0);
 
 	if (wait_for_state(&s, Transitioning, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_next",
+		ck_abort_msg(state_err_msg, "mafw_renderer_next",
 		     "Transitioning", s.state);
 	}
 
@@ -2407,14 +2414,14 @@ START_TEST(test_pause_state)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "pausing", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "pausing", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	if (wait_for_state(&s, Paused, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_next", "Playing",
+		ck_abort_msg(state_err_msg, "mafw_renderer_next", "Playing",
 		     s.state);
 	}
 
@@ -2427,17 +2434,17 @@ START_TEST(test_pause_state)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "going to index 8", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "going to index 8", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	/* Check if the playlist index is correct */
-	fail_if(s.index != 8, index_err_msg, s.index, 8);
+	ck_assert_msg(s.index == 8, index_err_msg, s.index, 8);
 
 	if (wait_for_state(&s, Transitioning, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_goto_index",
+		ck_abort_msg(state_err_msg, "mafw_renderer_goto_index",
 		     "Transitioning", s.state);
 	}
 
@@ -2448,14 +2455,14 @@ START_TEST(test_pause_state)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "pausing", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "pausing", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	if (wait_for_state(&s, Paused, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_goto_index", "Playing",
+		ck_abort_msg(state_err_msg, "mafw_renderer_goto_index", "Playing",
 		     s.state);
 	}
 
@@ -2468,13 +2475,13 @@ START_TEST(test_pause_state)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "seeking", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "seeking", c.err_code,
+				     c.err_msg);
 		if (c.seek_position != 1) {
-			fail("seeking failed");
+			ck_abort_msg("seeking failed");
 		}
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	/* --- Stop --- */
@@ -2486,14 +2493,14 @@ START_TEST(test_pause_state)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "stopping", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "stopping", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	if (wait_for_state(&s, Stopped, wait_tout_val) == FALSE) {
-		fail(state_err_msg,"mafw_renderer_stop", "Stopped", s.state);
+		ck_abort_msg(state_err_msg,"mafw_renderer_stop", "Stopped", s.state);
 	}
 }
 END_TEST
@@ -2543,10 +2550,10 @@ START_TEST(test_stop_state)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (!c.error)
-			fail(callback_no_err_msg, "moving to prev", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_no_err_msg, "moving to prev", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	/* --- Next --- */
@@ -2558,10 +2565,10 @@ START_TEST(test_stop_state)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (!c.error)
-			fail(callback_no_err_msg, "moving to next", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_no_err_msg, "moving to next", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	/* --- Go to index --- */
@@ -2573,10 +2580,10 @@ START_TEST(test_stop_state)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (!c.error)
-			fail(callback_no_err_msg, "going to index 8",
-			     c.err_code, c.err_msg);
+			ck_abort_msg(callback_no_err_msg, "going to index 8",
+				     c.err_code, c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	/* --- Create and assign a playlist --- */
@@ -2596,7 +2603,7 @@ START_TEST(test_stop_state)
 	if (!mafw_renderer_assign_playlist(g_gst_renderer, playlist,
 					    NULL))
 	{
-		fail("Assign playlist failed");
+		ck_abort_msg("Assign playlist failed");
 	}
 
 	wait_for_state(&s, Stopped, wait_tout_val);
@@ -2604,11 +2611,11 @@ START_TEST(test_stop_state)
 	/* Removing last element */
 
 	g_debug("removing last element...");
-	fail_if(mafw_playlist_get_size(playlist, NULL) != 10,
-		"Playlist should have 10 elements");
+	ck_assert_msg(mafw_playlist_get_size(playlist, NULL) == 10,
+		      "Playlist should have 10 elements");
 	mafw_playlist_remove_item(playlist, 9, NULL);
-	fail_if(mafw_playlist_get_size(playlist, NULL) != 9,
-		"Playlist should have 9 elements");
+	ck_assert_msg(mafw_playlist_get_size(playlist, NULL) == 9,
+		      "Playlist should have 9 elements");
 
 	/* --- Go to index --- */
 
@@ -2619,10 +2626,10 @@ START_TEST(test_stop_state)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (!c.error)
-			fail(callback_no_err_msg, "going to index 9",
-			     c.err_code, c.err_msg);
+			ck_abort_msg(callback_no_err_msg, "going to index 9",
+				     c.err_code, c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 	reset_callback_info(&c);
 }
@@ -2682,7 +2689,7 @@ START_TEST(test_transitioning_state)
 	if (!mafw_renderer_assign_playlist(g_gst_renderer, playlist,
 					    NULL))
 	{
-		fail("Assign playlist failed");
+		ck_abort_msg("Assign playlist failed");
 	}
 
 	wait_for_state(&s, Stopped, wait_tout_val);
@@ -2696,14 +2703,14 @@ START_TEST(test_transitioning_state)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail("Play after assigning playlist failed");
+			ck_abort_msg("Play after assigning playlist failed");
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	if (wait_for_state(&s, Transitioning, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play",
-		     "Transitioning", s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_play",
+			     "Transitioning", s.state);
 	}
 
 	/* --- Play object --- */
@@ -2717,15 +2724,15 @@ START_TEST(test_transitioning_state)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "playing an object", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "playing an object", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	if (wait_for_state(&s, Transitioning, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play_object",
-		     "Transitioning", s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_play_object",
+			     "Transitioning", s.state);
 	}
 
 	g_free(objectid);
@@ -2740,32 +2747,32 @@ START_TEST(test_transitioning_state)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "moving to prev", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "moving to prev", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
-	fail_if(s.index != 9, index_err_msg, s.index, 9);
+	ck_assert_msg(s.index == 9, index_err_msg, s.index, 9);
 
 	if (wait_for_state(&s, Transitioning, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_prev",
-		     "Transitioning", s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_prev",
+			     "Transitioning", s.state);
 	}
 
 	/* Removing last element */
 
 	g_debug("removing last element...");
-	fail_if(mafw_playlist_get_size(playlist, NULL) != 10,
-		"Playlist should have 10 elements");
+	ck_assert_msg(mafw_playlist_get_size(playlist, NULL) == 10,
+		      "Playlist should have 10 elements");
 	mafw_playlist_remove_item(playlist, 9, NULL);
-	fail_if(mafw_playlist_get_size(playlist, NULL) != 9,
-		"Playlist should have 9 elements");
-	fail_if(s.index != 8, index_err_msg, s.index, 8);
+	ck_assert_msg(mafw_playlist_get_size(playlist, NULL) == 9,
+		      "Playlist should have 9 elements");
+	ck_assert_msg(s.index == 8, index_err_msg, s.index, 8);
 
 	if (wait_for_state(&s, Transitioning, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_playlist_remove_element",
-		     "Transitioning", s.state);
+		ck_abort_msg(state_err_msg, "mafw_playlist_remove_element",
+			     "Transitioning", s.state);
 	}
 
 	/* --- Next --- */
@@ -2777,17 +2784,17 @@ START_TEST(test_transitioning_state)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "moving to next", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "moving to next", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
-	fail_if(s.index != 0, index_err_msg, s.index, 0);
+	ck_assert_msg(s.index == 0, index_err_msg, s.index, 0);
 
 	if (wait_for_state(&s, Transitioning, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_next",
-		     "Transitioning", s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_next",
+			     "Transitioning", s.state);
 	}
 
 	/* --- Go to index --- */
@@ -2799,17 +2806,17 @@ START_TEST(test_transitioning_state)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "going to index 8", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "going to index 8", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
-	fail_if(s.index != 8, index_err_msg, s.index, 8);
+	ck_assert_msg(s.index == 8, index_err_msg, s.index, 8);
 
 	if (wait_for_state(&s, Transitioning, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_goto_index",
-		     "Transitioning", s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_goto_index",
+			     "Transitioning", s.state);
 	}
 }
 END_TEST
@@ -2862,20 +2869,20 @@ START_TEST(test_state_class)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "playing an object", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "playing an object", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	if (wait_for_state(&s, Transitioning, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play_object",
-		     "Transitioning", s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_play_object",
+			     "Transitioning", s.state);
 	}
 
 	if (wait_for_state(&s, Playing, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play_object", "Playing",
-		     s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_play_object", "Playing",
+			     s.state);
 	}
 
 	/* --- Prev --- */
@@ -2887,10 +2894,10 @@ START_TEST(test_state_class)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (!c.error)
-			fail(callback_no_err_msg, "moving to prev", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_no_err_msg, "moving to prev", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	/* --- Play object --- */
@@ -2903,20 +2910,20 @@ START_TEST(test_state_class)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "playing an object", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "playing an object", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	if (wait_for_state(&s, Transitioning, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play_object",
-		     "Transitioning", s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_play_object",
+			     "Transitioning", s.state);
 	}
 
 	if (wait_for_state(&s, Playing, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play_object", "Playing",
-		     s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_play_object", "Playing",
+			     s.state);
 	}
 
 	/* --- Next --- */
@@ -2928,10 +2935,10 @@ START_TEST(test_state_class)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (!c.error)
-			fail(callback_no_err_msg, "moving to next", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_no_err_msg, "moving to next", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	/* --- Play object --- */
@@ -2944,20 +2951,20 @@ START_TEST(test_state_class)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "playing an object", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "playing an object", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	if (wait_for_state(&s, Transitioning, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play_object",
-		     "Transitioning", s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_play_object",
+			     "Transitioning", s.state);
 	}
 
 	if (wait_for_state(&s, Playing, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play_object", "Playing",
-		     s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_play_object", "Playing",
+			     s.state);
 	}
 
 	/* --- Go to index --- */
@@ -2969,10 +2976,10 @@ START_TEST(test_state_class)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (!c.error)
-			fail(callback_err_msg, "going to index 8", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "going to index 8", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	/* --- Create and assign a playlist --- */
@@ -2992,7 +2999,7 @@ START_TEST(test_state_class)
 	if (!mafw_renderer_assign_playlist(g_gst_renderer, playlist,
 					    NULL))
 	{
-		fail("Assign playlist failed");
+		ck_abort_msg("Assign playlist failed");
 	}
 
 	wait_for_state(&s, Stopped, wait_tout_val);
@@ -3007,20 +3014,20 @@ START_TEST(test_state_class)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "playing an object", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "playing an object", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	if (wait_for_state(&s, Transitioning, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play_object",
-		     "Transitioning", s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_play_object",
+			     "Transitioning", s.state);
 	}
 
 	if (wait_for_state(&s, Playing, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play_object", "Playing",
-		     s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_play_object", "Playing",
+			     s.state);
 	}
 
 	/* --- Next --- */
@@ -3032,17 +3039,17 @@ START_TEST(test_state_class)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "moving to next", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "moving to next", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
-	fail_if(s.index != 1, index_err_msg, s.index, 1);
+	ck_assert_msg(s.index == 1, index_err_msg, s.index, 1);
 
 	if (wait_for_state(&s, Stopped, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_next", "Playing",
-		     s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_next", "Playing",
+			     s.state);
 	}
 
 	/* --- Play object --- */
@@ -3055,20 +3062,20 @@ START_TEST(test_state_class)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "playing an object", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "playing an object", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	if (wait_for_state(&s, Transitioning, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play_object",
-		     "Transitioning", s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_play_object",
+			     "Transitioning", s.state);
 	}
 
 	if (wait_for_state(&s, Playing, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play_object", "Playing",
-		     s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_play_object", "Playing",
+			     s.state);
 	}
 
 	/* --- Go to index --- */
@@ -3080,17 +3087,17 @@ START_TEST(test_state_class)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "going to index 8", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "going to index 8", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
-	fail_if(s.index != 8, index_err_msg, s.index, 8);
+	ck_assert_msg(s.index == 8, index_err_msg, s.index, 8);
 
 	if (wait_for_state(&s, Stopped, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_goto_index", "Playing",
-		     s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_goto_index", "Playing",
+			     s.state);
 	}
 
 	/* --- Play object --- */
@@ -3103,20 +3110,20 @@ START_TEST(test_state_class)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "playing an object", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "playing an object", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	if (wait_for_state(&s, Transitioning, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play_object",
-		     "Transitioning", s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_play_object",
+			     "Transitioning", s.state);
 	}
 
 	if (wait_for_state(&s, Playing, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play_object", "Playing",
-		     s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_play_object", "Playing",
+			     s.state);
 	}
 
 	/* --- Prev --- */
@@ -3128,17 +3135,17 @@ START_TEST(test_state_class)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "moving to prev", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "moving to prev", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
-	fail_if(s.index != 7, index_err_msg, s.index, 7);
+	ck_assert_msg(s.index == 7, index_err_msg, s.index, 7);
 
 	if (wait_for_state(&s, Stopped, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_prev", "Playing",
-		     s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_prev", "Playing",
+			     s.state);
 	}
 
 	/* --- Play --- */
@@ -3150,19 +3157,19 @@ START_TEST(test_state_class)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail("Play after assigning playlist failed");
+			ck_abort_msg("Play after assigning playlist failed");
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	if (wait_for_state(&s, Transitioning, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play",
-		     "Transitioning", s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_play",
+			     "Transitioning", s.state);
 	}
 
 	if (wait_for_state(&s, Playing, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play", "Playing",
-		     s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_play", "Playing",
+			     s.state);
 	}
 
 	/* --- Prev --- */
@@ -3174,22 +3181,22 @@ START_TEST(test_state_class)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "moving to prev", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "moving to prev", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
-	fail_if(s.index != 6, index_err_msg, s.index, 6);
+	ck_assert_msg(s.index == 6, index_err_msg, s.index, 6);
 
 	if (wait_for_state(&s, Transitioning, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_prev",
-		     "Transitioning", s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_prev",
+			     "Transitioning", s.state);
 	}
 
 	if (wait_for_state(&s, Playing, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_prev",
-		     "Transitioning", s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_prev",
+			     "Transitioning", s.state);
 	}
 
 	/* --- Seeking --- */
@@ -3202,13 +3209,13 @@ START_TEST(test_state_class)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "seeking failed", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "seeking failed", c.err_code,
+				     c.err_msg);
 		if (c.seek_position != 1) {
-			fail("seeking failed");
+			ck_abort_msg("seeking failed");
 		}
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	/* --- Seeking --- */
@@ -3221,13 +3228,13 @@ START_TEST(test_state_class)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "seeking failed", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "seeking failed", c.err_code,
+				     c.err_msg);
 		if (c.seek_position != -1) {
-			fail("seeking failed");
+			ck_abort_msg("seeking failed");
 		}
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	/* --- Seeking --- */
@@ -3240,13 +3247,13 @@ START_TEST(test_state_class)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "seeking failed", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "seeking failed", c.err_code,
+				     c.err_msg);
 		if (c.seek_position != 1) {
-			fail("seeking failed");
+			ck_abort_msg("seeking failed");
 		}
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 }
 END_TEST
@@ -3274,9 +3281,9 @@ START_TEST(test_playlist_iterator)
 	iterator = mafw_playlist_iterator_new();
 	mafw_playlist_iterator_initialize(iterator, playlist, &error);
 	if (error != NULL) {
-		fail("Error found: %s, %d, %s",
-		     g_quark_to_string(error->domain),
-		     error->code, error->message);
+		ck_abort_msg("Error found: %s, %d, %s",
+			     g_quark_to_string(error->domain),
+			     error->code, error->message);
 	}
 
 	for (i = 0; i < 3; i++) {
@@ -3288,65 +3295,65 @@ START_TEST(test_playlist_iterator)
 	}
 
 	size = mafw_playlist_iterator_get_size(iterator, NULL);
-	fail_if(size != 3, "Playlist should have 3 elements and it has %d",
-		size);
+	ck_assert_msg(size == 3, "Playlist should have 3 elements and it has %d",
+		      size);
 	index = mafw_playlist_iterator_get_current_index(iterator);
-	fail_if(index != 2, "Index should be 2 and it is %d", index);
+	ck_assert_msg(index == 2, "Index should be 2 and it is %d", index);
 
 	mafw_playlist_move_item(playlist, 1, 2, NULL);
 	index = mafw_playlist_iterator_get_current_index(iterator);
-	fail_if(index != 1, "Index should be 1 and it is %d", index);
+	ck_assert_msg(index == 1, "Index should be 1 and it is %d", index);
 
 	mafw_playlist_move_item(playlist, 2, 1, NULL);
 	index = mafw_playlist_iterator_get_current_index(iterator);
-	fail_if(index != 2, "Index should be 2 and it is %d", index);
+	ck_assert_msg(index == 2, "Index should be 2 and it is %d", index);
 
 	mafw_playlist_move_item(playlist, 2, 1, NULL);
 	index = mafw_playlist_iterator_get_current_index(iterator);
-	fail_if(index != 1, "Index should be 1 and it is %d", index);
+	ck_assert_msg(index == 1, "Index should be 1 and it is %d", index);
 
 	mafw_playlist_remove_item(playlist, 0, &error);
 	if (error != NULL) {
-		fail("Error found: %s, %d, %s",
-		     g_quark_to_string(error->domain),
-		     error->code, error->message);
+		ck_abort_msg("Error found: %s, %d, %s",
+			     g_quark_to_string(error->domain),
+			     error->code, error->message);
 	}
 
 	size = mafw_playlist_iterator_get_size(iterator, NULL);
-	fail_if(size != 2, "Playlist should have 2 elements and it has %d",
-		size);
+	ck_assert_msg(size == 2, "Playlist should have 2 elements and it has %d",
+		      size);
 	index = mafw_playlist_iterator_get_current_index(iterator);
-	fail_if(index != 0, "Index should be 0 and it is %d", index);
+	ck_assert_msg(index == 0, "Index should be 0 and it is %d", index);
 
 	mafw_playlist_iterator_reset(iterator, NULL);
 	index = mafw_playlist_iterator_get_current_index(iterator);
-	fail_if(index != 0, "Index should be 0 and it is %d", index);
+	ck_assert_msg(index == 0, "Index should be 0 and it is %d", index);
 
 	mafw_playlist_remove_item(playlist, 0, &error);
 	if (error != NULL) {
-		fail("Error found: %s, %d, %s",
-		     g_quark_to_string(error->domain),
-		     error->code, error->message);
+		ck_abort_msg("Error found: %s, %d, %s",
+			     g_quark_to_string(error->domain),
+			     error->code, error->message);
 	}
 
 	size = mafw_playlist_iterator_get_size(iterator, NULL);
-	fail_if(size != 1, "Playlist should have 1 elements and it has %d",
-		size);
+	ck_assert_msg(size == 1, "Playlist should have 1 elements and it has %d",
+		      size);
 	index = mafw_playlist_iterator_get_current_index(iterator);
-	fail_if(index != 0, "Index should be 0 and it is %d", index);
+	ck_assert_msg(index == 0, "Index should be 0 and it is %d", index);
 
 	mafw_playlist_remove_item(playlist, 0, &error);
 	if (error != NULL) {
-		fail("Error found: %s, %d, %s",
-		     g_quark_to_string(error->domain),
-		     error->code, error->message);
+		ck_abort_msg("Error found: %s, %d, %s",
+			     g_quark_to_string(error->domain),
+			     error->code, error->message);
 	}
 
 	size = mafw_playlist_iterator_get_size(iterator, NULL);
-	fail_if(size != 0, "Playlist should have 0 elements and it has %d",
-		size);
+	ck_assert_msg(size == 0, "Playlist should have 0 elements and it has %d",
+		      size);
 	index = mafw_playlist_iterator_get_current_index(iterator);
-	fail_if(index != -1, "Index should be -1 and it is %d", index);
+	ck_assert_msg(index == -1, "Index should be -1 and it is %d", index);
 
 	g_object_unref(iterator);
 }
@@ -3414,25 +3421,25 @@ START_TEST(test_video)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "playing an object", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "playing an object", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	if (wait_for_state(&s, Transitioning, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play_object",
-		     "Transitioning", s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_play_object",
+			     "Transitioning", s.state);
 	}
 
 	if (wait_for_state(&s, Playing, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play_object", "Playing",
-		     s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_play_object", "Playing",
+			     s.state);
 	}
 
 	MAFW_GST_RENDERER(g_gst_renderer)->worker->xid = 0x1;
 	bus = MAFW_GST_RENDERER(g_gst_renderer)->worker->bus;
-	fail_if(bus == NULL, "No GstBus");
+	ck_assert_msg(bus != NULL, "No GstBus");
 
 	structure = gst_structure_new("prepare-xwindow-id", "width",
 				      G_TYPE_INT, 64, "height", G_TYPE_INT, 32,
@@ -3451,24 +3458,24 @@ START_TEST(test_video)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "pausing", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "pausing", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	if (wait_for_state(&s, Paused, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_prev", "Playing",
-		     s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_prev", "Playing",
+			     s.state);
 	}
 
 	if (wait_for_metadata(&m, wait_tout_val) == FALSE) {
-		fail("Expected " MAFW_METADATA_KEY_PAUSED_THUMBNAIL_URI
-		     ", but not received");
+		ck_abort_msg("Expected " MAFW_METADATA_KEY_PAUSED_THUMBNAIL_URI
+			     ", but not received");
 	}
 
-	fail_if(m.value == NULL, "Metadata "
-		MAFW_METADATA_KEY_PAUSED_THUMBNAIL_URI " not received");
+	ck_assert_msg(m.value != NULL, "Metadata "
+		      MAFW_METADATA_KEY_PAUSED_THUMBNAIL_URI " not received");
 
 	g_value_unset(m.value);
 	g_free(m.value);
@@ -3484,22 +3491,22 @@ START_TEST(test_video)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "resuming", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "resuming", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	if (wait_for_state(&s, Playing, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play_object", "Playing",
-		     s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_play_object", "Playing",
+			     s.state);
 	}
 
 	/* --- EOS --- */
 
 	if (wait_for_state(&s, Stopped, 3000) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play_object", "Stop",
-		     s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_play_object", "Stop",
+			     s.state);
 	}
 
 	g_free(objectid);
@@ -3515,6 +3522,7 @@ START_TEST(test_media_art)
 	GstBus *bus = NULL;
 	GstMessage *message = NULL;
 	GstTagList *list = NULL;
+	GstSample *sample = NULL;
 	GstBuffer *buffer = NULL;
 	guchar *image = NULL;
 	gchar *image_path = NULL;
@@ -3565,10 +3573,10 @@ START_TEST(test_media_art)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "playing an object", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "playing an object", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	/* --- Pause --- */
@@ -3580,46 +3588,45 @@ START_TEST(test_media_art)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "pausing", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "pausing", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	if (wait_for_state(&s, Transitioning, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play_object",
-		     "Transitioning", s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_play_object",
+			     "Transitioning", s.state);
 	}
 
 	if (wait_for_state(&s, Paused, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_prev", "Playing",
-		     s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_prev", "Playing",
+			     s.state);
 	}
 
 	/* Emit image */
 
 	bus = MAFW_GST_RENDERER(g_gst_renderer)->worker->bus;
-	fail_if(bus == NULL, "No GstBus");
+	ck_assert_msg(bus != NULL, "No GstBus");
 
 	m.expected_key = MAFW_METADATA_KEY_RENDERER_ART_URI;
 
 	image_path = get_sample_clip_path(SAMPLE_IMAGE);
-	fail_if(!g_file_get_contents(image_path + 7, (gchar **) &image,
-				     &image_length, NULL),
+	ck_assert_msg(g_file_get_contents(image_path + 7, (gchar **) &image,
+					  &image_length, NULL),
 		"Could not load test image");
 	g_free(image_path);
 
-	buffer = gst_buffer_new();
-	gst_buffer_set_data(buffer, image, image_length);
+	buffer = gst_buffer_new_wrapped(image, image_length);
+
 	caps = gst_caps_new_simple("image/png", "image-type",
 				   GST_TYPE_TAG_IMAGE_TYPE,
 				   GST_TAG_IMAGE_TYPE_FRONT_COVER, NULL);
-	gst_buffer_set_caps(buffer, caps);
+	sample = gst_sample_new(buffer, caps, NULL, NULL);
+	gst_buffer_unref(buffer);
 	gst_caps_unref(caps);
 
-	list = gst_tag_list_new();
-	gst_tag_list_add(list, GST_TAG_MERGE_APPEND, GST_TAG_IMAGE, buffer,
-			 NULL);
+	list = gst_tag_list_new(GST_TAG_IMAGE, sample, NULL);
 
 	message = gst_message_new_tag(NULL, list);
 	gst_bus_post(bus, message);
@@ -3633,24 +3640,24 @@ START_TEST(test_media_art)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "resuming", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "resuming", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	if (wait_for_state(&s, Playing, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play_object", "Playing",
-		     s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_play_object", "Playing",
+			     s.state);
 	}
 
 	if (wait_for_metadata(&m, wait_tout_val) == FALSE) {
-		fail("Expected " MAFW_METADATA_KEY_RENDERER_ART_URI
-		     ", but not received");
+		ck_abort_msg("Expected " MAFW_METADATA_KEY_RENDERER_ART_URI
+			     ", but not received");
 	}
 
-	fail_if(m.value == NULL, "Metadata "
-		MAFW_METADATA_KEY_RENDERER_ART_URI " not received");
+	ck_assert_msg(m.value != NULL, "Metadata "
+		      MAFW_METADATA_KEY_RENDERER_ART_URI " not received");
 
 	g_value_unset(m.value);
 	g_free(m.value);
@@ -3660,8 +3667,8 @@ START_TEST(test_media_art)
 	/* --- EOS --- */
 
 	if (wait_for_state(&s, Stopped, 3000) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play_object", "Stop",
-		     s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_play_object", "Stop",
+			     s.state);
 	}
 
 	g_free(objectid);
@@ -3698,15 +3705,15 @@ START_TEST(test_properties_management)
 	p.expected = MAFW_PROPERTY_RENDERER_VOLUME;
 
 	if (!wait_for_property(&p, wait_tout_val)) {
-		fail("No property %s received", p.expected);
+		ck_abort_msg("No property %s received", p.expected);
 	}
 
-	fail_if(p.received == NULL, "No property %s received",
-		p.expected);
-	fail_if(p.received != NULL &&
-		g_value_get_uint(p.received) != 48,
-		"Property with value %d and %d expected",
-		g_value_get_uint(p.received), 48);
+	ck_assert_msg(p.received != NULL, "No property %s received",
+		      p.expected);
+	ck_assert_msg(p.received != NULL &&
+		      g_value_get_uint(p.received) == 48,
+		      "Property with value %d and %d expected",
+		      g_value_get_uint(p.received), 48);
 
 	if (p.received != NULL) {
 		g_value_unset(p.received);
@@ -3728,22 +3735,22 @@ START_TEST(test_properties_management)
 
 #ifdef MAFW_GST_RENDERER_ENABLE_MUTE
 	if (!wait_for_property(&p, wait_tout_val)) {
-		fail("No property %s received", p.expected);
+		ck_abort_msg("No property %s received", p.expected);
 	}
 
-	fail_if(p.received == NULL, "No property %s received",
-		p.expected);
-	fail_if(p.received != NULL &&
-		g_value_get_boolean(p.received) != TRUE,
-		"Property with value %d and %d expected",
-		g_value_get_boolean(p.received), TRUE);
+	ck_assert_msg(p.received != NULL, "No property %s received",
+		      p.expected);
+	ck_assert_msg(p.received != NULL &&
+		      g_value_get_boolean(p.received) == TRUE,
+		      "Property with value %d and %d expected",
+		      g_value_get_boolean(p.received), TRUE);
 #else
 	if (wait_for_property(&p, wait_tout_val)) {
-		fail("Property %s received and it should not have been",
-		     p.expected);
+		ck_abort_msg("Property %s received and it should not have been",
+			     p.expected);
 	}
 
-	fail_if(p.received != NULL,
+	ck_assert_msg(p.received == NULL,
 		"Property %s received and it should not have been",
 		p.expected);
 #endif
@@ -3759,25 +3766,29 @@ START_TEST(test_properties_management)
 				    c.property_expected, get_property_cb, &c);
 
 	if (wait_for_callback(&c, wait_tout_val)) {
+#ifdef MAFW_GST_RENDERER_ENABLE_MUTE
 		if (c.error)
-			fail(callback_err_msg, "get_property", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "get_property", c.err_code,
+				     c.err_msg);
+#else
+		ck_assert_msg(c.error == TRUE,
+			      "Error expected and not received");
+#endif
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
-	fail_if(c.property_received == NULL,
-		"No property %s received and expected", c.property_expected);
 #ifdef MAFW_GST_RENDERER_ENABLE_MUTE
-	fail_if(c.property_received != NULL &&
-		g_value_get_boolean(c.property_received) != TRUE,
-		"Property with value %d and %d expected",
-		g_value_get_boolean(c.property_received), TRUE);
+	ck_assert_msg(c.property_received != NULL,
+		      "No property %s received and expected", c.property_expected);
+	ck_assert_msg(c.property_received != NULL &&
+		      g_value_get_boolean(c.property_received) == TRUE,
+		      "Property with value %d and %d expected",
+		      g_value_get_boolean(c.property_received), TRUE);
 #else
-	fail_if(c.property_received != NULL &&
-		g_value_get_boolean(c.property_received) != FALSE,
-		"Property with value %d and %d expected",
-		g_value_get_boolean(c.property_received), FALSE);
+	ck_assert_msg(c.property_received == NULL,
+		      "Property with value %d and none expected",
+		      g_value_get_boolean(c.property_received));
 #endif
 
 	/* --- xid --- */
@@ -3794,18 +3805,18 @@ START_TEST(test_properties_management)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "get_property", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "get_property", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
-	fail_if(c.property_received == NULL,
-		"No property %s received and expected", c.property_expected);
-	fail_if(c.property_received != NULL &&
-		g_value_get_uint(c.property_received) != 50,
-		"Property with value %d and %d expected",
-		g_value_get_uint(c.property_received), 50);
+	ck_assert_msg(c.property_received != NULL,
+		      "No property %s received and expected", c.property_expected);
+	ck_assert_msg(c.property_received != NULL &&
+		      g_value_get_uint(c.property_received) == 50,
+		      "Property with value %d and %d expected",
+		      g_value_get_uint(c.property_received), 50);
 
 	/* --- error policy --- */
 
@@ -3821,18 +3832,18 @@ START_TEST(test_properties_management)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "get_property", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "get_property", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
-	fail_if(c.property_received == NULL,
-		"No property %s received and expected", c.property_expected);
-	fail_if(c.property_received != NULL &&
-		g_value_get_uint(c.property_received) != 1,
-		"Property with value %d and %d expected",
-		g_value_get_uint(c.property_received), 1);
+	ck_assert_msg(c.property_received != NULL,
+		      "No property %s received and expected", c.property_expected);
+	ck_assert_msg(c.property_received != NULL &&
+		      g_value_get_uint(c.property_received) == 1,
+		      "Property with value %d and %d expected",
+		      g_value_get_uint(c.property_received), 1);
 
 	/* --- autopaint --- */
 
@@ -3848,18 +3859,18 @@ START_TEST(test_properties_management)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "get_property", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "get_property", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
-	fail_if(c.property_received == NULL,
-		"No property %s received and expected", c.property_expected);
-	fail_if(c.property_received != NULL &&
-		g_value_get_boolean(c.property_received) != TRUE,
-		"Property with value %d and %d expected",
-		g_value_get_boolean(c.property_received), TRUE);
+	ck_assert_msg(c.property_received != NULL,
+		      "No property %s received and expected", c.property_expected);
+	ck_assert_msg(c.property_received != NULL &&
+		      g_value_get_boolean(c.property_received) == TRUE,
+		      "Property with value %d and %d expected",
+		      g_value_get_boolean(c.property_received), TRUE);
 
 	/* --- colorkey --- */
 
@@ -3872,18 +3883,18 @@ START_TEST(test_properties_management)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "get_property", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "get_property", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
-	fail_if(c.property_received == NULL,
-		"No property %s received and expected", c.property_expected);
-	fail_if(c.property_received != NULL &&
-		g_value_get_int(c.property_received) != -1,
-		"Property with value %d and %d expected",
-		g_value_get_int(c.property_received), -1);
+	ck_assert_msg(c.property_received != NULL,
+		      "No property %s received and expected", c.property_expected);
+	ck_assert_msg(c.property_received != NULL &&
+		      g_value_get_int(c.property_received) == -1,
+		      "Property with value %d and %d expected",
+		      g_value_get_int(c.property_received), -1);
 
 	/* --- current frame on pause --- */
 
@@ -3899,18 +3910,18 @@ START_TEST(test_properties_management)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "get_property", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "get_property", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
-	fail_if(c.property_received == NULL,
-		"No property %s received and expected", c.property_expected);
-	fail_if(c.property_received != NULL &&
-		g_value_get_boolean(c.property_received) != TRUE,
-		"Property with value %d and %d expected",
-		g_value_get_boolean(c.property_received), TRUE);
+	ck_assert_msg(c.property_received != NULL,
+		      "No property %s received and expected", c.property_expected);
+	ck_assert_msg(c.property_received != NULL &&
+		      g_value_get_boolean(c.property_received) == TRUE,
+		      "Property with value %d and %d expected",
+		      g_value_get_boolean(c.property_received), TRUE);
 
 	/* --- volume --- */
 
@@ -3920,15 +3931,15 @@ START_TEST(test_properties_management)
 					 p.expected, 50);
 
 	if (!wait_for_property(&p, wait_tout_val)) {
-		fail("No property %s received", p.expected);
+		ck_abort_msg("No property %s received", p.expected);
 	}
 
-	fail_if(p.received == NULL, "No property %s received",
-		p.expected);
-	fail_if(p.received != NULL &&
-		g_value_get_uint(p.received) != 50,
-		"Property with value %d and %d expected",
-		g_value_get_uint(p.received), 50);
+	ck_assert_msg(p.received != NULL, "No property %s received",
+		      p.expected);
+	ck_assert_msg(p.received != NULL &&
+		      g_value_get_uint(p.received) == 50,
+		      "Property with value %d and %d expected",
+		      g_value_get_uint(p.received), 50);
 
 	if (p.received != NULL) {
 		g_value_unset(p.received);
@@ -3944,18 +3955,18 @@ START_TEST(test_properties_management)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "get_property", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "get_property", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
-	fail_if(c.property_received == NULL,
-		"No property %s received and expected", c.property_expected);
-	fail_if(c.property_received != NULL &&
-		g_value_get_uint(c.property_received) != 50,
-		"Property with value %d and %d expected",
-		g_value_get_uint(c.property_received), 50);
+	ck_assert_msg(c.property_received != NULL,
+		      "No property %s received and expected", c.property_expected);
+	ck_assert_msg(c.property_received != NULL &&
+		      g_value_get_uint(c.property_received) == 50,
+		      "Property with value %d and %d expected",
+		      g_value_get_uint(c.property_received), 50);
 
 #ifndef MAFW_GST_RENDERER_DISABLE_PULSE_VOLUME
 	/* Test reconnection to pulse */
@@ -3969,13 +3980,12 @@ START_TEST(test_properties_management)
 	p.expected = MAFW_PROPERTY_RENDERER_VOLUME;
 
 	if (!wait_for_property(&p, wait_tout_val)) {
-		fail("No property %s received", p.expected);
+		ck_abort_msg("No property %s received", p.expected);
 	}
 
-	fail_if(p.received == NULL, "No property %s received",
-		p.expected);
-	fail_if(p.received != NULL &&
-		g_value_get_uint(p.received) != 48,
+	ck_assert_msg(p.received != NULL, "No property %s received",
+		      p.expected);
+	ck_assert_msg(p.received != NULL && g_value_get_uint(p.received) == 48,
 		"Property with value %d and %d expected",
 		g_value_get_uint(p.received), 48);
 
@@ -4037,20 +4047,20 @@ START_TEST(test_buffering)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "playing an object", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "playing an object", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	if (wait_for_state(&s, Transitioning, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play_object",
-		     "Transitioning", s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_play_object",
+			     "Transitioning", s.state);
 	}
 
 	if (wait_for_state(&s, Playing, wait_tout_val) == FALSE) {
-		fail(state_err_msg, "mafw_renderer_play_object", "Playing",
-		     s.state);
+		ck_abort_msg(state_err_msg, "mafw_renderer_play_object", "Playing",
+			     s.state);
 	}
 
 	g_free(objectid);
@@ -4060,17 +4070,17 @@ START_TEST(test_buffering)
 	b.requested = TRUE;
 
 	bus = MAFW_GST_RENDERER(g_gst_renderer)->worker->bus;
-	fail_if(bus == NULL, "No GstBus");
+	ck_assert_msg(bus != NULL, "No GstBus");
 
 	message = gst_message_new_buffering(NULL, 50);
 	gst_bus_post(bus, message);
 
 	if (wait_for_buffering(&b, wait_tout_val) == FALSE) {
-		fail("Expected buffering message but not received");
+		ck_abort_msg("Expected buffering message but not received");
 	}
 
-	fail_if(b.value != 0.5, "Expected buffering 0.50 and received %1.2f",
-		b.value);
+	ck_assert_msg(b.value == 0.5, "Expected buffering 0.50 and received %1.2f",
+		      b.value);
 
 	b.requested = FALSE;
 	b.received = FALSE;
@@ -4084,11 +4094,11 @@ START_TEST(test_buffering)
 	gst_bus_post(bus, message);
 
 	if (wait_for_buffering(&b, wait_tout_val) == FALSE) {
-		fail("Expected buffering message but not received");
+		ck_abort_msg("Expected buffering message but not received");
 	}
 
-	fail_if(b.value != 1.0, "Expected buffering 1.00 and received %1.2f",
-		b.value);
+	ck_assert_msg(b.value == 1.0, "Expected buffering 1.00 and received %1.2f",
+		      b.value);
 
 	b.requested = FALSE;
 	b.received = FALSE;
@@ -4103,14 +4113,14 @@ START_TEST(test_buffering)
 
 	if (wait_for_callback(&c, wait_tout_val)) {
 		if (c.error)
-			fail(callback_err_msg, "stopping", c.err_code,
-			     c.err_msg);
+			ck_abort_msg(callback_err_msg, "stopping", c.err_code,
+				     c.err_msg);
 	} else {
-		fail(no_callback_msg);
+		ck_abort_msg("%s", no_callback_msg);
 	}
 
 	if (wait_for_state(&s, Stopped, wait_tout_val) == FALSE) {
-		fail(state_err_msg,"mafw_renderer_stop", "Stopped", s.state);
+		ck_abort_msg(state_err_msg,"mafw_renderer_stop", "Stopped", s.state);
 	}
 }
 END_TEST

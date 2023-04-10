@@ -143,13 +143,12 @@ if test "x$enable_debug" = xyes; then
 	_CFLAGS="$_CFLAGS -O0 -Werror -DGTK_DISABLE_DEPRECATED"
 else
 	AC_DEFINE([G_DEBUG_DISABLE], [1], [Disable g_debug() calls.])
-	_CFLAGS="$_CFLAGS -O2"
 fi
 AS_IF([test "x$enable_debug" = xyes],
 	[AC_DEFINE([MAFW_DEBUG], [1], [Enable extra debug messages])
 	 CFLAGS="$CFLAGS -Werror -O0 -ggdb3 -DGTK_DISABLE_DEPRECATED"],
 	[AC_DEFINE([G_DEBUG_DISABLE], [1], [Disable g_debug calls])
-	 CFLAGS="$CFLAGS -O2"])
+	 ])
 
 
 dnl Tests.

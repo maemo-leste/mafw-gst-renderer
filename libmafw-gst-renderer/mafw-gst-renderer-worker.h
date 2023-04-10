@@ -189,8 +189,8 @@ gboolean mafw_gst_renderer_worker_get_current_frame_on_pause(MafwGstRendererWork
 #endif
 void mafw_gst_renderer_worker_set_position(MafwGstRendererWorker *worker,
                                            GstSeekType seek_type,
-                                           gint position,
-                                           GError **error);
+					   gboolean relative,
+					   gint position, GError **error);
 gint mafw_gst_renderer_worker_get_position(MafwGstRendererWorker *worker);
 void mafw_gst_renderer_worker_set_xid(MafwGstRendererWorker *worker, XID xid);
 XID mafw_gst_renderer_worker_get_xid(MafwGstRendererWorker *worker);

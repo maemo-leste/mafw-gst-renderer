@@ -28,7 +28,6 @@
 #include <string.h>
 #include <glib.h>
 #include <X11/Xlib.h>
-#include <gst/interfaces/xoverlay.h>
 #include <gst/pbutils/missing-plugins.h>
 #include <gst/base/gstbasesink.h>
 #include <libmafw/mafw.h>
@@ -80,7 +79,7 @@ static MafwGstRendererWorker *Global_worker = NULL;
 /* Forward declarations. */
 static void _do_play(MafwGstRendererWorker *worker);
 static void _do_seek(MafwGstRendererWorker *worker, GstSeekType seek_type,
-		     gint position, GError **error);
+		     gboolean relative, gint position, GError **error);
 static void _play_pl_next(MafwGstRendererWorker *worker);
 
 static void _emit_metadatas(MafwGstRendererWorker *worker);
@@ -200,32 +199,49 @@ static const gchar *_get_tmp_file_from_pool(
 	return path;
 }
 
+typedef struct {
+	GstBuffer *buffer;
+	GstMapInfo info;
+} DestroyPixbufData;
+
 static void _destroy_pixbuf (guchar *pixbuf, gpointer data)
 {
-	gst_buffer_unref(GST_BUFFER(data));
+	DestroyPixbufData *dpd = data;
+	gst_buffer_unmap(dpd->buffer, &dpd->info);
+	gst_buffer_unref(dpd->buffer);
+	g_free(dpd);
 }
 
-static void _emit_gst_buffer_as_graphic_file_cb(GstBuffer *new_buffer,
+static void _emit_gst_buffer_as_graphic_file_cb(GstSample *sample,
 						gpointer user_data)
 {
 	SaveGraphicData *sgd = user_data;
 	GdkPixbuf *pixbuf = NULL;
 
-	if (new_buffer != NULL) {
-		gint width, height;
-		GstStructure *structure;
+	if (sample != NULL) {
+		DestroyPixbufData *dpd = g_new(DestroyPixbufData, 1);
+		dpd->buffer = gst_sample_get_buffer(sample);
 
-		structure =
-			gst_caps_get_structure(GST_BUFFER_CAPS(new_buffer), 0);
+		if (gst_buffer_map(dpd->buffer, &dpd->info, GST_MAP_READ)) {
+			GstStructure *structure;
+			gint width, height;
 
-		gst_structure_get_int(structure, "width", &width);
-		gst_structure_get_int(structure, "height", &height);
+			gst_buffer_ref(dpd->buffer);
+			structure = gst_caps_get_structure(
+					    gst_sample_get_caps(sample), 0);
 
-		pixbuf = gdk_pixbuf_new_from_data(
-			GST_BUFFER_DATA(new_buffer), GDK_COLORSPACE_RGB,
-			FALSE, 8, width, height,
-			GST_ROUND_UP_4(3 * width), _destroy_pixbuf,
-			new_buffer);
+			gst_structure_get_int(structure, "width", &width);
+			gst_structure_get_int(structure, "height", &height);
+			pixbuf = gdk_pixbuf_new_from_data(
+					 dpd->info.data, GDK_COLORSPACE_RGB,
+					 FALSE, 8, width, height,
+					 GST_ROUND_UP_4(3 * width),
+					 _destroy_pixbuf, dpd);
+		} else {
+			g_free(dpd);
+		}
+
+		gst_sample_unref(sample);
 
 		if (sgd->pixbuf != NULL) {
 			g_object_unref(sgd->pixbuf);
@@ -296,18 +312,18 @@ static void _pixbuf_size_prepared_cb (GdkPixbufLoader *loader,
 }
 
 static void _emit_gst_buffer_as_graphic_file(MafwGstRendererWorker *worker,
-					     GstBuffer *buffer,
+					     GstSample *sample,
 					     const gchar *metadata_key)
 {
 	GdkPixbufLoader *loader;
-	GstStructure *structure;
+	const GstStructure *structure;
 	const gchar *mime = NULL;
 	GError *error = NULL;
 
-	g_return_if_fail((buffer != NULL) && GST_IS_BUFFER(buffer));
+	g_return_if_fail((sample != NULL) && GST_IS_SAMPLE(sample));
 
-	structure = gst_caps_get_structure(GST_BUFFER_CAPS(buffer), 0);
-	mime = gst_structure_get_name(structure);
+	structure = gst_caps_get_structure(gst_sample_get_caps(sample), 0);
+	mime = gst_structure_get_name (structure);
 
 	if (g_str_has_prefix(mime, "video/x-raw")) {
 		gint framerate_d, framerate_n;
@@ -317,7 +333,8 @@ static void _emit_gst_buffer_as_graphic_file(MafwGstRendererWorker *worker,
 		gst_structure_get_fraction (structure, "framerate",
 					    &framerate_n, &framerate_d);
 
-		to_caps = gst_caps_new_simple ("video/x-raw-rgb",
+		to_caps = gst_caps_new_simple ("video/x-raw",
+					       "format", G_TYPE_STRING, "RGB",
 					       "bpp", G_TYPE_INT, 24,
 					       "depth", G_TYPE_INT, 24,
 					       "framerate", GST_TYPE_FRACTION,
@@ -339,12 +356,12 @@ static void _emit_gst_buffer_as_graphic_file(MafwGstRendererWorker *worker,
 		sgd->metadata_key = g_strdup(metadata_key);
 
 		g_debug("pixbuf: using bvw to convert image format");
-		bvw_frame_conv_convert (buffer, to_caps,
+		bvw_frame_conv_convert (sample, to_caps,
 					_emit_gst_buffer_as_graphic_file_cb,
 					sgd);
 	} else {
 		GdkPixbuf *pixbuf = NULL;
-		loader = gdk_pixbuf_loader_new_with_mime_type(mime, &error);
+		loader = gdk_pixbuf_loader_new_with_mime_type (mime, &error);
 		g_signal_connect (G_OBJECT (loader), "size-prepared", 
 				 (GCallback)_pixbuf_size_prepared_cb, NULL);
 
@@ -352,10 +369,13 @@ static void _emit_gst_buffer_as_graphic_file(MafwGstRendererWorker *worker,
 			g_warning ("%s\n", error->message);
 			g_error_free (error);
 		} else {
-			if (!gdk_pixbuf_loader_write (loader,
-						      GST_BUFFER_DATA(buffer),
-						      GST_BUFFER_SIZE(buffer),
-						      &error)) {
+			GstMapInfo info;
+			GstBuffer *buffer = gst_sample_get_buffer (sample);
+
+			gst_buffer_map(buffer, &info, GST_MAP_READ);
+
+			if (!gdk_pixbuf_loader_write (loader, info.data,
+						      info.size, &error)) {
 				g_warning ("%s\n", error->message);
 				g_error_free (error);
 
@@ -367,7 +387,6 @@ static void _emit_gst_buffer_as_graphic_file(MafwGstRendererWorker *worker,
 					g_warning ("%s\n", error->message);
 					g_error_free (error);
 
-					g_object_unref(pixbuf);
 				} else {
 					SaveGraphicData *sgd;
 
@@ -376,12 +395,14 @@ static void _emit_gst_buffer_as_graphic_file(MafwGstRendererWorker *worker,
 					sgd->worker = worker;
 					sgd->metadata_key =
 						g_strdup(metadata_key);
-					sgd->pixbuf = pixbuf;
+					sgd->pixbuf = g_object_ref(pixbuf);
 
 					_emit_gst_buffer_as_graphic_file_cb(
 						NULL, sgd);
 				}
 			}
+
+			gst_buffer_unmap(buffer, &info);
 			g_object_unref(loader);
 		}
 	}
@@ -535,7 +556,7 @@ static void _parse_stream_info_item(MafwGstRendererWorker *worker, GObject *obj)
 		g_object_get(obj, "object", &object, NULL);
 		vcaps = NULL;
 		if (object) {
-			vcaps = gst_pad_get_caps(GST_PAD_CAST(object));
+			vcaps = gst_pad_get_current_caps(GST_PAD_CAST(object));
 		} else {
 			g_object_get(obj, "caps", &vcaps, NULL);
 			gst_caps_ref(vcaps);
@@ -579,13 +600,13 @@ static void mafw_gst_renderer_worker_apply_xid(MafwGstRendererWorker *worker)
 	{
 		g_debug ("Setting overlay, window id: %x", 
 			 (gint) worker->xid);
-		gst_x_overlay_set_xwindow_id(GST_X_OVERLAY(worker->vsink), 
+		gst_video_overlay_set_window_handle(GST_VIDEO_OVERLAY(worker->vsink),
 					     worker->xid);
 		/* Ask the gst to redraw the frame if we are paused */
 		/* TODO: in MTG this works only in non-fs -> fs way. */
 		if (worker->state == GST_STATE_PAUSED)
 		{
-			gst_x_overlay_expose(GST_X_OVERLAY(worker->vsink));
+			gst_video_overlay_expose(GST_VIDEO_OVERLAY(worker->vsink));
 		}
 	} else {
 		g_debug("Not setting overlay for window id: %x", 
@@ -601,7 +622,8 @@ static GstBusSyncReply _sync_bus_handler(GstBus *bus, GstMessage *msg,
 					 MafwGstRendererWorker *worker)
 {
 	if (GST_MESSAGE_TYPE(msg) == GST_MESSAGE_ELEMENT &&
-	    gst_structure_has_name(msg->structure, "prepare-xwindow-id"))
+	    gst_structure_has_name(gst_message_get_structure(msg),
+				   "prepare-xwindow-id"))
 	{
 		g_debug("got prepare-xwindow-id");
 		worker->media.has_visual_content = TRUE;
@@ -645,7 +667,7 @@ static GstBusSyncReply _sync_bus_handler(GstBus *bus, GstMessage *msg,
 			gst_bus_post(worker->bus,
 				     gst_message_new_application(
 					     GST_OBJECT(worker->vsink),
-					     gst_structure_empty_new("ckey")));
+					     gst_structure_new_empty("ckey")));
 		}
 		gst_message_unref (msg);
 		return GST_BUS_DROP;
@@ -686,10 +708,9 @@ static void _check_duration(MafwGstRendererWorker *worker, gint64 value)
 	gboolean right_query = TRUE;
 
 	if (value == -1) {
-		GstFormat format = GST_FORMAT_TIME;
-		right_query =
-			gst_element_query_duration(worker->pipeline, &format,
-						   &value);
+		right_query = gst_element_query_duration(
+				      worker->pipeline, GST_FORMAT_TIME,
+				      &value);
 	}
 
 	if (right_query && value > 0) {
@@ -718,7 +739,8 @@ static void _check_duration(MafwGstRendererWorker *worker, gint64 value)
 	}
 
 	worker->media.length_nanos = value;
-	g_debug("media duration: %lld", worker->media.length_nanos);
+	g_debug("media duration: %" G_GUINT64_FORMAT,
+		worker->media.length_nanos);
 }
 
 static void _check_seekability(MafwGstRendererWorker *worker)
@@ -789,12 +811,15 @@ static void _finalize_startup(MafwGstRendererWorker *worker)
 	/* Check video caps */
 	if (worker->media.has_visual_content) {
 		GstPad *pad = GST_BASE_SINK_PAD(worker->vsink);
-		GstCaps *caps = GST_PAD_CAPS(pad);
+		GstCaps *caps = gst_pad_get_current_caps(pad);
 		if (caps && gst_caps_is_fixed(caps)) {
 			GstStructure *structure;
 			structure = gst_caps_get_structure(caps, 0);
-			if (!_handle_video_info(worker, structure))
+			if (!_handle_video_info(worker, structure)) {
+				gst_caps_unref(caps);
 				return;
+			}
+			gst_caps_unref(caps);
 		}
 	}
 
@@ -841,13 +866,13 @@ static void _do_pause_postprocessing(MafwGstRendererWorker *worker)
 #ifdef HAVE_GDKPIXBUF
 	if (worker->media.has_visual_content &&
 	    worker->current_frame_on_pause) {
-		GstBuffer *buffer = NULL;
+		GstSample *sample = NULL;
 
-		g_object_get(worker->pipeline, "frame", &buffer, NULL);
+		g_object_get(worker->pipeline, "sample", &sample, NULL);
 
-		if (buffer != NULL) {
+		if (sample != NULL) {
 			_emit_gst_buffer_as_graphic_file(
-				worker, buffer,
+				worker, sample,
 				MAFW_METADATA_KEY_PAUSED_THUMBNAIL_URI);
 		}
 	}
@@ -912,7 +937,7 @@ static void _handle_state_changed(GstMessage *msg, MafwGstRendererWorker *worker
                         _check_seekability(worker);
                         if (worker->media.seekable) {
                                 g_debug("performing a seek");
-                                _do_seek(worker, GST_SEEK_TYPE_SET,
+				_do_seek(worker, GST_SEEK_TYPE_SET, FALSE,
                                          worker->seek_position, NULL);
                         } else {
                                 g_critical("media is not seekable (and should)");
@@ -1037,20 +1062,20 @@ static void _handle_duration(MafwGstRendererWorker *worker, GstMessage *msg)
 static void _emit_renderer_art(MafwGstRendererWorker *worker,
 			       const GstTagList *list)
 {
-	GstBuffer *buffer = NULL;
+	GstSample *sample = NULL;
 	const GValue *value = NULL;
 
 	g_return_if_fail(gst_tag_list_get_tag_size(list, GST_TAG_IMAGE) > 0);
 
 	value = gst_tag_list_get_value_index(list, GST_TAG_IMAGE, 0);
 
-	g_return_if_fail((value != NULL) && G_VALUE_HOLDS(value, GST_TYPE_BUFFER));
+	g_return_if_fail((value != NULL) && G_VALUE_HOLDS(value, GST_TYPE_SAMPLE));
 
-	buffer = g_value_peek_pointer(value);
+	sample = g_value_peek_pointer(value);
 
-	g_return_if_fail((buffer != NULL) && GST_IS_BUFFER(buffer));
+	g_return_if_fail((sample != NULL) && GST_IS_SAMPLE(sample));
 
-	_emit_gst_buffer_as_graphic_file(worker, buffer,
+	_emit_gst_buffer_as_graphic_file(worker, sample,
 					 MAFW_METADATA_KEY_RENDERER_ART_URI);
 }
 #endif
@@ -1361,8 +1386,9 @@ static void _handle_buffering(MafwGstRendererWorker *worker, GstMessage *msg)
 static void _handle_element_msg(MafwGstRendererWorker *worker, GstMessage *msg)
 {
 	/* Only HelixBin sends "resolution" messages. */
-	if (gst_structure_has_name(msg->structure, "resolution") &&
-	    _handle_video_info(worker, msg->structure))
+	if (gst_structure_has_name(gst_message_get_structure(msg),
+				   "resolution") &&
+	    _handle_video_info(worker, gst_message_get_structure(msg)))
 	{
 		worker->media.has_visual_content = TRUE;
 	}
@@ -1552,6 +1578,7 @@ static gboolean _async_bus_handler(GstBus *bus, GstMessage *msg,
 				if (worker->bus) {
 					gst_bus_set_sync_handler(worker->bus,
                                                                  NULL,
+								 NULL,
 								 NULL);
 				}
 				if (worker->async_bus_id) {
@@ -1771,37 +1798,9 @@ static void _construct_pipeline(MafwGstRendererWorker *worker)
 
 	_free_taglist(worker);
 
-	g_debug("Creating a new instance of playbin2");
-	worker->pipeline = gst_element_factory_make("playbin2",
+	g_debug("Creating a new instance of playbin");
+	worker->pipeline = gst_element_factory_make("playbin",
 						    "playbin");
-	if (worker->pipeline == NULL)
-	{
-		/* Let's try with playbin */
-		g_warning ("playbin2 failed, falling back to playbin");
-		worker->pipeline = gst_element_factory_make("playbin",
-							    "playbin");
-
-		if (worker->pipeline) {
-			/* Use nwqueue only for non-rtsp and non-mms(h)
-			   streams. */
-			gboolean use_nw;
-			use_nw = worker->media.location && 
-				!g_str_has_prefix(worker->media.location, 
-						  "rtsp://") &&
-				!g_str_has_prefix(worker->media.location, 
-						  "mms://") &&
-				!g_str_has_prefix(worker->media.location, 
-						  "mmsh://");
-			
-			g_debug("playbin using network queue: %d", use_nw);
-
-			/* These need a modified version of playbin. */
-			g_object_set(G_OBJECT(worker->pipeline),
-				     "nw-queue", use_nw,
-				     "no-video-transform", TRUE,
-				     NULL);
-		}
-	}
 
 	if (!worker->pipeline) {
 		g_critical("failed to create playback pipeline");
@@ -1816,7 +1815,8 @@ static void _construct_pipeline(MafwGstRendererWorker *worker)
 
 	worker->bus = gst_pipeline_get_bus(GST_PIPELINE(worker->pipeline));
 	gst_bus_set_sync_handler(worker->bus,
-				 (GstBusSyncHandler)_sync_bus_handler, worker);
+				 (GstBusSyncHandler)_sync_bus_handler, worker,
+				 NULL);
 	worker->async_bus_id = gst_bus_add_watch_full(worker->bus,G_PRIORITY_HIGH,
 						 (GstBusFunc)_async_bus_handler,
 						 worker, NULL);
@@ -1880,7 +1880,7 @@ static void _construct_pipeline(MafwGstRendererWorker *worker)
  * @position: Time in seconds where to seek
  */
 static void _do_seek(MafwGstRendererWorker *worker, GstSeekType seek_type,
-		     gint position, GError **error)
+		     gboolean relative, gint position, GError **error)
 {
 	gboolean ret;
 	gint64 spos;
@@ -1895,11 +1895,10 @@ static void _do_seek(MafwGstRendererWorker *worker, GstSeekType seek_type,
 	This can't be used to seek relative to the current playback position -
 	do a position query, calculate the desired position and then do an
 	absolute position seek instead if that's what you want to do. */
-	if (seek_type == GST_SEEK_TYPE_CUR)
+	if (relative)
 	{
 		gint curpos = mafw_gst_renderer_worker_get_position(worker);
 		position = curpos + position;
-		seek_type = GST_SEEK_TYPE_SET;
 	}
 
 	if (position < 0) {
@@ -1909,7 +1908,7 @@ static void _do_seek(MafwGstRendererWorker *worker, GstSeekType seek_type,
 	worker->seek_position = position;
 	worker->report_statechanges = FALSE;
 	spos = (gint64)position * GST_SECOND;
-	g_debug("seek: type = %d, offset = %lld", seek_type, spos);
+	g_debug("seek: type = %d, offset = %" G_GUINT64_FORMAT, seek_type, spos);
 
         /* If the pipeline has been set to READY by us, then wake it up by
 	   setting it to PAUSED (when we get the READY->PAUSED transition
@@ -1979,6 +1978,7 @@ gboolean mafw_gst_renderer_worker_get_current_frame_on_pause(MafwGstRendererWork
 
 void mafw_gst_renderer_worker_set_position(MafwGstRendererWorker *worker,
 					  GstSeekType seek_type,
+					  gboolean relative,
 					  gint position, GError **error)
 {
         /* If player is paused and we have a timeout for going to ready
@@ -1994,7 +1994,7 @@ void mafw_gst_renderer_worker_set_position(MafwGstRendererWorker *worker,
                 _add_ready_timeout(worker);
         }
 
-        _do_seek(worker, seek_type, position, error);
+	_do_seek(worker, seek_type, relative, position, error);
         if (worker->notify_seek_handler)
                 worker->notify_seek_handler(worker, worker->owner);
 }
@@ -2006,7 +2006,6 @@ void mafw_gst_renderer_worker_set_position(MafwGstRendererWorker *worker,
  */
 gint mafw_gst_renderer_worker_get_position(MafwGstRendererWorker *worker)
 {
-	GstFormat format;
 	gint64 time = 0;
 	g_assert(worker != NULL);
 
@@ -2016,9 +2015,9 @@ gint mafw_gst_renderer_worker_get_position(MafwGstRendererWorker *worker)
 		return worker->seek_position;
 	}
 	/* Otherwise query position from pipeline. */
-	format = GST_FORMAT_TIME;
 	if (worker->pipeline &&
-            gst_element_query_position(worker->pipeline, &format, &time))
+	    gst_element_query_position(worker->pipeline, GST_FORMAT_TIME,
+				       &time))
 	{
 		return (gint)(NSECONDS_TO_SECONDS(time));
 	}
@@ -2234,7 +2233,7 @@ void mafw_gst_renderer_worker_stop(MafwGstRendererWorker *worker)
 			g_source_remove(worker->async_bus_id);
 			worker->async_bus_id = 0;
 		}
-		gst_bus_set_sync_handler(worker->bus, NULL, NULL);
+		gst_bus_set_sync_handler(worker->bus, NULL, NULL, NULL);
 		gst_element_set_state(worker->pipeline, GST_STATE_NULL);
 		if (worker->bus) {
 			gst_object_unref(GST_OBJECT_CAST(worker->bus));
@@ -2254,6 +2253,7 @@ void mafw_gst_renderer_worker_stop(MafwGstRendererWorker *worker)
 	worker->is_error = FALSE;
 	worker->eos = FALSE;
 	worker->seek_position = -1;
+	worker->stay_paused = FALSE;
 	_remove_ready_timeout(worker);
 	_free_taglist(worker);
 	if (worker->current_metadata) {
@@ -2349,14 +2349,17 @@ static void _volume_init_cb(MafwGstRendererWorkerVolume *wvolume,
 {
 	MafwGstRendererWorker *worker = data;
 	gdouble volume;
+#ifdef MAFW_GST_RENDERER_ENABLE_MUTE
 	gboolean mute;
-
+#endif
 	worker->wvolume = wvolume;
 
 	g_debug("volume manager initialized");
 
 	volume = mafw_gst_renderer_worker_volume_get(wvolume);
+#ifdef MAFW_GST_RENDERER_ENABLE_MUTE
 	mute = mafw_gst_renderer_worker_volume_is_muted(wvolume);
+#endif
 	_volume_cb(wvolume, volume, worker);
 #ifdef MAFW_GST_RENDERER_ENABLE_MUTE
 	_mute_cb(wvolume, mute, worker);

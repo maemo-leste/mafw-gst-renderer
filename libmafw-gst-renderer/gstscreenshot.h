@@ -26,9 +26,9 @@
 
 G_BEGIN_DECLS
 
-typedef void (*BvwFrameConvCb)(GstBuffer *result, gpointer user_data);
+typedef void (*BvwFrameConvCb)(GstSample *result, gpointer user_data);
 
-gboolean bvw_frame_conv_convert (GstBuffer *buf, GstCaps *to,
+gboolean bvw_frame_conv_convert (GstSample *sample, GstCaps *to,
 				 BvwFrameConvCb cb, gpointer cb_data);
 
 G_END_DECLS

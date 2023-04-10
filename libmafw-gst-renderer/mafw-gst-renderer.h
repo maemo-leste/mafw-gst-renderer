@@ -157,6 +157,7 @@ struct _MafwGstRenderer{
 	MafwPlaylistIterator *iterator;
 	gboolean seek_pending;
 	GstSeekType seek_type_pending;
+	gboolean seek_is_relative;
 	gint seeking_to;
 	gboolean is_stream;
         gint update_playcount_id;

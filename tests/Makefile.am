@@ -23,7 +23,7 @@ LDADD				= $(CHECKMORE_LIBS) \
 				  $(DEPS_LIBS) \
 				  $(DEPS_TESTS_LIBS) \
 				  $(top_builddir)/libmafw-gst-renderer/mafw-gst-renderer.la \
-				  -lgstinterfaces-0.10 -lgsttag-0.10
+				  -lgsttag-1.0
 
 if HAVE_GDKPIXBUF
 INCLUDES += $(GDKPIXBUF_CFLAGS)

@@ -277,7 +277,6 @@ gint main(gint argc, gchar ** argv)
 {
 	MafwRegistry *registry;
 	
-	g_type_init();
 	gst_init (&argc, &argv);
 
 	if (argc != 2) {

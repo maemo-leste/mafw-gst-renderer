@@ -763,7 +763,7 @@ void mafw_gst_renderer_state_do_set_position(MafwGstRendererState *self,
 {
 	MafwGstRenderer *renderer;
 	GstSeekType seektype;
-
+	gboolean relative = FALSE;
         renderer = MAFW_GST_RENDERER_STATE(self)->renderer;
 
 	/* TODO Gst stuff should be moved to worker, not handled here... */
@@ -775,7 +775,8 @@ void mafw_gst_renderer_state_do_set_position(MafwGstRendererState *self,
 			seektype = GST_SEEK_TYPE_SET;
 		}
 	} else if (mode == SeekRelative) {
-		seektype = GST_SEEK_TYPE_CUR;
+		seektype = GST_SEEK_TYPE_SET;
+		relative = TRUE;
 	} else {
 		g_critical("Unknown seek mode: %d", mode);
 		g_set_error(error, MAFW_EXTENSION_ERROR,
@@ -786,11 +787,13 @@ void mafw_gst_renderer_state_do_set_position(MafwGstRendererState *self,
 	if (renderer->seek_pending) {
 		g_debug("seek pending, storing position %d", seconds);
 		renderer->seek_type_pending = seektype;
+		renderer->seek_is_relative = relative;
 		renderer->seeking_to = seconds;
 	} else {
 		renderer->seek_pending = TRUE;
                 mafw_gst_renderer_worker_set_position(renderer->worker,
 						     seektype,
+						     relative,
 						     seconds,
 						     error);
 	}
@@ -807,6 +810,7 @@ void mafw_gst_renderer_state_do_notify_seek(MafwGstRendererState *self,
                 renderer->seek_pending = TRUE;
                 mafw_gst_renderer_worker_set_position(renderer->worker,
                                                     renderer->seek_type_pending,
+						    renderer->seek_is_relative,
                                                     renderer->seeking_to,
                                                     NULL);
         } else {

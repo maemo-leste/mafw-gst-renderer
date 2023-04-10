@@ -87,9 +87,9 @@ void pa_context_set_state_callback(pa_context *c, pa_context_notify_cb_t cb,
 int pa_context_connect(pa_context *c, const char *server,
 		       pa_context_flags_t flags, const pa_spawn_api *api);
 gint pa_context_get_state(pa_context *c);
-pa_operation *pa_ext_stream_restore2_read(pa_context *c,
-					  pa_ext_stream_restore_read_cb_t cb,
-					  void *userdata);
+pa_operation *pa_ext_stream_restore_read(pa_context *c,
+					 pa_ext_stream_restore_read_cb_t cb,
+					 void *userdata);
 void pa_operation_unref(pa_operation *o);
 pa_volume_t pa_cvolume_max(const pa_cvolume *volume);
 void pa_ext_stream_restore_set_subscribe_cb(
@@ -100,7 +100,7 @@ void pa_operation_cancel(pa_operation *o);
 void pa_glib_mainloop_free(pa_glib_mainloop *g);
 pa_cvolume *pa_cvolume_init(pa_cvolume *a);
 pa_cvolume *pa_cvolume_set(pa_cvolume *a, unsigned channels, pa_volume_t v);
-pa_operation *pa_ext_stream_restore2_write(
+pa_operation *pa_ext_stream_restore_write(
 	pa_context *c, gint mode, const pa_ext_stream_restore_info *data[],
 	unsigned n, int apply_immediately, pa_context_success_cb_t cb,
 	void *userdata);
@@ -130,7 +130,7 @@ pa_context *pa_context_new(pa_mainloop_api *mainloop, const char *name)
 {
 	pa_context *c = g_new0(pa_context, 1);
 
-	pa_cvolume_set(&c->volume, 1, 32000);
+	pa_cvolume_set(&c->volume, 1, 31500);
 
 	context = c;
 
@@ -166,7 +166,7 @@ gint pa_context_get_state(pa_context *c)
 	return c->state;
 }
 
-static gboolean _pa_ext_stream_restore2_read_idle(gpointer userdata)
+static gboolean _pa_ext_stream_restore_read_idle(gpointer userdata)
 {
 	pa_context *c = userdata;
 	pa_ext_stream_restore_info info = { 0, };
@@ -180,13 +180,13 @@ static gboolean _pa_ext_stream_restore2_read_idle(gpointer userdata)
 	return FALSE;
 }
 
-pa_operation *pa_ext_stream_restore2_read(pa_context *c,
-					  pa_ext_stream_restore_read_cb_t cb,
-					  void *userdata)
+pa_operation *pa_ext_stream_restore_read(pa_context *c,
+					 pa_ext_stream_restore_read_cb_t cb,
+					 void *userdata)
 {
 	c->read_cb = cb;
 	c->read_cb_userdata = userdata;
-	g_idle_add(_pa_ext_stream_restore2_read_idle, c);
+	g_idle_add(_pa_ext_stream_restore_read_idle, c);
 	return (gpointer) 0x1;
 }
 
@@ -259,7 +259,7 @@ static gboolean _pa_ext_stream_restore_write_idle(gpointer userdata)
 	return FALSE;
 }
 
-pa_operation *pa_ext_stream_restore2_write(
+pa_operation *pa_ext_stream_restore_write(
 	pa_context *c, gint mode, const pa_ext_stream_restore_info *data[],
 	unsigned n, int apply_immediately, pa_context_success_cb_t cb,
 	void *userdata)
