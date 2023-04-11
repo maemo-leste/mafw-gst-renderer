@@ -1871,7 +1871,7 @@ static void _construct_pipeline(MafwGstRendererWorker *worker)
 	}
 	g_object_set(worker->pipeline,
 			"video-sink", worker->vsink,
-			"flags", 99,
+			/*"flags", 99,*/
 			NULL);
 }
 
