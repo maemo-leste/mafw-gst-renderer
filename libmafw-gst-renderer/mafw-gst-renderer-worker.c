@@ -623,9 +623,9 @@ static GstBusSyncReply _sync_bus_handler(GstBus *bus, GstMessage *msg,
 {
 	if (GST_MESSAGE_TYPE(msg) == GST_MESSAGE_ELEMENT &&
 	    gst_structure_has_name(gst_message_get_structure(msg),
-				   "prepare-xwindow-id"))
+				   "prepare-window-handle"))
 	{
-		g_debug("got prepare-xwindow-id");
+		g_debug("got prepare-window-handle");
 		worker->media.has_visual_content = TRUE;
 		/* The user has to preset the XID, we don't create windows by
 		 * ourselves. */
