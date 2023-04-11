@@ -4,15 +4,12 @@
 
 # export DH_VERBOSE=1
 
-ifneq (,$(findstring debug,$(DEB_BUILD_OPTIONS)))
-	CFLAGS += -O0 -ggdb3 -finstrument-functions
-endif
+lcov := $(if $(filter lcov,$(DEB_BUILD_OPTIONS)),--enable-coverage,)
 
-maybe_coverage := $(if $(filter lcov,$(DEB_BUILD_OPTIONS)),--enable-coverage,)
+DEB_CONFIGURE_EXTRA_FLAGS = --enable-tests --prefix=/usr $(lcov)
 
-DEB_CONFIGURE_EXTRA_FLAGS = --enable-tests --prefix=/usr $(maybe_coverage)
-
-# CFLAGS += -Werror
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+export DEB_CFLAGS_MAINT_APPEND = -Wall -Werror -DGLIB_DISABLE_DEPRECATION_WARNINGS
 
 %:
 	dh $@ --with autoreconf
@@ -20,11 +17,11 @@ DEB_CONFIGURE_EXTRA_FLAGS = --enable-tests --prefix=/usr $(maybe_coverage)
 override_dh_autoreconf:
 	dh_autoreconf --as-needed
 
-override_dh_auto_configure:
-	dh_auto_configure -- $(DEB_CONFIGURE_EXTRA_FLAGS)
-
 override_dh_auto_install:
 	dh_auto_install --destdir=debian/tmp
+
+override_dh_auto_configure:
+	dh_auto_configure -- $(DEB_CONFIGURE_EXTRA_FLAGS)
 
 override_dh_install:
 	dh_install
