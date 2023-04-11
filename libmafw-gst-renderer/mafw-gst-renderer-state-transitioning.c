@@ -257,7 +257,7 @@ static void _notify_metadata(MafwGstRendererState *self,
 	GValue *mval;
         gpointer value;
         gint nuris, i;
-        gchar **uris;
+        gchar **uris = NULL;
         gchar *uri;
 
 	g_debug("running _notify_metadata...");
