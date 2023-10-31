@@ -621,10 +621,7 @@ static void mafw_gst_renderer_worker_apply_xid(MafwGstRendererWorker *worker)
 static GstBusSyncReply _sync_bus_handler(GstBus *bus, GstMessage *msg,
 					 MafwGstRendererWorker *worker)
 {
-	if (GST_MESSAGE_TYPE(msg) == GST_MESSAGE_ELEMENT &&
-	    gst_structure_has_name(gst_message_get_structure(msg),
-				   "prepare-window-handle"))
-	{
+	if (gst_is_video_overlay_prepare_window_handle_message(msg)) {
 		g_debug("got prepare-window-handle");
 		worker->media.has_visual_content = TRUE;
 		/* The user has to preset the XID, we don't create windows by
@@ -810,7 +807,8 @@ static void _finalize_startup(MafwGstRendererWorker *worker)
 {
 	/* Check video caps */
 	if (worker->media.has_visual_content) {
-		GstPad *pad = GST_BASE_SINK_PAD(worker->vsink);
+		GstElement *vsink = GST_ELEMENT(worker->vsink);
+		GstPad *pad = GST_PAD(vsink->sinkpads->data);
 		GstCaps *caps = gst_pad_get_current_caps(pad);
 		if (caps && gst_caps_is_fixed(caps)) {
 			GstStructure *structure;
@@ -1853,7 +1851,7 @@ static void _construct_pipeline(MafwGstRendererWorker *worker)
 #endif
 
 	if (!worker->vsink) {
-		worker->vsink = gst_element_factory_make("xvimagesink", NULL);
+		worker->vsink = gst_element_factory_make("glimagesink", NULL);
 		if (!worker->vsink) {
 			g_critical("Failed to create pipeline video sink");
 			g_signal_emit_by_name(MAFW_EXTENSION (worker->owner), 
@@ -1865,13 +1863,17 @@ static void _construct_pipeline(MafwGstRendererWorker *worker)
 		}
 		gst_object_ref(worker->vsink);
 		g_object_set(G_OBJECT(worker->vsink),
-				"handle-events", TRUE,
-				"force-aspect-ratio", TRUE,
-				NULL);
+			     "handle-events", FALSE,
+			     "ignore-alpha", FALSE,
+			     "force-aspect-ratio", TRUE,
+			     NULL);
 	}
+
+	gst_video_overlay_set_window_handle(
+				GST_VIDEO_OVERLAY(worker->vsink), 0);
 	g_object_set(worker->pipeline,
 			"video-sink", worker->vsink,
-			/*"flags", 99,*/
+			"flags", 0x40,
 			NULL);
 }
 
