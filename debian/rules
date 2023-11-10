@@ -6,7 +6,7 @@
 
 lcov := $(if $(filter lcov,$(DEB_BUILD_OPTIONS)),--enable-coverage,)
 
-DEB_CONFIGURE_EXTRA_FLAGS = --enable-tests --prefix=/usr $(lcov)
+DEB_CONFIGURE_EXTRA_FLAGS = --disable-tests --prefix=/usr $(lcov)
 
 export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 export DEB_CFLAGS_MAINT_APPEND = -Wall -Werror -DGLIB_DISABLE_DEPRECATION_WARNINGS
