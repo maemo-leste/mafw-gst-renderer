@@ -566,37 +566,35 @@ static void mafw_gst_renderer_worker_apply_xid(MafwGstRendererWorker *worker)
 static GstBusSyncReply _sync_bus_handler(GstBus *bus, GstMessage *msg,
 					 MafwGstRendererWorker *worker)
 {
-	if (gst_is_video_overlay_prepare_window_handle_message(msg)) {
+	if (!gst_is_video_overlay_prepare_window_handle_message(msg))
+		/* do not unref message when returning PASS */
+		return GST_BUS_PASS;
+
+	if (worker->xid) {
 		g_debug("got prepare-window-handle");
 		worker->media.has_visual_content = TRUE;
-		/* The user has to preset the XID, we don't create windows by
-		 * ourselves. */
-		if (!worker->xid) {
-			/* We must post an error message to the bus that will
-			 * be picked up by _async_bus_handler.  Calling the
-			 * notification function directly from here (different
-			 * thread) is not healthy. */
-			g_warning("No video window set!");
-			_post_error(worker,
-				    g_error_new_literal(
-					    MAFW_RENDERER_ERROR,
-					    MAFW_RENDERER_ERROR_PLAYBACK,
-					    "No video window XID set"));
-			gst_message_unref (msg);
-			return GST_BUS_DROP;
-		} else {
-			g_debug ("Video window to use is: %x", 
-				 (gint) worker->xid);
-		}
+		g_debug ("Video window to use is: %x", (gint) worker->xid);
 
 		/* Instruct vsink to use the client-provided window */
 		mafw_gst_renderer_worker_apply_xid(worker);
-
-		gst_message_unref (msg);
-		return GST_BUS_DROP;
+	} else if (worker->state != GST_STATE_NULL) {
+		/* The user has to preset the XID, we don't create windows by
+		 * ourselves. */
+		/* We must post an error message to the bus that will
+		 * be picked up by _async_bus_handler.  Calling the
+		 * notification function directly from here (different
+		 * thread) is not healthy. */
+		g_warning("No video window set!");
+		_post_error(worker,
+			    g_error_new_literal(
+				    MAFW_RENDERER_ERROR,
+				    MAFW_RENDERER_ERROR_PLAYBACK,
+				    "No video window XID set"));
 	}
-	/* do not unref message when returning PASS */
-	return GST_BUS_PASS;
+
+	gst_message_unref (msg);
+
+	return GST_BUS_DROP;
 }
 
 static void _free_taglist_item(GstMessage *msg, gpointer data)

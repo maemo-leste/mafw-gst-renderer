@@ -558,8 +558,8 @@ GstElement * gst_element_factory_make(const gchar * factoryname,
 	if (g_ascii_strcasecmp(use_factoryname, "pulsesink") == 0) {
 		element = gst_element_factory_make("fakesink", "pulsesink");
 		g_object_set(G_OBJECT(element), "sync", TRUE, NULL);
-	} else if (g_ascii_strcasecmp(use_factoryname, "xvimagesink") == 0) {
-		element = gst_element_factory_make("fakesink", "xvimagesink");
+	} else if (g_ascii_strcasecmp(use_factoryname, "glimagesink") == 0) {
+		element = gst_element_factory_make("fakesink", "glimagesink");
 		g_object_set(G_OBJECT(element), "sync", TRUE, NULL);
 	} else {
 		element = gst_element_factory_create(factory, name);
@@ -594,6 +594,10 @@ GstElement * gst_element_factory_make(const gchar * factoryname,
 	return element;
 }
 
+void gst_video_overlay_set_window_handle(GstVideoOverlay * overlay,
+					 guintptr handle)
+{
+}
 
 /*----------------------------------------------------------------------------
   Test cases
@@ -3441,7 +3445,7 @@ START_TEST(test_video)
 	bus = MAFW_GST_RENDERER(g_gst_renderer)->worker->bus;
 	ck_assert_msg(bus != NULL, "No GstBus");
 
-	structure = gst_structure_new("prepare-xwindow-id", "width",
+	structure = gst_structure_new("prepare-window-handle", "width",
 				      G_TYPE_INT, 64, "height", G_TYPE_INT, 32,
 				      NULL);
 	message = gst_message_new_element(NULL, structure);
