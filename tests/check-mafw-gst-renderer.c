@@ -3845,57 +3845,6 @@ START_TEST(test_properties_management)
 		      "Property with value %d and %d expected",
 		      g_value_get_uint(c.property_received), 1);
 
-	/* --- autopaint --- */
-
-	reset_callback_info(&c);
-
-	c.property_expected = MAFW_PROPERTY_RENDERER_AUTOPAINT;
-
-	mafw_extension_set_property_boolean(MAFW_EXTENSION(g_gst_renderer),
-					    c.property_expected, TRUE);
-
-	mafw_extension_get_property(MAFW_EXTENSION(g_gst_renderer),
-				    c.property_expected, get_property_cb, &c);
-
-	if (wait_for_callback(&c, wait_tout_val)) {
-		if (c.error)
-			ck_abort_msg(callback_err_msg, "get_property", c.err_code,
-				     c.err_msg);
-	} else {
-		ck_abort_msg("%s", no_callback_msg);
-	}
-
-	ck_assert_msg(c.property_received != NULL,
-		      "No property %s received and expected", c.property_expected);
-	ck_assert_msg(c.property_received != NULL &&
-		      g_value_get_boolean(c.property_received) == TRUE,
-		      "Property with value %d and %d expected",
-		      g_value_get_boolean(c.property_received), TRUE);
-
-	/* --- colorkey --- */
-
-	reset_callback_info(&c);
-
-	c.property_expected = MAFW_PROPERTY_RENDERER_COLORKEY;
-
-	mafw_extension_get_property(MAFW_EXTENSION(g_gst_renderer),
-				    c.property_expected, get_property_cb, &c);
-
-	if (wait_for_callback(&c, wait_tout_val)) {
-		if (c.error)
-			ck_abort_msg(callback_err_msg, "get_property", c.err_code,
-				     c.err_msg);
-	} else {
-		ck_abort_msg("%s", no_callback_msg);
-	}
-
-	ck_assert_msg(c.property_received != NULL,
-		      "No property %s received and expected", c.property_expected);
-	ck_assert_msg(c.property_received != NULL &&
-		      g_value_get_int(c.property_received) == -1,
-		      "Property with value %d and %d expected",
-		      g_value_get_int(c.property_received), -1);
-
 	/* --- current frame on pause --- */
 
 	reset_callback_info(&c);

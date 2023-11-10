@@ -151,8 +151,6 @@ struct _MafwGstRendererWorker {
 	GstElement *vsink;
 	GstElement *asink;
 	XID xid;
-	gboolean autopaint;
-	gint colorkey;
 	GPtrArray *tag_list;
 	GHashTable *current_metadata;
 
@@ -194,10 +192,6 @@ void mafw_gst_renderer_worker_set_position(MafwGstRendererWorker *worker,
 gint mafw_gst_renderer_worker_get_position(MafwGstRendererWorker *worker);
 void mafw_gst_renderer_worker_set_xid(MafwGstRendererWorker *worker, XID xid);
 XID mafw_gst_renderer_worker_get_xid(MafwGstRendererWorker *worker);
-gboolean mafw_gst_renderer_worker_get_autopaint(MafwGstRendererWorker *worker);
-void mafw_gst_renderer_worker_set_autopaint(MafwGstRendererWorker *worker, gboolean autopaint);
-gint mafw_gst_renderer_worker_get_colorkey(MafwGstRendererWorker *worker);
-void mafw_gst_renderer_worker_set_colorkey(MafwGstRendererWorker *worker, gint autopaint);
 gboolean mafw_gst_renderer_worker_get_seekable(MafwGstRendererWorker *worker);
 GHashTable *mafw_gst_renderer_worker_get_current_metadata(MafwGstRendererWorker *worker);
 void mafw_gst_renderer_worker_play(MafwGstRendererWorker *worker, const gchar *uri, GSList *plitems);

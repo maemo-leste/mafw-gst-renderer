@@ -592,25 +592,6 @@ static GstBusSyncReply _sync_bus_handler(GstBus *bus, GstMessage *msg,
 		/* Instruct vsink to use the client-provided window */
 		mafw_gst_renderer_worker_apply_xid(worker);
 
-		/* Handle colorkey and autopaint */
-		mafw_gst_renderer_worker_set_autopaint(
-			worker,
-			worker->autopaint);
-		if (worker->colorkey == -1)
-			g_object_get(worker->vsink,
-			     	"colorkey", &worker->colorkey, NULL);
-		else
-			mafw_gst_renderer_worker_set_colorkey(
-			worker,
-			worker->colorkey);
-		/* Defer the signal emission to the thread running the
-		 * mainloop. */
-		if (worker->colorkey != -1) {
-			gst_bus_post(worker->bus,
-				     gst_message_new_application(
-					     GST_OBJECT(worker->vsink),
-					     gst_structure_new_empty("ckey")));
-		}
 		gst_message_unref (msg);
 		return GST_BUS_DROP;
 	}
@@ -1545,19 +1526,8 @@ static gboolean _async_bus_handler(GstBus *bus, GstMessage *msg,
 		if ((GstElement *)GST_MESSAGE_SRC(msg) == worker->pipeline)
 			_handle_state_changed(msg, worker);
 		break;
-	case GST_MESSAGE_APPLICATION:
-		if (gst_structure_has_name(gst_message_get_structure(msg),
-					   "ckey"))
-		{
-			GValue v = {0};
-			g_value_init(&v, G_TYPE_INT);
-			g_value_set_int(&v, worker->colorkey);
-			mafw_extension_emit_property_changed(
-				MAFW_EXTENSION(worker->owner),
-				MAFW_PROPERTY_RENDERER_COLORKEY,
-				&v);
-		}
-	default: break;
+	default:
+		break;
 	}
 	return TRUE;
 }
@@ -1972,35 +1942,6 @@ XID mafw_gst_renderer_worker_get_xid(MafwGstRendererWorker *worker)
 	return worker->xid;
 }
 
-gboolean mafw_gst_renderer_worker_get_autopaint(
-	MafwGstRendererWorker *worker)
-{
-	return worker->autopaint;
-}
-void mafw_gst_renderer_worker_set_autopaint(
-	MafwGstRendererWorker *worker, gboolean autopaint)
-{
-	worker->autopaint = autopaint;
-	if (worker->vsink)
-		g_object_set(worker->vsink, "autopaint-colorkey",
-			     worker->autopaint, NULL);
-}
-
-gint mafw_gst_renderer_worker_get_colorkey(
-	MafwGstRendererWorker *worker)
-{
-	return worker->colorkey;
-}
-
-void mafw_gst_renderer_worker_set_colorkey(
-	MafwGstRendererWorker *worker, gint colorkey)
-{
-	worker->colorkey = colorkey;
-	if (worker->vsink)
-		g_object_set(worker->vsink, "colorkey",
-			     worker->colorkey, NULL);
-}
-
 gboolean mafw_gst_renderer_worker_get_seekable(MafwGstRendererWorker *worker)
 {
 	return worker->media.seekable;
@@ -2307,8 +2248,6 @@ MafwGstRendererWorker *mafw_gst_renderer_worker_new(gpointer owner)
 	worker->ready_timeout = 0;
 	worker->in_ready = FALSE;
 	worker->xid = 0;
-	worker->autopaint = TRUE;
-	worker->colorkey = -1;
 	worker->vsink = NULL;
 	worker->asink = NULL;
 	worker->tag_list = NULL;

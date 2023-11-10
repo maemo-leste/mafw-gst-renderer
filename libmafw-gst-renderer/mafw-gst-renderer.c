@@ -2073,21 +2073,6 @@ static void mafw_gst_renderer_get_property(MafwExtension *self,
 		g_value_init(value, G_TYPE_UINT);
 		g_value_set_uint(value, policy);
 	}
-	else if (!strcmp(key, MAFW_PROPERTY_RENDERER_AUTOPAINT)) {
-		value = g_new0(GValue, 1);
-		g_value_init(value, G_TYPE_BOOLEAN);
-		g_value_set_boolean(
-			value,
-			mafw_gst_renderer_worker_get_autopaint(
-				renderer->worker));
-	} else if (!strcmp(key, MAFW_PROPERTY_RENDERER_COLORKEY)) {
-		value = g_new0(GValue, 1);
-		g_value_init(value, G_TYPE_INT);
-		g_value_set_int(
-			value,
-			mafw_gst_renderer_worker_get_colorkey(
-				renderer->worker));
-	}
 #ifdef HAVE_GDKPIXBUF
 	else if (!strcmp(key,
 			 MAFW_PROPERTY_GST_RENDERER_CURRENT_FRAME_ON_PAUSE)) {
@@ -2162,16 +2147,6 @@ static void mafw_gst_renderer_set_property(MafwExtension *self,
 	else if (!strcmp(key, MAFW_PROPERTY_RENDERER_ERROR_POLICY)) {
 		MafwRendererErrorPolicy policy = g_value_get_uint(value);
 		_set_error_policy(renderer, policy);
-	}
-	else if (!strcmp(key, MAFW_PROPERTY_RENDERER_AUTOPAINT)) {
-		mafw_gst_renderer_worker_set_autopaint(
-			renderer->worker,
-			g_value_get_boolean(value));
-	}
-	else if (!strcmp(key, MAFW_PROPERTY_RENDERER_COLORKEY)) {
-		mafw_gst_renderer_worker_set_colorkey(
-			renderer->worker,
-			g_value_get_int(value));
 	}
 #ifdef HAVE_GDKPIXBUF
 	else if (!strcmp(key,
