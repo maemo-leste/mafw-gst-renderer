@@ -46,8 +46,9 @@ static void feed_fakesrc(GstElement *src, GstBuffer *buf, GstPad *pad,
 	GstSample *sample = GST_SAMPLE(data);
 	GstBuffer *in_buf = gst_sample_get_buffer(sample);
 
-	g_assert(gst_buffer_get_size(buf) >= gst_buffer_get_size(in_buf));
 	g_assert(gst_buffer_is_writable(buf));
+
+	gst_buffer_remove_all_memory(buf);
 
 	g_assert(gst_buffer_copy_into(buf, in_buf,
 				      GST_BUFFER_COPY_MEMORY, 0, -1));
@@ -153,10 +154,9 @@ gboolean bvw_frame_conv_convert(GstSample *sample, GstCaps *to_caps,
 				BvwFrameConvCb cb, gpointer cb_data)
 {
 	static GstElement *src = NULL, *sink = NULL, *pipeline = NULL,
-		*filter1 = NULL, *filter2 = NULL, *filter3 = NULL;
+		*filter1 = NULL, *filter2 = NULL, *download = NULL;
 	static GstBus *bus;
 	GError *error = NULL;
-	GstCaps *to_caps_no_par;
 	GstScreenshotData *gsd;
 
 	g_return_val_if_fail(gst_sample_get_caps(sample) != NULL, FALSE);
@@ -180,7 +180,7 @@ gboolean bvw_frame_conv_convert(GstSample *sample, GstCaps *to_caps,
 		   !create_element("videoscale", &vscale, &error) ||
 		   !create_element("capsfilter", &filter1, &error) ||
 		   !create_element("capsfilter", &filter2, &error) ||
-		   !create_element("capsfilter", &filter3, &error) ||
+		   !create_element("gldownload",  &download, &error) ||
 		   !create_element("fakesink", &sink, &error)) {
 			g_warning("Could not take screenshot: %s",
 				  error->message);
@@ -189,8 +189,8 @@ gboolean bvw_frame_conv_convert(GstSample *sample, GstCaps *to_caps,
 		}
 
 		GST_DEBUG("adding elements");
-		gst_bin_add_many(GST_BIN(pipeline), src, filter3, csp, filter1, vscale,
-				 filter2, sink, NULL);
+		gst_bin_add_many(GST_BIN(pipeline), src, filter1, csp, filter2,
+				 vscale, download, sink, NULL);
 
 		g_object_set(sink, "signal-handoffs", TRUE, NULL);
 
@@ -198,22 +198,20 @@ gboolean bvw_frame_conv_convert(GstSample *sample, GstCaps *to_caps,
 		g_object_set(src, "sizetype", 2, "num-buffers", 1,
 			     "signal-handoffs", TRUE, NULL);
 
-		/* FIXME: linking is still way too expensive, profile
-		 * this properly */
-		GST_DEBUG("linking src->filter3");
-		if(!gst_element_link_pads(src, "src", filter3, "sink"))
+		GST_DEBUG("linking src->filter1");
+		if(!gst_element_link_pads(src, "src", filter1, "sink"))
 			return FALSE;
 
-		GST_DEBUG("linking filter3->csp");
-		if(!gst_element_link_pads(filter3, "src", csp, "sink"))
+		GST_DEBUG("linking filter1->download");
+		if(!gst_element_link_pads(filter1, "src", download, "sink"))
 			return FALSE;
 
-		GST_DEBUG("linking csp->filter1");
-		if(!gst_element_link_pads(csp, "src", filter1, "sink"))
+		GST_DEBUG("linking download->csp");
+		if(!gst_element_link_pads(download, "src", csp, "sink"))
 			return FALSE;
 
-		GST_DEBUG("linking filter1->vscale");
-		if(!gst_element_link_pads(filter1, "src", vscale, "sink"))
+		GST_DEBUG("linking csp->vscale");
+		if(!gst_element_link_pads(csp, "src", vscale, "sink"))
 			return FALSE;
 
 		GST_DEBUG("linking vscale->capsfilter");
@@ -227,17 +225,10 @@ gboolean bvw_frame_conv_convert(GstSample *sample, GstCaps *to_caps,
 		bus = gst_element_get_bus(pipeline);
 	}
 
-	/* adding this superfluous capsfilter makes linking cheaper */
-	to_caps_no_par = gst_caps_copy(to_caps);
-	gst_structure_remove_field(gst_caps_get_structure(to_caps_no_par, 0),
-				   "pixel-aspect-ratio");
-	g_object_set(filter1, "caps", to_caps_no_par, NULL);
-	gst_caps_unref(to_caps_no_par);
+	g_object_set(filter1, "caps", gst_sample_get_caps(sample), NULL);
 
 	g_object_set(filter2, "caps", to_caps, NULL);
 	gst_caps_unref(to_caps);
-
-	g_object_set(filter3, "caps", gst_sample_get_caps(sample), NULL);
 
 	gsd = g_new0(GstScreenshotData, 1);
 
