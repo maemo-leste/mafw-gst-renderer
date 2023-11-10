@@ -535,61 +535,6 @@ static gboolean _handle_video_info(MafwGstRendererWorker *worker,
 	return TRUE;
 }
 
-static void _parse_stream_info_item(MafwGstRendererWorker *worker, GObject *obj)
-{
-	GParamSpec *pspec;
-	GEnumValue *val;
-	gint type;
-
-	g_object_get(obj, "type", &type, NULL);
-	pspec = g_object_class_find_property(G_OBJECT_GET_CLASS(obj), "type");
-	val = g_enum_get_value(G_PARAM_SPEC_ENUM(pspec)->enum_class, type);
-	if (!val)
-		return;
-	if (!g_ascii_strcasecmp(val->value_nick, "video") ||
-	    !g_ascii_strcasecmp(val->value_name, "video"))
-	{
-		GstCaps *vcaps;
-		GstObject *object;
-
-		object = NULL;
-		g_object_get(obj, "object", &object, NULL);
-		vcaps = NULL;
-		if (object) {
-			vcaps = gst_pad_get_current_caps(GST_PAD_CAST(object));
-		} else {
-			g_object_get(obj, "caps", &vcaps, NULL);
-			gst_caps_ref(vcaps);
-		}
-		if (vcaps) {
-			if (gst_caps_is_fixed(vcaps))
-			{
-				_handle_video_info(
-					worker,
-					gst_caps_get_structure(vcaps, 0));
-			}
-			gst_caps_unref(vcaps);
-		}
-	}
-}
-
-/* It always returns FALSE, because it is used as an idle callback as well. */
-static gboolean _parse_stream_info(MafwGstRendererWorker *worker)
-{
-	GList *stream_info, *s;
-
-	stream_info = NULL;
-	if (g_object_class_find_property(G_OBJECT_GET_CLASS(worker->pipeline),
-					 "stream-info"))
-	{
-		g_object_get(worker->pipeline,
-			     "stream-info", &stream_info, NULL);
-	}
-	for (s = stream_info; s; s = g_list_next(s))
-		_parse_stream_info_item(worker, G_OBJECT(s->data));
-	return FALSE;
-}
-
 static void mafw_gst_renderer_worker_apply_xid(MafwGstRendererWorker *worker)
 {
 	/* Set sink to render on the provided XID if we have do have
@@ -824,14 +769,6 @@ static void _finalize_startup(MafwGstRendererWorker *worker)
 	/* Something might have gone wrong at this point already. */
 	if (worker->is_error) {
 		g_debug("Error occured during preroll");
-		return;
-	}
-
-	/* Streaminfo might reveal the media to be unsupported.  Therefore we
-	 * need to check the error again. */
-	_parse_stream_info(worker);
-	if (worker->is_error) {
-		g_debug("Error occured. Leaving");
 		return;
 	}
 
@@ -1625,15 +1562,6 @@ static gboolean _async_bus_handler(GstBus *bus, GstMessage *msg,
 	return TRUE;
 }
 
-/* NOTE this function will possibly be called from a different thread than the
- * glib main thread. */
-static void _stream_info_cb(GstObject *pipeline, GParamSpec *unused,
-			    MafwGstRendererWorker *worker)
-{
-	g_debug("stream-info changed");
-	_parse_stream_info(worker);
-}
-
 static void _volume_cb(MafwGstRendererWorkerVolume *wvolume, gdouble volume,
 		       gpointer data)
 {
@@ -1818,12 +1746,6 @@ static void _construct_pipeline(MafwGstRendererWorker *worker)
 	worker->async_bus_id = gst_bus_add_watch_full(worker->bus,G_PRIORITY_HIGH,
 						 (GstBusFunc)_async_bus_handler,
 						 worker, NULL);
-
-	/* Listen for changes in stream-info object to find out whether the
-	 * media contains video and throw error if application has not provided
-	 * video window. */
-	g_signal_connect(worker->pipeline, "notify::stream-info",
-			 G_CALLBACK(_stream_info_cb), worker);
 
 #ifndef MAFW_GST_RENDERER_DISABLE_PULSE_VOLUME
 	
