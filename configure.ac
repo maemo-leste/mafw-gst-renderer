@@ -51,6 +51,7 @@ AM_PATH_GLIB_2_0(2.15.0, [], [], [glib])
 PKG_CHECK_MODULES(DEPS,
 		  gobject-2.0 >= 2.0
 		  gstreamer-1.0
+		  gstreamer-gl-1.0
 		  mafw >= 0.1
 		  libosso >= 2.0
 		  x11

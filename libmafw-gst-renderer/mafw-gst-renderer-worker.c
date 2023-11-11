@@ -28,8 +28,13 @@
 #include <string.h>
 #include <glib.h>
 #include <X11/Xlib.h>
+
 #include <gst/pbutils/missing-plugins.h>
 #include <gst/base/gstbasesink.h>
+#include <gst/gl/gstgldisplay.h>
+#include <gst/gl/gstglcontext.h>
+#include <gst/gl/gstglfuncs.h>
+
 #include <libmafw/mafw.h>
 
 #ifdef HAVE_GDKPIXBUF
@@ -1675,6 +1680,77 @@ static void _start_play(MafwGstRendererWorker *worker)
 
 }
 
+#ifndef GL_RENDERER
+#define GL_RENDERER 0x1F01
+#endif
+
+static void gst_gl_ctx_thread_fn (GstGLContext * context, gpointer data)
+{
+	const GstGLFuncs *gl = context->gl_vtable;
+
+	if (gl->GetString) {
+		gboolean *use_gles2 = data;
+		const gchar *renderer;
+
+		renderer = (const gchar *)gl->GetString(GL_RENDERER);
+
+		if (renderer && !strstr(renderer, "llvmpipe"))
+			*use_gles2 = TRUE;
+	}
+}
+
+/*
+ * Try to force gstreamer GL to use EGL/GLES2 to check if it is HW accelerated.
+ * If renderer is not llvmpipe, use EGL/GLES2 GL, otherwise use whatever
+ * gstreamer decides to use.
+ */
+static void _check_gl_renderer(void)
+{
+	GstGLDisplay *gl_dpy;
+	gboolean use_gles2 = FALSE;
+
+	if (getenv("GST_GL_PLATFORM") || getenv("GST_GL_API"))
+		return;
+
+	setenv("GST_GL_PLATFORM", "egl", 1);
+	setenv("GST_GL_API", "gles2", 1);
+
+	gl_dpy = gst_gl_display_new();
+
+	if (gl_dpy) {
+		GstGLContext *gl_ctx = NULL;
+		GST_OBJECT_LOCK(gl_dpy);
+
+		if (gst_gl_display_create_context(
+			    gl_dpy, NULL, &gl_ctx, NULL)) {
+			GST_OBJECT_UNLOCK(gl_dpy);
+			/* Despite its misleading name,
+			 * gst_gl_context_thread_add() will block until thread
+			 * function returns.
+			 */
+			gst_gl_context_thread_add(gl_ctx, gst_gl_ctx_thread_fn,
+						  &use_gles2);
+			g_debug("GLES2 renderer is%s llvmpipe",
+				use_gles2 ? " not" : "");
+			gst_object_unref(gl_ctx);
+		} else {
+			GST_OBJECT_UNLOCK(gl_dpy);
+		}
+
+		gst_object_unref(gl_dpy);
+	} else {
+		g_debug("Cannot create gst EGL/GLES2 GL context");
+	}
+
+	if (!use_gles2) {
+		g_debug("Using default gst GL context");
+		unsetenv("GST_GL_PLATFORM");
+		unsetenv("GST_GL_API");
+	} else {
+		g_debug("Using EGL/GLES2 gst GL context");
+	}
+}
+
 /*
  * Constructs gst pipeline
  *
@@ -1741,6 +1817,7 @@ static void _construct_pipeline(MafwGstRendererWorker *worker)
 #endif
 
 	if (!worker->vsink) {
+		_check_gl_renderer();
 		worker->vsink = gst_element_factory_make("glimagesink", NULL);
 		if (!worker->vsink) {
 			g_critical("Failed to create pipeline video sink");
