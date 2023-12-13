@@ -1893,7 +1893,7 @@ static void _construct_pipeline(MafwGstRendererWorker *worker)
 				GST_VIDEO_OVERLAY(worker->vsink), 0);
 	g_object_set(worker->pipeline,
 			"video-sink", worker->vsink,
-			"flags", 0x63,
+			"flags", 0x43,
 			NULL);
 }
 
