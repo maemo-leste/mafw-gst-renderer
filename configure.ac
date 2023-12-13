@@ -60,6 +60,7 @@ PKG_CHECK_MODULES(DEPS,
 		  gio-2.0
 		  mce
 		  dbus-1
+		  xv
 )
 
 dnl Check for GdkPixbuf, needed for dumping current frame

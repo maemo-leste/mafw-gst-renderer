@@ -149,6 +149,7 @@ struct _MafwGstRendererWorker {
 	 */
 	gboolean in_ready;
 	GstElement *vsink;
+	gboolean use_xv;
 	GstElement *asink;
 	XID xid;
 	GPtrArray *tag_list;

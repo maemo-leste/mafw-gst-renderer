@@ -198,8 +198,8 @@ static void mafw_gst_renderer_class_init(MafwGstRendererClass *klass)
 	GObjectClass *gclass = NULL;
 	MafwRendererClass *renderer_class = NULL;
 	const gchar *preloaded_plugins[] = {"playback", "uridecodebin",
-				"coreelements", "typefindfunctions", "dsp",
-				"pulseaudio", "glimagesink", NULL};
+				"coreelements", "typefindfunctions",
+				"pulseaudio", NULL};
 	gint i = 0;
 	GObject *plugin;
 

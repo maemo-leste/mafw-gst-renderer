@@ -8,7 +8,7 @@ Build-Depends: debhelper (>= 10), libglib2.0-dev, libconic0-dev, libgconf2-dev,
                libtotem-plparser-dev, libpulse-dev, libgstreamer1.0-dev,
                libgstreamer-plugins-base1.0-dev, gstreamer1.0-plugins-good,
                maemo-system-services-dev, libgdk-pixbuf-2.0-dev,
-               gstreamer1.0-gl
+               gstreamer1.0-gl, libxv-dev
 Standards-Version: 3.7.2
 
 Package: mafw-gst-renderer

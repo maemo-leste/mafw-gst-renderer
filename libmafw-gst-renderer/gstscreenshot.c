@@ -50,8 +50,9 @@ static void feed_fakesrc(GstElement *src, GstBuffer *buf, GstPad *pad,
 
 	gst_buffer_remove_all_memory(buf);
 
-	g_assert(gst_buffer_copy_into(buf, in_buf,
-				      GST_BUFFER_COPY_MEMORY, 0, -1));
+	g_assert(gst_buffer_copy_into(
+			 buf, in_buf,
+			 GST_BUFFER_COPY_MEMORY | GST_BUFFER_COPY_META, 0, -1));
 
 	GST_DEBUG("feeding buffer %p, size %" G_GSIZE_FORMAT ", caps %" GST_PTR_FORMAT,
 		  buf, gst_buffer_get_size(buf), gst_sample_get_caps(sample));
@@ -150,8 +151,9 @@ static gboolean async_bus_handler(GstBus *bus, GstMessage *msg,
 }
 
 /* takes ownership of the input sample */
-gboolean bvw_frame_conv_convert(GstSample *sample, GstCaps *to_caps,
-				BvwFrameConvCb cb, gpointer cb_data)
+gboolean
+bvw_frame_conv_convert(GstSample *sample, GstCaps *to_caps, gboolean xv,
+		       BvwFrameConvCb cb, gpointer cb_data)
 {
 	static GstElement *src = NULL, *sink = NULL, *pipeline = NULL,
 		*filter1 = NULL, *filter2 = NULL, *download = NULL;
@@ -180,7 +182,7 @@ gboolean bvw_frame_conv_convert(GstSample *sample, GstCaps *to_caps,
 		   !create_element("videoscale", &vscale, &error) ||
 		   !create_element("capsfilter", &filter1, &error) ||
 		   !create_element("capsfilter", &filter2, &error) ||
-		   !create_element("gldownload",  &download, &error) ||
+		   !(xv || create_element("gldownload",  &download, &error)) ||
 		   !create_element("fakesink", &sink, &error)) {
 			g_warning("Could not take screenshot: %s",
 				  error->message);
@@ -190,7 +192,10 @@ gboolean bvw_frame_conv_convert(GstSample *sample, GstCaps *to_caps,
 
 		GST_DEBUG("adding elements");
 		gst_bin_add_many(GST_BIN(pipeline), src, filter1, csp, filter2,
-				 vscale, download, sink, NULL);
+				 vscale, sink, NULL);
+
+		if (!xv)
+			gst_bin_add(GST_BIN(pipeline), download);
 
 		g_object_set(sink, "signal-handoffs", TRUE, NULL);
 
@@ -202,13 +207,19 @@ gboolean bvw_frame_conv_convert(GstSample *sample, GstCaps *to_caps,
 		if(!gst_element_link_pads(src, "src", filter1, "sink"))
 			return FALSE;
 
-		GST_DEBUG("linking filter1->download");
-		if(!gst_element_link_pads(filter1, "src", download, "sink"))
-			return FALSE;
+		if (xv) {
+			GST_DEBUG("linking filter1->csp");
+			if(!gst_element_link_pads(filter1, "src", csp, "sink"))
+				return FALSE;
+		} else {
+			GST_DEBUG("linking filter1->download");
+			if(!gst_element_link_pads(filter1, "src", download, "sink"))
+				return FALSE;
 
-		GST_DEBUG("linking download->csp");
-		if(!gst_element_link_pads(download, "src", csp, "sink"))
-			return FALSE;
+			GST_DEBUG("linking download->csp");
+			if(!gst_element_link_pads(download, "src", csp, "sink"))
+				return FALSE;
+		}
 
 		GST_DEBUG("linking csp->vscale");
 		if(!gst_element_link_pads(csp, "src", vscale, "sink"))

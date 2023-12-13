@@ -28,6 +28,7 @@
 #include <string.h>
 #include <glib.h>
 #include <X11/Xlib.h>
+#include <X11/extensions/Xvlib.h>
 
 #include <gst/pbutils/missing-plugins.h>
 #include <gst/base/gstbasesink.h>
@@ -234,7 +235,6 @@ static void _emit_gst_buffer_as_graphic_file_cb(GstSample *sample,
 			gst_buffer_ref(dpd->buffer);
 			structure = gst_caps_get_structure(
 					    gst_sample_get_caps(sample), 0);
-
 			gst_structure_get_int(structure, "width", &width);
 			gst_structure_get_int(structure, "height", &height);
 			pixbuf = gdk_pixbuf_new_from_data(
@@ -361,7 +361,7 @@ static void _emit_gst_buffer_as_graphic_file(MafwGstRendererWorker *worker,
 		sgd->metadata_key = g_strdup(metadata_key);
 
 		g_debug("pixbuf: using bvw to convert image format");
-		bvw_frame_conv_convert (sample, to_caps,
+		bvw_frame_conv_convert (sample, to_caps, worker->use_xv,
 					_emit_gst_buffer_as_graphic_file_cb,
 					sgd);
 	} else {
@@ -1751,6 +1751,48 @@ static void _check_gl_renderer(void)
 	}
 }
 
+static gboolean
+_check_xv_supported(void)
+{
+	Display *dpy = XOpenDisplay(NULL);
+	gboolean rv = FALSE;
+	XvAdaptorInfo *adaptors;
+	guint nadaptors;
+	gint i;
+
+	if (!dpy) {
+		g_warning("Failed to open $DISPLAY");
+		goto no_dpy;
+	}
+
+	if (!XQueryExtension (dpy, "XVideo", &i, &i, &i))
+		goto no_xv;
+
+	if (Success != XvQueryAdaptors(dpy, DefaultRootWindow(dpy),
+				       &nadaptors, &adaptors)) {
+		goto no_xv;
+	}
+
+	for (i = 0; i < nadaptors; i++) {
+		if (adaptors[i].type & XvImageMask) {
+			/* There is at least one adaptor that has XvImage port.
+			 * Lets assume it is useful for us and move on
+			 */
+			rv = TRUE;
+			break;
+		}
+
+	}
+
+	XvFreeAdaptorInfo (adaptors);
+
+no_xv:
+	XCloseDisplay(dpy);
+
+no_dpy:
+	return rv;
+}
+
 /*
  * Constructs gst pipeline
  *
@@ -1817,8 +1859,19 @@ static void _construct_pipeline(MafwGstRendererWorker *worker)
 #endif
 
 	if (!worker->vsink) {
-		_check_gl_renderer();
-		worker->vsink = gst_element_factory_make("glimagesink", NULL);
+		if (_check_xv_supported()) {
+			g_debug("Using XV accelerated output");
+			worker->use_xv = TRUE;
+			worker->vsink = gst_element_factory_make(
+						"xvimagesink", NULL);
+		} else {
+			worker->use_xv = FALSE;
+			g_debug("Using GL accelerated output");
+			_check_gl_renderer();
+			worker->vsink = gst_element_factory_make(
+						"glimagesink", NULL);
+		}
+
 		if (!worker->vsink) {
 			g_critical("Failed to create pipeline video sink");
 			g_signal_emit_by_name(MAFW_EXTENSION (worker->owner), 
@@ -1828,10 +1881,10 @@ static void _construct_pipeline(MafwGstRendererWorker *worker)
 					      "Could not create video sink");
 			g_assert_not_reached();
 		}
+
 		gst_object_ref(worker->vsink);
 		g_object_set(G_OBJECT(worker->vsink),
 			     "handle-events", FALSE,
-			     "ignore-alpha", FALSE,
 			     "force-aspect-ratio", TRUE,
 			     NULL);
 	}
@@ -1840,7 +1893,7 @@ static void _construct_pipeline(MafwGstRendererWorker *worker)
 				GST_VIDEO_OVERLAY(worker->vsink), 0);
 	g_object_set(worker->pipeline,
 			"video-sink", worker->vsink,
-			"flags", 0x43,
+			"flags", 0x63,
 			NULL);
 }
 
